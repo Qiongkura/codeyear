@@ -63,6 +63,8 @@ class ReportStats:
     language_count: int
     repo_details: list[dict]
     ticker: list[dict]
+    identity_label: str
+    filtered_commits: int
     persona: Persona
     warnings: list[str]
 
@@ -154,14 +156,29 @@ def _streaks(active_dates: list[date], year: int) -> tuple[int, int]:
     return longest, current
 
 
+def _is_mine(commit: Commit, identity: tuple[str, str]) -> bool:
+    email, name = identity
+    if email and commit.author_email.lower() == email.lower():
+        return True
+    if name and commit.author_name.strip().lower() == name.strip().lower():
+        return True
+    return False
+
+
 def build_stats(
     *,
     year: int,
     root: str,
     repos: list[RepoResult],
     warnings: list[str] | None = None,
+    identity: tuple[str, str] | None = None,
 ) -> ReportStats:
     warnings = list(warnings or [])
+    filtered_commits = 0
+    identity_label = ""
+    if identity:
+        email, name = identity
+        identity_label = f"{name} <{email}>" if name and email else (email or name)
     commits: list[Commit] = []
     lang_counter: Counter[str] = Counter()
     file_counter: Counter[str] = Counter()
@@ -171,7 +188,45 @@ def build_stats(
     # Backups and copies of the same repo share commit hashes. Keep the
     # largest copy first and count every hash once, so a "projects" folder
     # full of snapshots does not inflate the report.
-    ordered = sorted(repos, key=lambda repo: len(repo.commits), reverse=True)
+    # Copies of the same project (same first commit or same remote) should read
+    # as one project. A work/backup folder full of clones then collapses into
+    # the biggest copy instead of showing up as several repos.
+    parent = list(range(len(repos)))
+
+    def find(i: int) -> int:
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    def union(a: int, b: int) -> None:
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            parent[rb] = ra
+
+    buckets: dict[str, int] = {}
+    for i, repo in enumerate(repos):
+        keys: list[str] = []
+        if repo.root:
+            keys.append("root:" + repo.root)
+        remote = (repo.remote or "").strip().lower().removesuffix(".git")
+        if remote:
+            keys.append("remote:" + remote)
+        for key in keys:
+            if key in buckets:
+                union(i, buckets[key])
+            else:
+                buckets[key] = i
+
+    grouped: dict[int, list[RepoResult]] = {}
+    for i, repo in enumerate(repos):
+        grouped.setdefault(find(i), []).append(repo)
+    chosen = [
+        max(group, key=lambda r: (len(r.commits), -len(r.name)))
+        for group in grouped.values()
+    ]
+
+    ordered = sorted(chosen, key=lambda repo: len(repo.commits), reverse=True)
     selected: list[tuple[RepoResult, list[Commit]]] = []
     seen_hashes: set[str] = set()
     for repo in ordered:
@@ -180,6 +235,9 @@ def build_stats(
         unique: list[Commit] = []
         for commit in repo.commits:
             if commit.hash in seen_hashes:
+                continue
+            if identity is not None and not _is_mine(commit, identity):
+                filtered_commits += 1
                 continue
             seen_hashes.add(commit.hash)
             unique.append(commit)
@@ -351,6 +409,8 @@ def build_stats(
         language_count=len(languages),
         repo_details=repo_details,
         ticker=ticker,
+        identity_label=identity_label,
+        filtered_commits=filtered_commits,
         persona=persona,
         warnings=warnings,
     )

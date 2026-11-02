@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import subprocess
 import sys
 import webbrowser
 from datetime import date
@@ -30,6 +31,8 @@ def _build_parser() -> argparse.ArgumentParser:
     scan.add_argument("--year", type=int, default=date.today().year, help="统计年份，默认今年")
     scan.add_argument("--out", default="codeyear-output", help="输出目录，默认 ./codeyear-output")
     scan.add_argument("--author", default=None, help="只统计匹配的 git author（--author 参数）")
+    scan.add_argument("--all-authors", action="store_true",
+                      help="统计所有作者的提交（默认只统计你本人，按 git user.name / user.email 识别）")
     scan.add_argument("--max-depth", type=int, default=6, help="最大扫描深度，默认 6")
     scan.add_argument("--timeout", type=int, default=300, help="单个仓库的扫描超时秒数")
     scan.add_argument("--no-png", action="store_true", help="不生成 PNG 海报")
@@ -49,6 +52,26 @@ def _open_path(path: Path) -> None:
             webbrowser.open(path.resolve().as_uri())
     except Exception as exc:  # pragma: no cover - platform dependent
         print(f"无法自动打开文件: {exc}", file=sys.stderr)
+
+
+def _detect_identity() -> tuple[str, str] | None:
+    """The runner's git identity, used to keep only their own commits."""
+
+    def config(key: str) -> str:
+        try:
+            proc = subprocess.run(
+                ["git", "config", "--global", key],
+                capture_output=True, text=True, encoding="utf-8",
+                errors="replace", timeout=10,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            return ""
+        return (proc.stdout or "").strip()
+
+    email, name = config("user.email"), config("user.name")
+    if email or name:
+        return (email, name)
+    return None
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -88,7 +111,17 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"       ! {result.warning}", file=sys.stderr)
         results.append(result)
 
-    stats = build_stats(year=args.year, root=str(root.resolve()), repos=results, warnings=warnings)
+    identity = None
+    if not args.all_authors and not args.author:
+        identity = _detect_identity()
+        if identity is None and not args.quiet:
+            print("  ! 未检测到 git user.name / user.email，将统计所有作者的提交",
+                  file=sys.stderr)
+
+    stats = build_stats(
+        year=args.year, root=str(root.resolve()), repos=results,
+        warnings=warnings, identity=identity,
+    )
 
     if stats.commit_count == 0:
         print(
@@ -124,6 +157,12 @@ def main(argv: list[str] | None = None) -> int:
     print(f"CodeYear {args.year}  ·  {stats.persona.title}")
     print("-" * 46)
     print(f"仓库      {stats.repo_count}")
+    if stats.identity_label:
+        print(f"身份      {stats.identity_label}")
+        if stats.filtered_commits:
+            print(f"已过滤    {stats.filtered_commits} 次他人提交")
+    else:
+        print("身份      全部作者")
     print(f"提交      {fmt_int(stats.commit_count)}")
     print(f"代码行    {fmt_int(stats.lines_changed)}  (+{fmt_int(stats.insertions)} / -{fmt_int(stats.deletions)})")
     print(f"活跃      {stats.active_days} 天（{active_pct:.0%}）· 最长连续 {stats.longest_streak} 天")

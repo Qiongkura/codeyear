@@ -628,12 +628,20 @@ def build_numbers(stats: ReportStats) -> str:
 
 
 def build_about(stats: ReportStats) -> str:
+    if stats.identity_label:
+        identity_line = (
+            f"只统计你本人作者的提交（{escape(stats.identity_label)}）；"
+            f"已过滤 {stats.filtered_commits} 次他人提交。"
+        )
+    else:
+        identity_line = "未检测到 git 身份，统计了所有作者的提交（可用 --all-authors 显式开启）。"
     return f"""
     <div class="about rv">
       <ul>
         <li>这份报告由 CodeYear 在你的电脑上生成，代码从未离开这台机器。</li>
+        <li>{identity_line}</li>
         <li>只统计 {stats.year} 年的提交；合并提交（--no-merges）不计入。</li>
-        <li>同一 commit 出现在多个仓库时只计一次，归属提交数最多的仓库。</li>
+        <li>同一项目出现在多个目录时只保留提交最多的一个；同一 commit 只计一次。</li>
         <li>时间取 author date；跨时区协作时以提交者本地时间为准。</li>
         <li>「自有代码」= 非空行；已剔除第三方库、生成工程与二进制。</li>
       </ul>

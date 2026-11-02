@@ -46,6 +46,8 @@ class Commit:
     added: int
     deleted: int
     files: int
+    author_email: str = ""
+    author_name: str = ""
     changes: list[FileChange] = field(default_factory=list)
 
 
@@ -57,6 +59,7 @@ class RepoResult:
     warning: str | None = None
     remote: str | None = None
     readme_line: str | None = None
+    root: str | None = None
 
 
 def find_repos(root: Path, max_depth: int = 6) -> list[Path]:
@@ -132,7 +135,7 @@ def _build_log_cmd(
         f"--since={year}-01-01T00:00:00",
         f"--until={year + 1}-01-01T00:00:00",
         "--date=format:%Y-%m-%dT%H:%M:%S",
-        "--pretty=format:%x1e%H%x1f%ad%x1f%s",
+        "--pretty=format:%x1e%H%x1f%ad%x1f%ae%x1f%an%x1f%s",
         "--numstat",
         "--no-renames",
         "--no-merges",
@@ -176,6 +179,21 @@ def _git_remote(repo_path: Path) -> str | None:
         return None
     url = (proc.stdout or "").strip()
     return url or None
+
+
+def _git_root(repo_path: Path) -> str | None:
+    """First root commit — the shared ancestor of copies of the same project."""
+    try:
+        proc = subprocess.run(
+            ["git", "-c", f"safe.directory={repo_path.as_posix()}",
+             "-C", str(repo_path), "rev-list", "--max-parents=0", "HEAD"],
+            capture_output=True, text=True, encoding="utf-8",
+            errors="replace", timeout=10,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    roots = proc.stdout.strip().splitlines()
+    return roots[0].strip() if roots else None
 
 
 def scan_repo(
@@ -234,6 +252,7 @@ def scan_repo(
 
     result.remote = _git_remote(repo_path)
     result.readme_line = _readme_line(repo_path)
+    result.root = _git_root(repo_path)
 
     if not proc.stdout.strip():
         return result
@@ -244,11 +263,11 @@ def scan_repo(
             continue
 
         lines = chunk.splitlines()
-        header = lines[0].split("\x1f", 2)
-        if len(header) < 3:
+        header = lines[0].split("\x1f", 4)
+        if len(header) < 5:
             continue
 
-        commit_hash, date_s, subject = header
+        commit_hash, date_s, author_email, author_name, subject = header
         try:
             dt = datetime.strptime(date_s, "%Y-%m-%dT%H:%M:%S")
         except ValueError:
@@ -288,6 +307,8 @@ def scan_repo(
                 added=added_total,
                 deleted=deleted_total,
                 files=files,
+                author_email=author_email.strip(),
+                author_name=author_name.strip(),
                 changes=changes,
             )
         )

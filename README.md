@@ -61,6 +61,7 @@ codeyear-2026.json   原始统计数据，方便二次开发
 | `--year 2026` | 统计年份，默认今年 |
 | `--out ./out` | 输出目录 |
 | `--author "your@email"` | 只统计匹配的 git author |
+| `--all-authors` | 统计所有作者的提交（默认只统计你本人，按 git `user.name` / `user.email` 识别） |
 | `--max-depth 6` | 向下扫描仓库的最大深度 |
 | `--no-png` / `--no-html` | 只生成其中一种 |
 | `--open` | 生成后自动打开 |
