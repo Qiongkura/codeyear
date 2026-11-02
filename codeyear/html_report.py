@@ -270,7 +270,7 @@ section{padding:86px 0 0;scroll-margin-top:70px}
 .lc-track{height:10px;background-color:var(--paper2);
   background-image:linear-gradient(90deg,var(--line) 1px,transparent 1px);
   background-size:calc(100% / 12) 100%;border:1px solid var(--line2);position:relative}
-.lc-track i{position:absolute;top:0;bottom:0;background:var(--ink);z-index:1}
+.lc-track i{position:absolute;top:0;bottom:0;background:var(--ink);z-index:1;min-width:1px}
 .lc-track i.hot{background:var(--acc)}
 .lc-track i.dot{width:7px;height:7px;top:50%;bottom:auto;transform:translateY(-50%)}
 .lc-date{font-family:var(--mono);font-size:9.5px;color:var(--muted);text-align:right}
@@ -954,7 +954,7 @@ def build_lifecycle(stats: ReportStats) -> str:
     head = (
         f'<div class="lc-months"><span></span>'
         f'<div class="lc-month-ticks">{months}</div>'
-        f'<span class="lc-end">首次 → 最近</span></div>'
+        f'<span class="lc-end">首次–最近</span></div>'
     )
 
     rows = []
@@ -965,15 +965,15 @@ def build_lifecycle(stats: ReportStats) -> str:
         except ValueError:
             continue
         left = (first - start).days / span_days * 100
-        width = max((last - first).days / span_days * 100, 1.2)
+        width = (last - first).days / span_days * 100
         _stamp, active = _stamp_for(repo["last"], stats.generated_at)
         hot = " hot" if active else ""
         if (last - first).days == 0:
             bar = f'<i class="dot{hot}" style="left:calc({left:.2f}% - 3px)"></i>'
             dates = repo["first"][5:]
         else:
-            bar = f'<i class="{hot.strip()}" style="left:{left:.1f}%;width:{width:.1f}%"></i>'
-            dates = f'{repo["first"][5:]}→{repo["last"][5:]}'
+            bar = f'<i class="{hot.strip()}" style="left:{left:.1f}%;width:{width:.2f}%"></i>'
+            dates = f'{repo["first"][5:]}–{repo["last"][5:]}'
         rows.append(
             f'<div class="lc-row">'
             f'<span class="lc-name" data-tip="{escape(repo["name"])} · '
