@@ -275,6 +275,12 @@ section{padding:86px 0 0;scroll-margin-top:70px}
 .pair{display:flex;height:18px;border:1px solid var(--ink);margin:10px 0}
 .pair i{display:block;height:100%}
 
+#tip{position:fixed;left:0;top:0;z-index:90;pointer-events:none;opacity:0;
+  background:var(--paper);border:1px solid var(--ink);box-shadow:4px 4px 0 var(--acc);
+  font-family:var(--mono);font-size:11px;line-height:1.5;color:var(--ink);
+  padding:6px 9px;max-width:300px;transition:opacity .12s var(--ease)}
+#tip.show{opacity:1}
+
 @media(min-width:921px){.num-grid .span2{grid-column:span 2}}
 
 
@@ -323,6 +329,11 @@ footer{border-top:2px solid var(--ink);margin-top:90px;padding:24px 0 44px}
   *,*::before,*::after{animation:none!important;transition:none!important}
   .rv,.rv-line{opacity:1!important;transform:none!important}
   .sec-line,.bar-track i,.hour-bar{transform:none!important;opacity:1!important}
+  .tick-track{animation:none!important}
+}
+@media print{
+  .rv,.rv-line{opacity:1!important;transform:none!important}
+  .sec-line,.bar-track i,.hour-bar{transform:none!important}
   .tick-track{animation:none!important}
 }
 """
@@ -404,6 +415,37 @@ JS = r"""
     });
     if(countEl) countEl.textContent = n+' / '+rows.length;
   }));
+
+  /* paper-style tooltip (replaces native title bubbles) */
+  const tip = document.getElementById('tip');
+  if(tip){
+    let target = null;
+    const place = ev=>{
+      const gap = 14;
+      let x = ev.clientX + gap, y = ev.clientY + gap;
+      const r = tip.getBoundingClientRect();
+      if(x + r.width > innerWidth - 8) x = ev.clientX - r.width - gap;
+      if(y + r.height > innerHeight - 8) y = ev.clientY - r.height - gap;
+      tip.style.transform = 'translate('+x+'px,'+y+'px)';
+    };
+    document.addEventListener('mouseover', ev=>{
+      const el = ev.target.closest ? ev.target.closest('[data-tip]') : null;
+      if(!el) return;
+      target = el;
+      tip.textContent = el.dataset.tip;
+      tip.classList.add('show');
+      place(ev);
+    });
+    document.addEventListener('mouseout', ev=>{
+      if(!target) return;
+      if(ev.relatedTarget && target.contains(ev.relatedTarget)) return;
+      target = null;
+      tip.classList.remove('show');
+    });
+    document.addEventListener('mousemove', ev=>{ if(target) place(ev); });
+    addEventListener('scroll', ()=>{ target=null; tip.classList.remove('show'); }, {passive:true});
+    addEventListener('blur', ()=>{ target=null; tip.classList.remove('show'); });
+  }
 })();
 """
 
@@ -583,7 +625,13 @@ def build_heatmap(stats: ReportStats) -> str:
             if cursor == today:
                 cls += " today"
             tip = f"{cursor.isoformat()} · {count} 次提交"
-        cells.append(f'<span class="cell {cls}" title="{escape(tip)}"></span>')
+        if tip:
+            cells.append(
+                f'<span class="cell {cls}" data-tip="{escape(tip)}" '
+                f'aria-label="{escape(tip)}"></span>'
+            )
+        else:
+            cells.append(f'<span class="cell {cls}"></span>')
         cursor += timedelta(days=1)
 
     months = "".join(f"<span>{m:02d}</span>" for m in range(1, 13))
@@ -640,7 +688,8 @@ def build_monthly(stats: ReportStats) -> str:
     peak = stats.monthly.index(max_v) + 1
     cols = "".join(
         f'<div class="month-col{" peak" if v == max_v and v > 0 else ""}" '
-        f'title="{m + 1} 月 · {v} 次提交">'
+        f'data-tip="{m + 1} 月 · {v} 次提交" '
+        f'aria-label="{m + 1} 月 · {v} 次提交">'
         f'<i style="height:{max(v / max_v * 100, 1.5):.1f}%"></i></div>'
         for m, v in enumerate(stats.monthly)
     )
@@ -674,7 +723,8 @@ def build_clock(stats: ReportStats) -> str:
     rows = []
     for wd, row in enumerate(stats.hour_weekday):
         cells = "".join(
-            f'<span class="c {level(v)}" title="{days[wd]} {h:02d}:00 · {v} 次提交"></span>'
+            f'<span class="c {level(v)}" data-tip="{days[wd]} {h:02d}:00 · {v} 次提交" '
+            f'aria-label="{days[wd]} {h:02d}:00 · {v} 次提交"></span>'
             for h, v in enumerate(row)
         )
         rows.append(f'<span class="wd">{days[wd]}</span>{cells}')
@@ -766,8 +816,8 @@ def build_lifecycle(stats: ReportStats) -> str:
         cls = " hot" if active else ""
         rows.append(
             f'<div class="lc-row">'
-            f'<span class="lc-name" title="{escape(repo["name"])}">{escape(repo["name"])}</span>'
-            f'<div class="lc-track" title="{repo["commits"]} 次提交 · {fmt_human(repo["lines"])} 行">'
+            f'<span class="lc-name" data-tip="{escape(repo["name"])}">{escape(repo["name"])}</span>'
+            f'<div class="lc-track" data-tip="{repo["commits"]} 次提交 · {fmt_human(repo["lines"])} 行">'
             f'<i class="{cls}" style="left:{left:.1f}%;width:{width:.1f}%"></i></div>'
             f'<span class="lc-date">{repo["first"][5:]}→{repo["last"][5:]}</span></div>'
         )
@@ -902,6 +952,8 @@ def build_html(stats: ReportStats) -> str:
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Mono:wght@400;500&family=Noto+Serif+SC:wght@600&display=swap" rel="stylesheet">
 <style>{CSS}</style>
+<noscript><style>.rv,.rv-line{{opacity:1!important;transform:none!important}}
+.sec-line{{transform:none!important}}</style></noscript>
 </head>
 <body>
 <div id="progress"></div>
@@ -994,6 +1046,7 @@ def build_html(stats: ReportStats) -> str:
   </div>
 </footer>
 
+<div id="tip" aria-hidden="true"></div>
 <script>{JS}</script>
 </body>
 </html>
