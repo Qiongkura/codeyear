@@ -51,6 +51,18 @@ class ReportStats:
     last_dt: datetime | None
     by_hour: list[int]
     by_weekday: list[int]
+    monthly: list[int]
+    hour_weekday: list[list[int]]
+    size_buckets: list[tuple[str, int]]
+    busiest_week: tuple[str, int] | None
+    busiest_week_start: str | None
+    longest_gap: tuple[int, str, str] | None
+    largest_commit: dict | None
+    largest_deletion: dict | None
+    avg_subject_len: int
+    conventional_share: float
+    weekend_share: float
+    night_share: float
     daily: dict[str, int]
     languages: list[tuple[str, int]]
     top_files: list[tuple[str, int]]
@@ -313,6 +325,11 @@ def build_stats(
 
     by_hour = [0] * 24
     by_weekday = [0] * 7
+    monthly = [0] * 12
+    hour_weekday = [[0] * 24 for _ in range(7)]
+    size_counter: Counter[str] = Counter()
+    week_counter: Counter[tuple[int, int]] = Counter()
+    subject_lens: list[int] = []
     daily: Counter[str] = Counter()
     type_counter: Counter[str] = Counter()
     night_commits = 0
@@ -322,7 +339,24 @@ def build_stats(
     for c in commits:
         by_hour[c.dt.hour] += 1
         by_weekday[c.dt.weekday()] += 1
+        monthly[c.dt.month - 1] += 1
+        hour_weekday[c.dt.weekday()][c.dt.hour] += 1
         daily[c.dt.date().isoformat()] += 1
+        if c.subject:
+            subject_lens.append(len(c.subject))
+        size = c.added + c.deleted
+        if size < 10:
+            size_counter["0–10"] += 1
+        elif size < 100:
+            size_counter["10–100"] += 1
+        elif size < 500:
+            size_counter["100–500"] += 1
+        elif size < 2000:
+            size_counter["500–2k"] += 1
+        else:
+            size_counter["2k+"] += 1
+        iso = c.dt.isocalendar()
+        week_counter[(iso[0], iso[1])] += 1
         if c.dt.hour >= 22 or c.dt.hour <= 4:
             night_commits += 1
         elif 5 <= c.dt.hour <= 8:
@@ -335,6 +369,58 @@ def build_stats(
 
     active_dates = sorted(date.fromisoformat(k) for k, v in daily.items() if v > 0)
     longest_streak, current_streak = _streaks(active_dates, year)
+
+    size_order = ["0–10", "10–100", "100–500", "500–2k", "2k+"]
+    size_buckets = [(label, size_counter.get(label, 0)) for label in size_order]
+
+    busiest_week: tuple[str, int] | None = None
+    busiest_week_start: str | None = None
+    if week_counter:
+        (wy, wn), wc = max(week_counter.items(), key=lambda kv: kv[1])
+        busiest_week = (f"{wy}-W{wn:02d}", wc)
+        try:
+            busiest_week_start = date.fromisocalendar(wy, wn, 1).strftime("%Y.%m.%d")
+        except ValueError:
+            busiest_week_start = None
+
+    longest_gap: tuple[int, str, str] | None = None
+    if len(active_dates) >= 2:
+        best_gap = 0
+        best_i = 0
+        for i in range(1, len(active_dates)):
+            gap = (active_dates[i] - active_dates[i - 1]).days
+            if gap > best_gap:
+                best_gap, best_i = gap, i
+        if best_gap > 0:
+            longest_gap = (
+                best_gap,
+                active_dates[best_i - 1].strftime("%Y.%m.%d"),
+                active_dates[best_i].strftime("%Y.%m.%d"),
+            )
+
+    largest_commit: dict | None = None
+    largest_deletion: dict | None = None
+    if commits:
+        lc = max(commits, key=lambda c: c.added + c.deleted)
+        largest_commit = {
+            "lines": lc.added + lc.deleted,
+            "repo": lc.repo,
+            "date": lc.dt.strftime("%Y.%m.%d"),
+            "subject": lc.subject[:80],
+        }
+        ld = max(commits, key=lambda c: c.deleted)
+        if ld.deleted > 0:
+            largest_deletion = {
+                "lines": ld.deleted,
+                "repo": ld.repo,
+                "date": ld.dt.strftime("%Y.%m.%d"),
+                "subject": ld.subject[:80],
+            }
+
+    avg_subject_len = round(sum(subject_lens) / len(subject_lens)) if subject_lens else 0
+    conventional_share = sum(type_counter.values()) / max(commit_count, 1)
+    weekend_share = weekend_commits / max(commit_count, 1)
+    night_share = night_commits / max(commit_count, 1)
 
     busiest: tuple[str, int] | None = None
     busiest_count = 0
@@ -397,6 +483,18 @@ def build_stats(
         last_dt=last_dt,
         by_hour=by_hour,
         by_weekday=by_weekday,
+        monthly=monthly,
+        hour_weekday=hour_weekday,
+        size_buckets=size_buckets,
+        busiest_week=busiest_week,
+        busiest_week_start=busiest_week_start,
+        longest_gap=longest_gap,
+        largest_commit=largest_commit,
+        largest_deletion=largest_deletion,
+        avg_subject_len=avg_subject_len,
+        conventional_share=conventional_share,
+        weekend_share=weekend_share,
+        night_share=night_share,
         daily=dict(sorted(daily.items())),
         languages=languages,
         top_files=top_files,

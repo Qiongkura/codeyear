@@ -223,6 +223,61 @@ section{padding:86px 0 0;scroll-margin-top:70px}
 .heat-legend .cell{width:10px;height:10px}
 .num-note{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:16px;line-height:1.9}
 
+/* ---- year records ---- */
+.records{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--ink);
+  border-left:1px solid var(--ink);margin-top:26px}
+.record{border-right:1px solid var(--ink);border-bottom:1px solid var(--ink);padding:20px 22px;
+  min-height:150px;display:flex;flex-direction:column;justify-content:space-between}
+.record .k{font-family:var(--mono);font-size:10px;letter-spacing:.16em;color:var(--muted)}
+.record .v{font-family:var(--serif);font-size:31px;line-height:1.15;margin:10px 0 6px;
+  letter-spacing:-.01em}
+.record .v small{font-family:var(--sans);font-size:13px;color:var(--muted);letter-spacing:0}
+.record .s{font-family:var(--mono);font-size:10.5px;color:var(--muted);line-height:1.65;
+  overflow:hidden;text-overflow:ellipsis}
+
+/* ---- monthly rhythm ---- */
+.month-chart{display:flex;align-items:flex-end;gap:6px;height:150px;margin-top:8px}
+.month-col{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end}
+.month-col i{display:block;background:var(--ink);min-height:2px;transform-origin:bottom;
+  transform:scaleY(0);transition:transform .85s var(--ease)}
+.in .month-col i{transform:scaleY(1)}
+.month-col.peak i{background:var(--acc)}
+.month-labels{display:flex;gap:6px;margin-top:7px;font-family:var(--mono);font-size:9px;
+  color:var(--muted)}
+.month-labels span{flex:1;text-align:center}
+
+/* ---- 7x24 clock ---- */
+.clock-wrap{overflow-x:auto}
+.clock{display:grid;grid-template-columns:34px repeat(24,28px);gap:3px;
+  justify-content:center;min-width:748px;padding:2px 0}
+.clock .wd{font-family:var(--mono);font-size:9.5px;color:var(--muted);text-align:right;
+  padding-right:6px;align-self:center}
+.clock .hh{font-family:var(--mono);font-size:8px;color:var(--muted);text-align:center;height:14px}
+.clock .c{width:28px;height:16px;background:var(--paper2)}
+.clock .c.l1{background:#ddd6c4}.clock .c.l2{background:#a89f88}
+.clock .c.l3{background:#5c554a}.clock .c.l4{background:var(--ink)}
+
+/* ---- lifecycle bars ---- */
+.lc-row{display:grid;grid-template-columns:190px 1fr 96px;gap:10px;
+  align-items:center;margin:9px 0}
+.lc-name{font-family:var(--mono);font-size:10.5px;color:var(--ink2);overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.lc-track{height:9px;background:var(--paper2);border:1px solid var(--line2);position:relative}
+.lc-track i{position:absolute;top:0;bottom:0;background:var(--ink)}
+.lc-track i.hot{background:var(--acc)}
+.lc-date{font-family:var(--mono);font-size:9.5px;color:var(--muted);text-align:right}
+
+/* ---- keyword chips / churn ---- */
+.chips-cloud{display:flex;gap:6px;flex-wrap:wrap}
+.chips-cloud span{font-family:var(--mono);font-size:10.5px;border:1px solid var(--line2);
+  padding:4px 9px;color:var(--ink2);background:var(--paper)}
+.chips-cloud b{color:var(--acc);font-weight:500;margin-left:5px}
+.pair{display:flex;height:18px;border:1px solid var(--ink);margin:10px 0}
+.pair i{display:block;height:100%}
+
+@media(min-width:921px){.num-grid .span2{grid-column:span 2}}
+
+
 .about{border:1px solid var(--ink);padding:26px;background:var(--paper)}
 .about ul{margin:0;padding:0;list-style:none;font-family:var(--mono);font-size:12px;color:var(--ink2)}
 .about li{padding:9px 0 9px 20px;border-top:1px dashed var(--line2);position:relative}
@@ -253,6 +308,7 @@ footer{border-top:2px solid var(--ink);margin-top:90px;padding:24px 0 44px}
   .archive,.archive.flip{grid-template-columns:1fr}
   .archive.flip .plate-wrap{order:0}
   .num-grid{grid-template-columns:1fr}
+  .records{grid-template-columns:repeat(2,1fr)}
 }
 @media(max-width:640px){
   .wrap,.nav,.foot-in{padding-left:20px;padding-right:20px}
@@ -260,7 +316,8 @@ footer{border-top:2px solid var(--ink);margin-top:90px;padding:24px 0 44px}
   .nav-links{display:none}
   h1{font-size:42px}
   .index-table .t-stack,.index-table .t-desc{display:none}
-  .next-row{grid-template-columns:1fr}
+  .records{grid-template-columns:1fr}
+  .lc-row{grid-template-columns:120px 1fr 76px}
 }
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation:none!important;transition:none!important}
@@ -532,7 +589,7 @@ def build_heatmap(stats: ReportStats) -> str:
     months = "".join(f"<span>{m:02d}</span>" for m in range(1, 13))
     legend = "".join(f'<span class="cell l{i}"></span>' for i in range(5))
     return f"""
-    <div class="num-panel heat-panel">
+    <div class="num-panel heat-panel rv span2">
       <h3>{stats.year} 活跃热力图 <b>· {stats.active_days} 个活跃日</b></h3>
       <div class="heat-wrap">
         <div class="months">{months}</div>
@@ -541,6 +598,180 @@ def build_heatmap(stats: ReportStats) -> str:
       <div class="heat-legend">{legend}<span style="margin-left:6px">少 → 多 · 框出今天</span></div>
     </div>
     """
+
+
+def _panel(title: str, body: str, *, span: bool = False) -> str:
+    cls = "num-panel rv span2" if span else "num-panel rv"
+    return f'<div class="{cls}"><h3>{title}</h3>{body}</div>'
+
+
+def build_records(stats: ReportStats) -> str:
+    cards: list[str] = []
+
+    def add(label: str, value: str, sub: str) -> None:
+        cards.append(
+            f'<div class="record rv"><div class="k">{label}</div>'
+            f'<div class="v">{value}</div><div class="s">{sub}</div></div>'
+        )
+
+    if stats.busiest_day:
+        day, count = stats.busiest_day
+        add("最忙的一天", f"{count} <small>次提交</small>", day.replace("-", "."))
+    if stats.busiest_week:
+        week, count = stats.busiest_week
+        add("最忙的一周", f"{count} <small>次提交</small>",
+            f"{week} · 起于 {stats.busiest_week_start or '—'}")
+    add("最长连续", f"{stats.longest_streak} <small>天</small>",
+        f"当前连续 {stats.current_streak} 天")
+    if stats.longest_gap:
+        days, start, end = stats.longest_gap
+        add("最长空窗", f"{days} <small>天</small>", f"{start} → {end}")
+    if stats.largest_commit:
+        lc = stats.largest_commit
+        add("最大单次提交", f"{fmt_int(lc['lines'])} <small>行</small>",
+            f"{escape(lc['repo'])} · {lc['date']}")
+    add("最长的 commit", f"{len(stats.longest_subject)} <small>字符</small>",
+        escape(stats.longest_subject[:90]))
+    return f'<div class="records">{"".join(cards)}</div>'
+
+
+def build_monthly(stats: ReportStats) -> str:
+    max_v = max(stats.monthly) or 1
+    peak = stats.monthly.index(max_v) + 1
+    cols = "".join(
+        f'<div class="month-col{" peak" if v == max_v and v > 0 else ""}" '
+        f'title="{m + 1} 月 · {v} 次提交">'
+        f'<i style="height:{max(v / max_v * 100, 1.5):.1f}%"></i></div>'
+        for m, v in enumerate(stats.monthly)
+    )
+    labels = "".join(f"<span>{m:02d}</span>" for m in range(1, 13))
+    return _panel(
+        f"月度节奏 <b>· 峰值 {peak:02d} 月 · {max_v} 次</b>",
+        f'<div class="month-chart">{cols}</div><div class="month-labels">{labels}</div>',
+        span=True,
+    )
+
+
+def build_clock(stats: ReportStats) -> str:
+    flat = [v for row in stats.hour_weekday for v in row]
+    max_v = max(flat) or 1
+
+    def level(v: int) -> str:
+        if v == 0:
+            return "l0"
+        if v <= max_v * 0.15:
+            return "l1"
+        if v <= max_v * 0.35:
+            return "l2"
+        if v <= max_v * 0.6:
+            return "l3"
+        return "l4"
+
+    days = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
+    head = '<span class="wd"></span>' + "".join(
+        f'<span class="hh">{h if h % 3 == 0 else ""}</span>' for h in range(24)
+    )
+    rows = []
+    for wd, row in enumerate(stats.hour_weekday):
+        cells = "".join(
+            f'<span class="c {level(v)}" title="{days[wd]} {h:02d}:00 · {v} 次提交"></span>'
+            for h, v in enumerate(row)
+        )
+        rows.append(f'<span class="wd">{days[wd]}</span>{cells}')
+
+    totals = [sum(stats.hour_weekday[wd][h] for wd in range(7)) for h in range(24)]
+    peak = totals.index(max(totals))
+    return _panel(
+        f"7×24 提交时钟 <b>· 峰值 {peak:02d}:00</b>",
+        f'<div class="clock-wrap"><div class="clock">{head}{"".join(rows)}</div></div>'
+        f'<p class="num-note">周末占 {stats.weekend_share:.0%}，'
+        f'深夜（22:00–05:00）占 {stats.night_share:.0%}。</p>',
+        span=True,
+    )
+
+
+def build_sizes(stats: ReportStats) -> str:
+    max_v = max((v for _, v in stats.size_buckets), default=1) or 1
+    rows = "".join(
+        f'<div class="bar-row"><span class="bar-name">{label} 行</span>'
+        f'<div class="bar-track"><i style="width:{v / max_v * 100:.1f}%"></i></div>'
+        f'<span class="bar-val">{v}</span></div>'
+        for label, v in stats.size_buckets
+    )
+    return _panel("提交规模 <b>· 小步快跑还是大爆炸</b>", rows)
+
+
+def build_types(stats: ReportStats) -> str:
+    if not stats.commit_types:
+        return _panel("提交类型 <b>· 约定式提交</b>",
+                      '<p class="num-note">没有识别到 Conventional Commits 类型。</p>')
+    max_v = max(v for _, v in stats.commit_types) or 1
+    rows = "".join(
+        f'<div class="bar-row"><span class="bar-name">{escape(name)}</span>'
+        f'<div class="bar-track"><i style="width:{v / max_v * 100:.1f}%"></i></div>'
+        f'<span class="bar-val">{v}</span></div>'
+        for name, v in stats.commit_types
+    )
+    return _panel(f"提交类型 <b>· 约定式占 {stats.conventional_share:.0%}</b>", rows)
+
+
+def build_keywords(stats: ReportStats) -> str:
+    if not stats.keywords:
+        return _panel("高频词 <b>· 口头禅</b>",
+                      '<p class="num-note">提交信息太短，没有提取到关键词。</p>')
+    chips = "".join(
+        f"<span>{escape(word)}<b>{count}</b></span>" for word, count in stats.keywords[:16]
+    )
+    return _panel(
+        "高频词 <b>· commit message 里的口头禅</b>",
+        f'<div class="chips-cloud">{chips}</div>'
+        f'<p class="num-note">平均每条 {stats.avg_subject_len} 字符。</p>',
+    )
+
+
+def build_adddel(stats: ReportStats) -> str:
+    ins, deleted = stats.insertions, stats.deletions
+    total = max(ins + deleted, 1)
+    ratio = deleted / max(ins, 1)
+    body = (
+        f'<div class="pair">'
+        f'<i style="width:{ins / total * 100:.1f}%;background:var(--ink)"></i>'
+        f'<i style="width:{deleted / total * 100:.1f}%;background:var(--acc)"></i></div>'
+        f'<div class="stack-labels"><span>新增 {fmt_human(ins)} 行</span>'
+        f'<span>删除 {fmt_human(deleted)} 行</span></div>'
+        f'<p class="num-note">删除 / 新增 = {ratio:.0%}。'
+    )
+    if stats.largest_deletion:
+        ld = stats.largest_deletion
+        body += (f'最大的一次删除 {fmt_int(ld["lines"])} 行'
+                 f'（{escape(ld["repo"])}，{ld["date"]}）。')
+    body += "</p>"
+    return _panel("增删比 <b>· 建设 vs 重构</b>", body)
+
+
+def build_lifecycle(stats: ReportStats) -> str:
+    start = date(stats.year, 1, 1)
+    end = date(stats.year, 12, 31)
+    span_days = max((end - start).days, 1)
+    rows = []
+    for repo in stats.repo_details[:10]:
+        try:
+            first = datetime.strptime(repo["first"], "%Y.%m.%d").date()
+            last = datetime.strptime(repo["last"], "%Y.%m.%d").date()
+        except ValueError:
+            continue
+        left = (first - start).days / span_days * 100
+        width = max((last - first).days / span_days * 100, 1.5)
+        _stamp, active = _stamp_for(repo["last"], stats.generated_at)
+        cls = " hot" if active else ""
+        rows.append(
+            f'<div class="lc-row">'
+            f'<span class="lc-name" title="{escape(repo["name"])}">{escape(repo["name"])}</span>'
+            f'<div class="lc-track" title="{repo["commits"]} 次提交 · {fmt_human(repo["lines"])} 行">'
+            f'<i class="{cls}" style="left:{left:.1f}%;width:{width:.1f}%"></i></div>'
+            f'<span class="lc-date">{repo["first"][5:]}→{repo["last"][5:]}</span></div>'
+        )
+    return _panel("仓库生命周期 <b>· 同时开几条线</b>", "".join(rows), span=True)
 
 
 def build_numbers(stats: ReportStats) -> str:
@@ -564,27 +795,16 @@ def build_numbers(stats: ReportStats) -> str:
     )
 
     rows_lang, _total = language_breakdown(stats.languages, limit=6, min_share=0.01)
+    lang_total = sum(v for _, v in rows_lang) or 1
     palette = ["#171512", "#d4491f", "#8f8672", "#b3ab97", "#6f6a5e", "#c8c1ac"]
     lang_bar = "".join(
-        f'<i style="width:{n / (sum(v for _, v in rows_lang) or 1) * 100:.2f}%;background:{palette[i % len(palette)]}"></i>'
+        f'<i style="width:{n / lang_total * 100:.2f}%;background:{palette[i % len(palette)]}"></i>'
         for i, (_name, n) in enumerate(rows_lang)
     )
     lang_legend = "".join(
         f'<div><span class="sq" style="background:{palette[i % len(palette)]}"></span>'
-        f'{escape(name)}<b>{n / (sum(v for _, v in rows_lang) or 1) * 100:.0f}%</b></div>'
+        f'{escape(name)}<b>{n / lang_total * 100:.0f}%</b></div>'
         for i, (name, n) in enumerate(rows_lang)
-    )
-
-    max_hour = max(stats.by_hour) or 1
-    peak = stats.by_hour.index(max_hour)
-    hour_bars = "".join(
-        f'<div class="hour-bar{" peak" if v == max_hour and v > 0 else ""}" '
-        f'style="height:{max(v / max_hour * 100, 2):.1f}%" title="{h:02d}:00 · {v} 次提交"></div>'
-        for h, v in enumerate(stats.by_hour)
-    )
-    hour_labels = "".join(
-        f"<span>{h:02d}</span>" if h in (0, 6, 12, 18, 23) else "<span></span>"
-        for h in range(24)
     )
 
     max_file = max((n for _, n in stats.top_files), default=1)
@@ -595,9 +815,10 @@ def build_numbers(stats: ReportStats) -> str:
         for path, n in stats.top_files[:6]
     ) or '<p class="num-note">没有可统计的代码文件。</p>'
 
-    night_share = (stats.by_hour[22] + sum(stats.by_hour[:5])) / max(stats.commit_count, 1)
     return f"""
     <div class="num-grid">
+      {build_monthly(stats)}
+      {build_clock(stats)}
       <div class="num-panel rv">
         <h3>代码构成 <b>· 头部集中度</b></h3>
         <div class="stack">
@@ -612,18 +833,17 @@ def build_numbers(stats: ReportStats) -> str:
         <div class="lang-bar">{lang_bar}</div>
         <div class="lang-legend">{lang_legend}</div>
       </div>
-      <div class="num-panel rv">
-        <h3>一天里的你 <b>· {stats.persona.title}</b></h3>
-        <div class="hour-chart">{hour_bars}</div>
-        <div class="hour-labels">{hour_labels}</div>
-        <p class="num-note">峰值 {peak:02d}:00 · {max_hour} 次提交；深夜（22:00–05:00）占 {night_share:.0%}。</p>
-      </div>
-      <div class="num-panel rv" style="--d:90ms">
+      {build_sizes(stats)}
+      {build_types(stats)}
+      {build_keywords(stats)}
+      {build_adddel(stats)}
+      {build_lifecycle(stats)}
+      <div class="num-panel rv span2">
         <h3>最常改的文件 <b>· 改动热区</b></h3>
         {file_rows}
       </div>
+      {build_heatmap(stats)}
     </div>
-    {build_heatmap(stats)}
     """
 
 
@@ -689,7 +909,8 @@ def build_html(stats: ReportStats) -> str:
   <div class="nav">
     <a class="logo" href="#top"><i></i>CODEYEAR</a>
     <div class="nav-links">
-      <a href="#archives">档案</a><a href="#index">索引</a><a href="#numbers">数字</a><a href="#about">关于</a>
+      <a href="#records">之最</a><a href="#archives">档案</a><a href="#index">索引</a>
+      <a href="#numbers">数字</a><a href="#about">关于</a>
     </div>
     <div class="nav-meta">
       <span id="clock">--:--:--</span>
@@ -718,9 +939,18 @@ def build_html(stats: ReportStats) -> str:
   {build_ticker(stats)}
 
   <div class="wrap">
+    <section id="records">
+      <div class="sec-head rv">
+        <div><div class="sec-index">01 / YEAR IN REVIEW</div><h2>年度之最</h2></div>
+        <span class="sec-sub">先看几个最极端的数字</span>
+      </div>
+      <div class="sec-line"></div>
+      {build_records(stats)}
+    </section>
+
     <section id="archives">
       <div class="sec-head rv">
-        <div><div class="sec-index">01 / REPO ARCHIVES</div><h2>仓库档案</h2></div>
+        <div><div class="sec-index">02 / REPO ARCHIVES</div><h2>仓库档案</h2></div>
         <span class="sec-sub">提交最多的三个仓库 · 时间线与热区</span>
       </div>
       <div class="sec-line"></div>
@@ -729,7 +959,7 @@ def build_html(stats: ReportStats) -> str:
 
     <section id="index">
       <div class="sec-head rv">
-        <div><div class="sec-index">02 / FULL INDEX</div><h2>全部仓库索引</h2></div>
+        <div><div class="sec-index">03 / FULL INDEX</div><h2>全部仓库索引</h2></div>
         <span class="sec-sub">包括休眠的和没写 README 的</span>
       </div>
       <div class="sec-line"></div>
@@ -738,7 +968,7 @@ def build_html(stats: ReportStats) -> str:
 
     <section id="numbers">
       <div class="sec-head rv">
-        <div><div class="sec-index">03 / BY THE NUMBERS</div><h2>数字</h2></div>
+        <div><div class="sec-index">04 / BY THE NUMBERS</div><h2>数字</h2></div>
         <span class="sec-sub">git 里能查到的，不靠形容词</span>
       </div>
       <div class="sec-line"></div>
@@ -747,7 +977,7 @@ def build_html(stats: ReportStats) -> str:
 
     <section id="about">
       <div class="sec-head rv">
-        <div><div class="sec-index">04 / ABOUT THIS REPORT</div><h2>关于本报告</h2></div>
+        <div><div class="sec-index">05 / ABOUT THIS REPORT</div><h2>关于本报告</h2></div>
         <span class="sec-sub">口径与方法</span>
       </div>
       <div class="sec-line"></div>

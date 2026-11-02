@@ -62,6 +62,13 @@ _CJK_RE = re.compile(r"[\u4e00-\u9fff]{2,}")
 _EN_RE = re.compile(r"[A-Za-z][A-Za-z0-9_+#.\-]{2,}")
 _PREFIX_RE = re.compile(r"^\s*(?:[A-Za-z]+(?:\([^)]*\))?!?:|[^\s:：]{1,8}[:：])\s*")
 
+# Chinese 2-grams containing these characters are usually grammatical glue,
+# not meaningful keywords ("个原", "的功", ...).
+_ZH_SKIP_CHARS = set(
+    "个的了在是和与及把被对为以于之其此该每各等即并或而则因所由从到向给让使"
+    "得地着过这那有没就都也很还再又最更太我你他她它们一二三四五六七八九十"
+)
+
 
 def _strip_prefix(text: str) -> str:
     return _PREFIX_RE.sub("", text, count=1)
@@ -79,6 +86,8 @@ def extract_keywords(subjects: list[str], top: int = 14) -> list[tuple[str, int]
         for seq in _CJK_RE.findall(text):
             for i in range(len(seq) - 1):
                 gram = seq[i:i + 2]
+                if gram[0] in _ZH_SKIP_CHARS or gram[1] in _ZH_SKIP_CHARS:
+                    continue
                 if gram not in ZH_STOP_2:
                     counts[gram] += 1
 
