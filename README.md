@@ -1,33 +1,49 @@
-# CodeYear · 代码年报
+# CodeYear · 代码手账
 
-> 选一个文件夹，扫描你所有的本地 git 仓库，生成一份"代码手账"：纸面档案风格的
-> HTML 报告 + 一张可分享的年度海报。只读本地 git，不登录、不上传、不调任何云服务。
+> 扫描你本地的 git 仓库，生成一份**只属于你**的年度代码手账：纸面档案风格的
+> HTML 报告 + 一张 1200×1600 的 PNG 海报。只读本地 git，不登录、不上传。
 
-![CodeYear 示例海报](docs/sample.png)
+![CodeYear 报告预览](docs/report-preview.png)
 
-**HTML 报告是"工程手账"风格**（示例：[docs/sample-report.html](docs/sample-report.html)）：
-仓库档案（时间线 + 热区）、全部仓库索引（简介直接取自各仓库 README 第一行）、
-数字图表、全年热力图，以及一条由你自己真实 commit message 组成的跑马灯。
-数据 100% 来自本机，页面没有任何第三方 JS。
+**示例报告**：[docs/sample-report.html](docs/sample-report.html)（用本机仓库生成，可直接浏览器打开）
 
 ## 它是什么
 
-CodeYear 是给开发者做的「年度报告」：把散落在各个仓库里的提交，汇总成一张
-**1200×1600 的 PNG 海报**和一份**可以滚动浏览的 HTML 报告**。
+CodeYear 是给开发者做的「年度报告」。官方的 Wrapped 通常只覆盖公开数据、还要授权；
+而大多数人的代码在私有仓库、公司内网或 Gitee。CodeYear 直接读本机的 `.git`，
+所以私有项目、离线环境、公司电脑都能用。
 
-官方年度报告通常只覆盖公开数据、还要授权；而大多数人的代码在私有仓库、公司内网
-或 Gitee。CodeYear 直接读你本机的 `.git`，所以私有项目、离线环境、公司电脑都能用。
+它默认**只统计你本人作者的提交**（按 git `user.name` / `user.email` 识别），
+并且会把同一个项目的多个副本（`work/`、`backup/`、fork）合并成一个，不会重复计数。
 
-它会统计：
+## 报告里有什么
 
-- 提交次数、代码行变更（新增 / 删除）、活跃天数、最长连续提交
-- 年度之最：最忙的一天/一周、最长空窗、最大单次提交、最长 commit
-- 月度节奏、7×24 提交时钟、季度语言栈变化、全年贡献热力图
-- 语言分布、最常改的文件（完整路径）、仓库排行
-- 提交规模分布、提交类型、高频词、消息长度分布、增删比
-- 编码会话（间隔 ≤ 2 小时的提交算一次）、仓库生命周期、仓库墓园
-- 一个有点好玩的「代码人格」，比如 **深夜修补匠**、**周末建筑师**
-- 自动按 commit hash 去重：同一个项目的备份、快照、worktree 副本不会重复计数
+**年度之最**
+- 最忙的一天 / 一周、最长连续、最长空窗、最大单次提交、最长的 commit
+- 第一次与最后一次提交的时间、仓库
+
+**仓库档案**（提交最多的 3 个仓库）
+- 提交数、行变更、主要语言、首次→最近提交
+- 最常改的文件、最近 3 条真实 commit
+- 简介直接引用该仓库 README 的第一行
+
+**全部仓库索引**
+- 每个仓库的 README 一句话、技术栈、自有代码、最近提交、活跃状态
+- 可按主要语言筛选；没写 README 的会如实标注
+
+**数字**
+- 月度节奏、7×24 提交时钟、全年热力图
+- 代码构成（按行数排序）、语言构成、**语言栈季度变化**
+- 提交规模分布、提交类型、高频词、**消息长度分布**
+- 增删比（含删除最多的仓库）、**编码会话**（间隔 ≤ 2 小时的提交算一次）
+- 仓库生命周期甘特图、**仓库墓园**（30 天没动）
+- 最常改的文件（完整路径）
+
+**设计**
+- 纸面档案：暖纸底、墨色、朱红强调，衬线大标题 + 等宽数据，方角、hairline
+- 动效：滚动进度条、逐段浮现、数字滚动、真实 commit 跑马灯、纸面风格 tooltip
+- 纯 vanilla JS，不依赖任何第三方前端库；尊重 `prefers-reduced-motion`
+- 字体 Fraunces / IBM Plex Mono / Noto Serif SC；离线时回退系统字体
 
 ## 快速开始
 
@@ -40,7 +56,7 @@ pip install -r requirements.txt
 python -m codeyear scan I:\projects --year 2026 --open
 ```
 
-或者安装成命令：
+或安装成命令：
 
 ```bash
 pip install -e .
@@ -50,10 +66,18 @@ codeyear scan I:\projects --year 2026 --open
 输出默认在 `./codeyear-output/`：
 
 ```text
-codeyear-2026.html   可直接在浏览器打开，滚动查看
+codeyear-2026.html   纸面档案风格报告，浏览器直接打开
 codeyear-2026.png    1200×1600 海报，直接发图
 codeyear-2026.json   原始统计数据，方便二次开发
 ```
+
+## 只统计你自己的提交
+
+- 自动读取全局 `git config user.name` / `user.email`，只保留你作为作者的提交。
+- 想统计所有人：加 `--all-authors`。
+- 想指定作者：加 `--author "you@example.com"`。
+- 同一项目的副本（相同 `remote` 或相同首个 commit）只保留提交最多的一份。
+- 提交用了别的邮箱/名字时可能被过滤，可用 `--author` 或 `--all-authors` 覆盖。
 
 ## 常用参数
 
@@ -61,11 +85,12 @@ codeyear-2026.json   原始统计数据，方便二次开发
 | --- | --- |
 | `--year 2026` | 统计年份，默认今年 |
 | `--out ./out` | 输出目录 |
-| `--author "your@email"` | 只统计匹配的 git author |
-| `--all-authors` | 统计所有作者的提交（默认只统计你本人，按 git `user.name` / `user.email` 识别） |
+| `--author "you@example.com"` | 只统计匹配的 git author |
+| `--all-authors` | 统计所有作者的提交（默认只统计你本人） |
 | `--max-depth 6` | 向下扫描仓库的最大深度 |
+| `--timeout 300` | 单个仓库的扫描超时（秒） |
 | `--no-png` / `--no-html` | 只生成其中一种 |
-| `--open` | 生成后自动打开 |
+| `--open` | 生成后自动打开报告 |
 | `--quiet` | 不打印扫描进度 |
 
 示例：
@@ -76,23 +101,29 @@ codeyear scan . --year 2026
 
 # 多仓库 + 指定作者
 codeyear scan D:\code --year 2026 --author "you@example.com"
+
+# 包含团队里其他人的提交
+codeyear scan D:\code --year 2026 --all-authors
 ```
 
 ## 隐私
 
 - 所有统计都在本地完成，**没有任何网络请求**。
-- 只读 `git log`，不修改仓库，不读取工作区文件。
+- 只读 `git log`、仓库根目录 README 的第一行和 `git remote`；不读取其它工作区文件。
 - 输出文件默认忽略在 `.gitignore` 里。
-- 海报和 HTML 底部会标明 `LOCAL-FIRST · NO DATA UPLOADED`。
-- 如果遇到 git 的 `dubious ownership`（常见于拷贝来的仓库），CodeYear 只对当前
-  仓库做一次 `safe.directory` 重试，不会改你的全局 git 配置。
+- 报告顶部与页脚标注 `LOCAL ONLY · 数据未上传`。
+- 遇到 git 的 `dubious ownership`（常见于拷贝来的仓库），只对当前仓库做一次
+  `safe.directory` 重试，不会改你的全局 git 配置。
 
 ## 已知限制
 
 - 只统计 `--no-merges` 的提交；合并提交本身不计入。
-- 使用 author date（`%ad`），跨时区协作时日期以提交者本地时间为准。
+- 使用 author date（`%ad`），跨时区协作时以提交者本地时间为准。
 - 二进制、图片、锁文件和构建产物不参与语言/文件统计。
-- 同一个 commit 出现在多个仓库时只计一次，选择提交数最多的那个仓库归属。
+- 同一个 commit 出现在多个仓库时只计一次。
+- “自有代码”按非空行统计，已排除第三方库、生成工程与模型目录；不同项目的口径
+  在报告「关于本报告」里也会写明。
+- PNG 海报目前仍是深色主题；纸面版在路线图中。
 
 ## 工作原理
 
@@ -100,36 +131,54 @@ codeyear scan D:\code --year 2026 --author "you@example.com"
 
 ```text
 git log --since=2026-01-01 --until=2027-01-01 \
-  --pretty=format:%H%x1f%ad%x1f%s --numstat --no-renames --no-merges
+  --pretty=format:%H%x1f%ad%x1f%ae%x1f%an%x1f%s \
+  --numstat --no-renames --no-merges
 ```
 
-然后按天、按小时、按语言、按文件聚合。语言根据扩展名映射；锁文件、构建产物、
-图片和二进制会被过滤掉，避免 `package-lock.json` 抢走「最常改的文件」。
+然后：
+
+1. 按作者身份过滤，只保留你本人的提交；
+2. 按 commit hash 去重，按项目血统合并副本；
+3. 按天、小时、星期、季度、语言、文件聚合；
+4. 生成纸面报告与海报。
+
+语言根据扩展名映射；锁文件、构建产物、图片和二进制会被过滤掉，
+避免 `package-lock.json` 抢走「最常改的文件」。
 
 ## 路线图
 
-- [ ] GitHub / Gitee 公开数据模式（输入用户名即可生成，不用下载仓库）
-- [ ] 多年度对比（2025 vs 2026）
-- [ ] Tauri / Electron 桌面壳，双击即用
-- [ ] 自定义海报主题和配色
-- [ ] 终端 ASCII 版，SSH 里也能看
+- [x] 纸面档案风格 HTML 报告 + 动效
+- [x] 只统计本人提交（`--all-authors` 可关闭）
+- [x] 项目副本按血统合并
+- [x] 年度之最 / 7×24 / 编码会话 / 季度语言 / 仓库墓园
+- [ ] PNG 海报重绘为纸面主题
+- [ ] 同比去年（2025 vs 2026）
+- [ ] 文件级删除量（被删最多的文件）
+- [ ] PyInstaller 打包 exe / 桌面壳
+- [ ] English README
+- [ ] GitHub / Gitee 公开数据模式（输入用户名即可生成）
 
 ## 开发
 
 ```bash
-python -m codeyear scan I:\projects\my-profile --year 2026 --out ./out
+# 本地生成一份报告
+python -m codeyear scan I:\projects --year 2026 --out ./out
+
+# 语法检查
+python -m compileall -q codeyear
 ```
 
 代码结构：
 
 ```text
 codeyear/
-  scanner.py      找仓库 + 解析 git log
-  stats.py        聚合统计 / 人格
+  scanner.py      找仓库 + 解析 git log + README 首行
+  stats.py        聚合统计 / 身份过滤 / 副本合并 / 指标
   keywords.py     提交关键词提取
   languages.py    扩展名 → 语言映射与过滤
-  html_report.py  HTML 报告
+  html_report.py  纸面档案 HTML 报告（内联 CSS/JS）
   poster.py       PNG 海报（Pillow）
+  personas.py     代码人格
   cli.py          命令行
 ```
 

@@ -1165,7 +1165,7 @@ def build_html(stats: ReportStats) -> str:
     <section class="hero">
       <div>
         <p class="kicker rv">SCAN · {escape(stats.root)} · {stats.year}</p>
-        <h1 class="rv-line"><span>{stats.year} 年，</span><br><em>{fmt_int(stats.commit_count)} 次提交，{fmt_human(stats.lines_changed)} 行。</em></h1>
+        <h1 class="rv-line"><span>{stats.year} 年，</span><br><em>{fmt_int(stats.commit_count)} 次提交，<span style="white-space:nowrap">{fmt_human(stats.lines_changed)} 行。</span></em></h1>
         <p class="lede rv" style="--d:160ms">{escape(stats.persona.subtitle)}
         代码行变更是 <b>+{fmt_human(stats.insertions)} / -{fmt_human(stats.deletions)}</b>，最忙的一天是 <b>{busiest}</b>。
         下面每个数字都来自本机 git——<b>这份报告没有上传任何东西</b>。</p>
