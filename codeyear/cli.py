@@ -1,0 +1,155 @@
+"""Command line entry point."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+import webbrowser
+from datetime import date
+from pathlib import Path
+
+from . import __version__
+from .html_report import render as render_html
+from .poster import render as render_poster
+from .scanner import find_repos, scan_repo
+from .stats import build_stats, fmt_int
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="codeyear",
+        description="扫描本地 git 仓库，生成一份年度代码报告（HTML + PNG 海报）。",
+    )
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
+
+    sub = parser.add_subparsers(dest="command", required=True)
+    scan = sub.add_parser("scan", help="扫描一个文件夹下的所有 git 仓库")
+    scan.add_argument("path", nargs="?", default=".", help="要扫描的文件夹（默认当前目录）")
+    scan.add_argument("--year", type=int, default=date.today().year, help="统计年份，默认今年")
+    scan.add_argument("--out", default="codeyear-output", help="输出目录，默认 ./codeyear-output")
+    scan.add_argument("--author", default=None, help="只统计匹配的 git author（--author 参数）")
+    scan.add_argument("--max-depth", type=int, default=6, help="最大扫描深度，默认 6")
+    scan.add_argument("--timeout", type=int, default=300, help="单个仓库的扫描超时秒数")
+    scan.add_argument("--no-png", action="store_true", help="不生成 PNG 海报")
+    scan.add_argument("--no-html", action="store_true", help="不生成 HTML 报告")
+    scan.add_argument("--open", action="store_true", help="生成后自动打开报告")
+    scan.add_argument("--quiet", action="store_true", help="不打印扫描进度")
+    return parser
+
+
+def _open_path(path: Path) -> None:
+    try:
+        if path.suffix.lower() in {".html", ".htm"}:
+            webbrowser.open(path.resolve().as_uri())
+        elif hasattr(os, "startfile"):
+            os.startfile(str(path))  # type: ignore[attr-defined]
+        else:
+            webbrowser.open(path.resolve().as_uri())
+    except Exception as exc:  # pragma: no cover - platform dependent
+        print(f"无法自动打开文件: {exc}", file=sys.stderr)
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = _build_parser()
+    args = parser.parse_args(argv)
+
+    if args.command != "scan":
+        parser.print_help()
+        return 0
+
+    root = Path(args.path).expanduser()
+    try:
+        repos = find_repos(root, max_depth=args.max_depth)
+    except (FileNotFoundError, NotADirectoryError) as exc:
+        print(f"错误: {exc}", file=sys.stderr)
+        return 2
+
+    if not repos:
+        print(f"在 {root} 下没有找到 git 仓库。", file=sys.stderr)
+        return 2
+
+    if not args.quiet:
+        print(f"CodeYear {args.year} · 在 {root} 下找到 {len(repos)} 个仓库", file=sys.stderr)
+
+    results = []
+    warnings: list[str] = []
+    for i, repo in enumerate(repos, 1):
+        if not args.quiet:
+            print(f"  [{i}/{len(repos)}] {repo}", file=sys.stderr)
+        result = scan_repo(
+            repo, root.resolve(), args.year,
+            author=args.author, timeout=args.timeout,
+        )
+        if result.warning:
+            warnings.append(f"{result.name}: {result.warning}")
+            if not args.quiet:
+                print(f"       ! {result.warning}", file=sys.stderr)
+        results.append(result)
+
+    stats = build_stats(year=args.year, root=str(root.resolve()), repos=results, warnings=warnings)
+
+    if stats.commit_count == 0:
+        print(
+            f"{args.year} 年没有找到提交。可以换 --year，或检查 --author 过滤条件。",
+            file=sys.stderr,
+        )
+        return 3
+
+    out_dir = Path(args.out)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    base = out_dir / f"codeyear-{args.year}"
+
+    written: list[tuple[str, Path]] = []
+
+    json_path = base.with_suffix(".json")
+    json_path.write_text(
+        json.dumps(stats.as_dict(), ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    written.append(("JSON", json_path))
+
+    if not args.no_html:
+        html_path = render_html(stats, base.with_suffix(".html"))
+        written.append(("HTML", html_path))
+
+    if not args.no_png:
+        png_path = render_poster(stats, base.with_suffix(".png"))
+        written.append(("PNG", png_path))
+
+    # Console summary
+    active_pct = stats.active_days / (366 if _is_leap(args.year) else 365)
+    print()
+    print(f"CodeYear {args.year}  ·  {stats.persona.title}")
+    print("-" * 46)
+    print(f"仓库      {stats.repo_count}")
+    print(f"提交      {fmt_int(stats.commit_count)}")
+    print(f"代码行    {fmt_int(stats.lines_changed)}  (+{fmt_int(stats.insertions)} / -{fmt_int(stats.deletions)})")
+    print(f"活跃      {stats.active_days} 天（{active_pct:.0%}）· 最长连续 {stats.longest_streak} 天")
+    print(f"语言      {stats.language_count} 种")
+    if stats.busiest_day:
+        print(f"最忙一天  {stats.busiest_day[0]} · {stats.busiest_count} 次提交")
+    print("-" * 46)
+    for label, path in written:
+        print(f"{label:<8}  {path.resolve()}")
+
+    if warnings:
+        print()
+        print("警告:")
+        for warning in warnings:
+            print(f"  - {warning}")
+
+    if args.open and written:
+        target = next((p for label, p in written if label == "HTML"), written[0][1])
+        _open_path(target)
+
+    return 0
+
+
+def _is_leap(year: int) -> bool:
+    return year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
+
+
+if __name__ == "__main__":  # pragma: no cover
+    raise SystemExit(main())

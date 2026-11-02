@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "codeyear"
+version = "0.1.0"
+description = "Local-first annual coding report generated from your own git history."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "CodeYear contributors" }]
+keywords = ["git", "annual-report", "developer-tools", "privacy", "local-first"]
+dependencies = ["Pillow>=9.0"]
+
+[project.scripts]
+codeyear = "codeyear.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["codeyear*"]
