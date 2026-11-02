@@ -63,6 +63,13 @@ class ReportStats:
     conventional_share: float
     weekend_share: float
     night_share: float
+    first_commit: dict | None
+    last_commit: dict | None
+    sessions: dict
+    message_buckets: list[tuple[str, int]]
+    language_quarters: list[dict]
+    dormant: list[dict]
+    avg_files_per_commit: float
     daily: dict[str, int]
     languages: list[tuple[str, int]]
     top_files: list[tuple[str, int]]
@@ -287,6 +294,9 @@ def build_stats(
             "name": repo.name,
             "commits": len(unique),
             "lines": repo_line_counter.get(repo.name, 0),
+            "added": sum(c.added for c in unique),
+            "deleted": sum(c.deleted for c in unique),
+            "active_days": len({c.dt.date() for c in unique}),
             "langs": [[lang, n] for lang, n in langs_r],
             "first": min(c.dt for c in unique).strftime("%Y.%m.%d"),
             "last": max(c.dt for c in unique).strftime("%Y.%m.%d"),
@@ -434,6 +444,91 @@ def build_stats(
     longest_subject = max((c.subject for c in commits), key=len, default="")
 
     languages = lang_counter.most_common()
+
+    sorted_commits = sorted(commits, key=lambda c: c.dt)
+    first_commit = None
+    last_commit = None
+    if sorted_commits:
+        fc, lc2 = sorted_commits[0], sorted_commits[-1]
+        first_commit = {"date": fc.dt.strftime("%Y.%m.%d %H:%M"), "repo": fc.repo,
+                        "subject": fc.subject[:80]}
+        last_commit = {"date": lc2.dt.strftime("%Y.%m.%d %H:%M"), "repo": lc2.repo,
+                       "subject": lc2.subject[:80]}
+
+    # A session is a run of commits with no gap longer than 2 hours.
+    sessions = {"count": 0, "longest_minutes": 0, "longest_commits": 0,
+                "longest_start": "", "longest_end": "", "avg_minutes": 0}
+    if sorted_commits:
+        groups: list[list[Commit]] = []
+        current = [sorted_commits[0]]
+        for c in sorted_commits[1:]:
+            if (c.dt - current[-1].dt).total_seconds() <= 2 * 3600:
+                current.append(c)
+            else:
+                groups.append(current)
+                current = [c]
+        groups.append(current)
+        durations = [(g[-1].dt - g[0].dt).total_seconds() / 60 for g in groups]
+        longest_i = max(range(len(groups)), key=lambda i: durations[i])
+        sessions = {
+            "count": len(groups),
+            "longest_minutes": round(durations[longest_i]),
+            "longest_commits": len(groups[longest_i]),
+            "longest_start": groups[longest_i][0].dt.strftime("%Y.%m.%d %H:%M"),
+            "longest_end": groups[longest_i][-1].dt.strftime("%Y.%m.%d %H:%M"),
+            "avg_minutes": round(sum(durations) / len(durations)),
+        }
+
+    message_counter: Counter[str] = Counter()
+    for c in commits:
+        length = len(c.subject)
+        if length < 20:
+            message_counter["0–20"] += 1
+        elif length < 40:
+            message_counter["20–40"] += 1
+        elif length < 80:
+            message_counter["40–80"] += 1
+        elif length < 160:
+            message_counter["80–160"] += 1
+        else:
+            message_counter["160+"] += 1
+    message_buckets = [
+        (label, message_counter.get(label, 0))
+        for label in ["0–20", "20–40", "40–80", "80–160", "160+"]
+    ]
+
+    top_langs = [name for name, _ in languages[:4]]
+    quarters: list[Counter[str]] = [Counter() for _ in range(4)]
+    for c in commits:
+        q = min((c.dt.month - 1) // 3, 3)
+        for change in c.changes:
+            quarters[q][change.lang] += change.lines
+    language_quarters = []
+    for i, qc in enumerate(quarters):
+        rows = [(name, qc.get(name, 0)) for name in top_langs]
+        rest = sum(v for k, v in qc.items() if k not in top_langs)
+        rows.append(("其他", rest))
+        language_quarters.append({"q": f"Q{i + 1}", "rows": rows})
+
+    today_date = datetime.now().date()
+    dormant: list[dict] = []
+    for repo in repo_details:
+        try:
+            last_d = datetime.strptime(repo["last"], "%Y.%m.%d").date()
+        except ValueError:
+            continue
+        days = (today_date - last_d).days
+        if days > 30:
+            dormant.append({
+                "name": repo["name"], "last": repo["last"], "days": days,
+                "commits": repo["commits"],
+            })
+    dormant.sort(key=lambda d: -d["days"])
+
+    avg_files_per_commit = (
+        round(sum(c.files for c in commits) / max(commit_count, 1), 1)
+        if commits else 0.0
+    )
     top_files = [
         (path, n) for path, n in file_counter.most_common(12)
     ]
@@ -495,6 +590,13 @@ def build_stats(
         conventional_share=conventional_share,
         weekend_share=weekend_share,
         night_share=night_share,
+        first_commit=first_commit,
+        last_commit=last_commit,
+        sessions=sessions,
+        message_buckets=message_buckets,
+        language_quarters=language_quarters,
+        dormant=dormant,
+        avg_files_per_commit=avg_files_per_commit,
         daily=dict(sorted(daily.items())),
         languages=languages,
         top_files=top_files,

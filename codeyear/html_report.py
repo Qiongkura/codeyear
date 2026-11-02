@@ -258,13 +258,21 @@ section{padding:86px 0 0;scroll-margin-top:70px}
 .clock .c.l3{background:#5c554a}.clock .c.l4{background:var(--ink)}
 
 /* ---- lifecycle bars ---- */
+.lc-months{display:grid;grid-template-columns:190px 1fr 96px;gap:10px;
+  font-family:var(--mono);font-size:9px;color:var(--muted);margin-bottom:6px}
+.lc-month-ticks{display:grid;grid-template-columns:repeat(12,1fr)}
+.lc-month-ticks span{text-align:left}
+.lc-end{text-align:right}
 .lc-row{display:grid;grid-template-columns:190px 1fr 96px;gap:10px;
-  align-items:center;margin:9px 0}
+  align-items:center;margin:7px 0}
 .lc-name{font-family:var(--mono);font-size:10.5px;color:var(--ink2);overflow:hidden;
   text-overflow:ellipsis;white-space:nowrap}
-.lc-track{height:9px;background:var(--paper2);border:1px solid var(--line2);position:relative}
-.lc-track i{position:absolute;top:0;bottom:0;background:var(--ink)}
+.lc-track{height:10px;background-color:var(--paper2);
+  background-image:linear-gradient(90deg,var(--line) 1px,transparent 1px);
+  background-size:calc(100% / 12) 100%;border:1px solid var(--line2);position:relative}
+.lc-track i{position:absolute;top:0;bottom:0;background:var(--ink);z-index:1}
 .lc-track i.hot{background:var(--acc)}
+.lc-track i.dot{width:7px;height:7px;top:50%;bottom:auto;transform:translateY(-50%)}
 .lc-date{font-family:var(--mono);font-size:9.5px;color:var(--muted);text-align:right}
 
 /* ---- keyword chips / churn ---- */
@@ -274,6 +282,47 @@ section{padding:86px 0 0;scroll-margin-top:70px}
 .chips-cloud b{color:var(--acc);font-weight:500;margin-left:5px}
 .pair{display:flex;height:18px;border:1px solid var(--ink);margin:10px 0}
 .pair i{display:block;height:100%}
+
+.year-span{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  margin-top:14px;padding-bottom:10px;border-bottom:1px solid var(--line);
+  font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+.year-span b{color:var(--ink);font-weight:500}
+
+.sub-head{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;color:var(--muted);
+  margin:16px 0 2px}
+
+.mini-stats{display:grid;grid-template-columns:1fr 1fr;gap:14px 18px}
+.mini-stats b{display:block;font-family:var(--mono);font-size:24px;font-weight:500;
+  letter-spacing:-.01em}
+.mini-stats span{font-size:10px;color:var(--muted);font-family:var(--mono)}
+
+.file-line{padding:10px 0;border-top:1px dashed var(--line2)}
+.file-line:first-child{border-top:0;padding-top:0}
+.file-path{font-family:var(--mono);font-size:11px;color:var(--ink2);line-height:1.55;
+  word-break:break-all;margin-bottom:6px}
+.file-meta{display:flex;align-items:center;gap:10px}
+.file-meta .bar-track{flex:1}
+
+.q-chart{display:flex;align-items:flex-end;gap:26px;height:190px;margin-top:8px}
+.q-col{flex:1;display:flex;flex-direction:column;height:100%}
+.q-stack{flex:1;display:flex;flex-direction:column-reverse;border:1px solid var(--ink);
+  background:var(--paper2)}
+.q-stack i{display:block;width:100%}
+.q-none{flex:1;display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:9.5px;color:var(--muted)}
+.q-label{font-family:var(--mono);font-size:10px;color:var(--muted);text-align:center;
+  margin-top:6px}
+.q-legend{display:flex;gap:18px;flex-wrap:wrap;font-family:var(--mono);font-size:10.5px;
+  color:var(--muted);margin-top:14px}
+.q-legend span{display:flex;align-items:center;gap:6px}
+.q-legend i{display:inline-block;width:9px;height:9px}
+
+.dormant-row{display:grid;grid-template-columns:1fr 170px 70px;gap:12px;
+  padding:9px 0;border-top:1px dashed var(--line2);font-family:var(--mono);font-size:11px}
+.dormant-row:first-child{border-top:0}
+.d-name{color:var(--ink2)}
+.d-last{color:var(--muted)}
+.d-days{text-align:right;color:var(--acc)}
 
 #tip{position:fixed;left:0;top:0;z-index:90;pointer-events:none;opacity:0;
   background:var(--paper);border:1px solid var(--ink);box-shadow:4px 4px 0 var(--acc);
@@ -324,6 +373,9 @@ footer{border-top:2px solid var(--ink);margin-top:90px;padding:24px 0 44px}
   .index-table .t-stack,.index-table .t-desc{display:none}
   .records{grid-template-columns:1fr}
   .lc-row{grid-template-columns:120px 1fr 76px}
+  .lc-months{grid-template-columns:120px 1fr 76px}
+  .dormant-row{grid-template-columns:1fr 120px 52px}
+  .q-chart{gap:10px}
 }
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation:none!important;transition:none!important}
@@ -680,7 +732,17 @@ def build_records(stats: ReportStats) -> str:
             f"{escape(lc['repo'])} · {lc['date']}")
     add("最长的 commit", f"{len(stats.longest_subject)} <small>字符</small>",
         escape(stats.longest_subject[:90]))
-    return f'<div class="records">{"".join(cards)}</div>'
+
+    span = ""
+    if stats.first_commit and stats.last_commit:
+        fc, lc = stats.first_commit, stats.last_commit
+        span = (
+            f'<div class="year-span rv">'
+            f'<span>第一次提交 <b>{escape(fc["date"])}</b> · {escape(fc["repo"])}</span>'
+            f'<span>最后一次提交 <b>{escape(lc["date"])}</b> · {escape(lc["repo"])}</span>'
+            f'</div>'
+        )
+    return f'<div class="records">{"".join(cards)}</div>{span}'
 
 
 def build_monthly(stats: ReportStats) -> str:
@@ -779,6 +841,20 @@ def build_keywords(stats: ReportStats) -> str:
     )
 
 
+def build_messages(stats: ReportStats) -> str:
+    max_v = max((v for _, v in stats.message_buckets), default=1) or 1
+    rows = "".join(
+        f'<div class="bar-row"><span class="bar-name">{label} 字符</span>'
+        f'<div class="bar-track"><i style="width:{v / max_v * 100:.1f}%"></i></div>'
+        f'<span class="bar-val">{v}</span></div>'
+        for label, v in stats.message_buckets
+    )
+    return _panel(
+        f"消息长度 <b>· 平均 {stats.avg_subject_len} 字符</b>",
+        rows + '<p class="num-note">最长的一条见「年度之最」。</p>',
+    )
+
+
 def build_adddel(stats: ReportStats) -> str:
     ins, deleted = stats.insertions, stats.deletions
     total = max(ins + deleted, 1)
@@ -796,40 +872,148 @@ def build_adddel(stats: ReportStats) -> str:
         body += (f'最大的一次删除 {fmt_int(ld["lines"])} 行'
                  f'（{escape(ld["repo"])}，{ld["date"]}）。')
     body += "</p>"
+
+    top_del = sorted(stats.repo_details, key=lambda d: -d["deleted"])[:3]
+    if top_del:
+        max_del = max(d["deleted"] for d in top_del) or 1
+        body += '<div class="sub-head">删除最多的仓库</div>'
+        body += "".join(
+            f'<div class="bar-row"><span class="bar-name">{escape(d["name"])}</span>'
+            f'<div class="bar-track"><i style="width:{d["deleted"] / max_del * 100:.1f}%;'
+            f'background:var(--acc)"></i></div>'
+            f'<span class="bar-val">{fmt_human(d["deleted"])}</span></div>'
+            for d in top_del
+        )
     return _panel("增删比 <b>· 建设 vs 重构</b>", body)
+
+
+def build_sessions(stats: ReportStats) -> str:
+    s = stats.sessions
+    if not s.get("count"):
+        body = '<p class="num-note">没有足够的提交时间数据。</p>'
+    else:
+        hours = s["longest_minutes"] // 60
+        mins = s["longest_minutes"] % 60
+        body = (
+            f'<div class="mini-stats">'
+            f'<div><b>{s["count"]}</b><span>次编码会话</span></div>'
+            f'<div><b>{hours}h {mins:02d}m</b><span>最长一次连续编码</span></div>'
+            f'<div><b>{s["longest_commits"]}</b><span>最长会话里的提交</span></div>'
+            f'<div><b>{s["avg_minutes"]}m</b><span>平均会话时长</span></div>'
+            f'</div>'
+            f'<p class="num-note">间隔 ≤ 2 小时算同一会话。最长一次：'
+            f'{escape(s["longest_start"])} → {escape(s["longest_end"])}。</p>'
+        )
+    return _panel("工作节奏 <b>· 会话而不是次数</b>", body)
+
+
+def build_language_quarters(stats: ReportStats) -> str:
+    if not stats.language_quarters:
+        return _panel("语言栈变化 <b>· 按季度占比</b>",
+                      '<p class="num-note">没有足够数据。</p>', span=True)
+    palette = ["#171512", "#d4491f", "#8f8672", "#b3ab97", "#c8c1ac"]
+    names = [name for name, _ in stats.language_quarters[0]["rows"]]
+    cols = []
+    for q in stats.language_quarters:
+        raw_total = sum(v for _, v in q["rows"])
+        total = raw_total or 1
+        segs = []
+        if raw_total == 0:
+            segs.append('<span class="q-none">无提交</span>')
+        for i, (name, value) in enumerate(q["rows"]):
+            if value <= 0:
+                continue
+            pct = value / total * 100
+            segs.append(
+                f'<i style="height:{pct:.2f}%;background:{palette[i % len(palette)]}" '
+                f'data-tip="{escape(name)} · {pct:.0f}% · {fmt_human(value)} 行"></i>'
+            )
+        cols.append(
+            f'<div class="q-col"><div class="q-stack">{"".join(segs)}</div>'
+            f'<span class="q-label">{q["q"]}</span></div>'
+        )
+    legend = "".join(
+        f'<span><i style="background:{palette[i % len(palette)]}"></i>{escape(name)}</span>'
+        for i, name in enumerate(names)
+    )
+    return _panel(
+        "语言栈变化 <b>· 按季度占比</b>",
+        f'<div class="q-chart">{"".join(cols)}</div>'
+        f'<div class="q-legend">{legend}</div>',
+        span=True,
+    )
 
 
 def build_lifecycle(stats: ReportStats) -> str:
     start = date(stats.year, 1, 1)
     end = date(stats.year, 12, 31)
     span_days = max((end - start).days, 1)
+    ordered = sorted(stats.repo_details, key=lambda r: (r["first"], -r["commits"]))[:10]
+
+    months = "".join(f"<span>{m:02d}</span>" for m in range(1, 13))
+    head = (
+        f'<div class="lc-months"><span></span>'
+        f'<div class="lc-month-ticks">{months}</div>'
+        f'<span class="lc-end">首次 → 最近</span></div>'
+    )
+
     rows = []
-    for repo in stats.repo_details[:10]:
+    for repo in ordered:
         try:
             first = datetime.strptime(repo["first"], "%Y.%m.%d").date()
             last = datetime.strptime(repo["last"], "%Y.%m.%d").date()
         except ValueError:
             continue
         left = (first - start).days / span_days * 100
-        width = max((last - first).days / span_days * 100, 1.5)
+        width = max((last - first).days / span_days * 100, 1.2)
         _stamp, active = _stamp_for(repo["last"], stats.generated_at)
-        cls = " hot" if active else ""
+        hot = " hot" if active else ""
+        if (last - first).days == 0:
+            bar = f'<i class="dot{hot}" style="left:calc({left:.2f}% - 3px)"></i>'
+            dates = repo["first"][5:]
+        else:
+            bar = f'<i class="{hot.strip()}" style="left:{left:.1f}%;width:{width:.1f}%"></i>'
+            dates = f'{repo["first"][5:]}→{repo["last"][5:]}'
         rows.append(
             f'<div class="lc-row">'
-            f'<span class="lc-name" data-tip="{escape(repo["name"])}">{escape(repo["name"])}</span>'
-            f'<div class="lc-track" data-tip="{repo["commits"]} 次提交 · {fmt_human(repo["lines"])} 行">'
-            f'<i class="{cls}" style="left:{left:.1f}%;width:{width:.1f}%"></i></div>'
-            f'<span class="lc-date">{repo["first"][5:]}→{repo["last"][5:]}</span></div>'
+            f'<span class="lc-name" data-tip="{escape(repo["name"])} · '
+            f'{repo["commits"]} 次提交 · {repo["active_days"]} 个活跃日">'
+            f'{escape(repo["name"])}</span>'
+            f'<div class="lc-track" data-tip="{repo["commits"]} 次提交 · '
+            f'{fmt_human(repo["lines"])} 行变更 · {repo["active_days"]} 个活跃日">'
+            f'{bar}</div>'
+            f'<span class="lc-date">{dates}</span></div>'
         )
-    return _panel("仓库生命周期 <b>· 同时开几条线</b>", "".join(rows), span=True)
+    return _panel(
+        "仓库生命周期 <b>· 2026 活跃区间</b>",
+        f'<div class="lc-chart">{head}{"".join(rows)}</div>',
+        span=True,
+    )
+
+
+def build_dormant(stats: ReportStats) -> str:
+    if not stats.dormant:
+        return _panel("仓库墓园 <b>· 30 天没动</b>",
+                      '<p class="num-note">没有休眠超过 30 天的仓库。</p>', span=True)
+    rows = "".join(
+        f'<div class="dormant-row"><span class="d-name">{escape(d["name"])}</span>'
+        f'<span class="d-last">最后提交 {d["last"]}</span>'
+        f'<span class="d-days">{d["days"]} 天</span></div>'
+        for d in stats.dormant
+    )
+    return _panel(
+        f"仓库墓园 <b>· {len(stats.dormant)} 个仓库超过 30 天没动</b>",
+        rows, span=True,
+    )
 
 
 def build_numbers(stats: ReportStats) -> str:
     total_lines = max(stats.lines_changed, 1)
     details = stats.repo_details
-    top = details[0] if details else None
+    by_lines = sorted(details, key=lambda d: (-d["lines"], -d["commits"]))
+    top = by_lines[0] if by_lines else None
     top_share = top["lines"] / total_lines * 100 if top else 0
-    others = [d for d in details[1:6] if d["lines"] > 0]
+    others = [d for d in by_lines[1:6] if d["lines"] > 0]
     max_other = max((d["lines"] for d in others), default=1)
     other_rows = "".join(
         f'<div class="bar-row"><span class="bar-name">{escape(d["name"])}</span>'
@@ -859,10 +1043,11 @@ def build_numbers(stats: ReportStats) -> str:
 
     max_file = max((n for _, n in stats.top_files), default=1)
     file_rows = "".join(
-        f'<div class="bar-row"><span class="bar-name">{escape(path)}</span>'
-        f'<div class="bar-track"><i style="width:{n / max_file * 100:.1f}%"></i></div>'
-        f'<span class="bar-val">{fmt_human(n)}</span></div>'
-        for path, n in stats.top_files[:6]
+        f'<div class="file-line"><div class="file-path">{escape(path)}</div>'
+        f'<div class="file-meta"><div class="bar-track">'
+        f'<i style="width:{n / max_file * 100:.1f}%"></i></div>'
+        f'<span class="bar-val">{fmt_human(n)}</span></div></div>'
+        for path, n in stats.top_files[:8]
     ) or '<p class="num-note">没有可统计的代码文件。</p>'
 
     return f"""
@@ -870,7 +1055,7 @@ def build_numbers(stats: ReportStats) -> str:
       {build_monthly(stats)}
       {build_clock(stats)}
       <div class="num-panel rv">
-        <h3>代码构成 <b>· 头部集中度</b></h3>
+        <h3>代码构成 <b>· 头部集中度（按行数）</b></h3>
         <div class="stack">
           <i style="width:{top_share:.1f}%;background:var(--acc)"></i>
           <i style="width:{100 - top_share:.1f}%;background:var(--ink)"></i>
@@ -883,13 +1068,17 @@ def build_numbers(stats: ReportStats) -> str:
         <div class="lang-bar">{lang_bar}</div>
         <div class="lang-legend">{lang_legend}</div>
       </div>
+      {build_language_quarters(stats)}
       {build_sizes(stats)}
       {build_types(stats)}
       {build_keywords(stats)}
+      {build_messages(stats)}
       {build_adddel(stats)}
+      {build_sessions(stats)}
       {build_lifecycle(stats)}
+      {build_dormant(stats)}
       <div class="num-panel rv span2">
-        <h3>最常改的文件 <b>· 改动热区</b></h3>
+        <h3>最常改的文件 <b>· 改动热区（完整路径）</b></h3>
         {file_rows}
       </div>
       {build_heatmap(stats)}
