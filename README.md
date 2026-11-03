@@ -225,6 +225,8 @@ codeyear scan ~/code --year 2026 --profile-repo ~/Qiongkura --push-profile
 - 「累计提交」与「最早提交」是仓库口径：按去重后的全部本地仓库统计，不按作者过滤；
   年度提交数仍只统计你本人。
 - 提交用了别的邮箱/名字时可能被过滤，可用 `--author` 或 `--all-authors` 覆盖。
+- 保留旧邮箱/旧名字：`--alias "old@example.com"`，可重复；这些提交仍算你本人。
+  GUI 里对应「旧邮箱/名字」输入框，多个用逗号分隔。
 
 ## 常用参数
 
@@ -235,6 +237,7 @@ codeyear scan ~/code --year 2026 --profile-repo ~/Qiongkura --push-profile
 | `--author "you@example.com"` | 只统计匹配的 git author |
 | `--all-authors` | 统计所有作者的提交（默认只统计你本人） |
 | `--compare` | 同时扫描去年，生成同比数据（扫描时间翻倍） |
+| `--alias "old@example.com"` | 额外作者邮箱/名字，可重复 |
 | `--max-depth 6` | 每个根目录向下查找仓库的最大文件夹层数 |
 | `--timeout 300` | 单个仓库的扫描超时（秒） |
 | `--jobs 4` | 并行扫描的仓库数，项目多时明显加快 |

@@ -225,6 +225,12 @@ class App:
             advanced, "同比去年", self.compare_var,
         )
         compare_box.pack(side="left")
+        tk.Label(advanced, text="旧邮箱/名字", bg=PAPER, fg=MUTED,
+                 font=("Microsoft YaHei", 9)).pack(side="left", padx=(22, 6))
+        self.alias_var = tk.StringVar(value="")
+        ttk.Entry(
+            advanced, width=22, textvariable=self.alias_var, style="CY.TEntry",
+        ).pack(side="left")
 
         out_row = tk.Frame(body, bg=PAPER)
         out_row.pack(fill="x", pady=(0, 14))
@@ -357,6 +363,8 @@ class App:
         out_dir = Path(self.out_var.get()).expanduser().resolve()
         identity = self.identity if self.identity_var.get() else None
         compare = self.compare_var.get()
+        aliases = [item.strip() for item in self.alias_var.get().split(",")
+                   if item.strip()]
 
         self._set_busy(True)
         self.written = []
@@ -367,11 +375,12 @@ class App:
         threading.Thread(
             target=self._work,
             args=(list(self.roots), depth, year, out_dir, identity,
-                  jobs, compare),
+                  jobs, compare, aliases),
             daemon=True,
         ).start()
 
-    def _work(self, roots, depth, year, out_dir, identity, jobs, compare) -> None:
+    def _work(self, roots, depth, year, out_dir, identity, jobs, compare,
+              aliases) -> None:
         try:
             repos = discover(roots, depth)
             if not repos:
@@ -382,8 +391,8 @@ class App:
                 self.queue.put(("progress", done, total, name))
 
             stats, warnings = scan(
-                repos, roots, year, identity, progress=progress,
-                jobs=jobs, compare=compare,
+                repos, roots, year, identity, aliases=aliases,
+                progress=progress, jobs=jobs, compare=compare,
             )
             if stats.commit_count == 0:
                 raise RuntimeError(f"{year} 年没有找到提交。")

@@ -218,6 +218,8 @@ With it, only the card SVGs and profile README are committed; the report and JSO
 - Copies of the same project (same `remote` or same first commit) keep only the copy with the most commits.
 - "All-time commits" and "first commit" use repository scope: every local repository after deduplication, without author filtering. Yearly commit counts still include only your own commits.
 - Commits made with another email/name may be filtered out; use `--author` or `--all-authors` to override.
+- Keep old identities: `--alias "old@example.com"` (repeatable); those commits still count as yours.
+  The GUI has the same field under “旧邮箱/名字”, comma-separated.
 
 ## Common options
 
@@ -228,6 +230,7 @@ With it, only the card SVGs and profile README are committed; the report and JSO
 | `--author "you@example.com"` | Only count the matching git author |
 | `--all-authors` | Count every author (default: only you) |
 | `--compare` | Also scan last year and show deltas (roughly doubles scan time) |
+| `--alias "old@example.com"` | Extra author email/name, repeatable |
 | `--max-depth 6` | Maximum folder depth per root to search for repositories |
 | `--timeout 300` | Per-repository timeout in seconds |
 | `--jobs 4` | Scan this many repositories in parallel |
@@ -317,6 +320,7 @@ Languages are mapped from file extensions. Lockfiles, build artifacts, images, a
 - [x] pytest suite + GitHub Actions CI
 - [x] Year-over-year comparison
 - [x] Parallel scanning (`--jobs`)
+- [x] Old identity aliases (`--alias`)
 
 ## Development
 

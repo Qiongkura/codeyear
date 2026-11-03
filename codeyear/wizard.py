@@ -124,11 +124,15 @@ def run() -> int:
             year = date.today().year
 
         identity = detect_identity()
+        aliases: list[str] = []
         if identity:
             email, name = identity
             label = f"{name} <{email}>" if name and email else (email or name)
             if not _yes(f"只统计你本人（{label}）?", True):
                 identity = None
+            else:
+                extra = _ask("旧邮箱/名字（逗号分隔，可空）", "")
+                aliases = [item.strip() for item in extra.split(",") if item.strip()]
         else:
             print("未检测到 git 身份，将统计所有作者。")
 
@@ -144,8 +148,8 @@ def run() -> int:
         open_after = _yes("完成后打开报告?", True)
 
         stats, warnings = scan(
-            repos, roots, year, identity, progress=_progress,
-            jobs=jobs, compare=compare,
+            repos, roots, year, identity, aliases=aliases,
+            progress=_progress, jobs=jobs, compare=compare,
         )
         if stats.commit_count == 0:
             print(f"\n{year} 年没有找到提交。")

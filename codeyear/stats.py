@@ -197,12 +197,18 @@ def _streaks(active_dates: list[date], year: int) -> tuple[int, int]:
     return longest, current
 
 
-def _is_mine(commit: Commit, identity: tuple[str, str]) -> bool:
+def _is_mine(
+    commit: Commit,
+    identity: tuple[str, str],
+    aliases: list[str] | None = None,
+) -> bool:
     email, name = identity
-    if email and commit.author_email.lower() == email.lower():
-        return True
-    if name and commit.author_name.strip().lower() == name.strip().lower():
-        return True
+    email_l = commit.author_email.strip().lower()
+    name_l = commit.author_name.strip().lower()
+    for value in [email, name, *(aliases or [])]:
+        value = (value or "").strip().lower()
+        if value and (email_l == value or name_l == value):
+            return True
     return False
 
 
@@ -213,8 +219,10 @@ def build_stats(
     repos: list[RepoResult],
     warnings: list[str] | None = None,
     identity: tuple[str, str] | None = None,
+    aliases: list[str] | None = None,
 ) -> ReportStats:
     warnings = list(warnings or [])
+    aliases = [alias.strip() for alias in (aliases or []) if alias.strip()]
     filtered_commits = 0
     identity_label = ""
     if identity:
@@ -277,7 +285,7 @@ def build_stats(
         for commit in repo.commits:
             if commit.hash in seen_hashes:
                 continue
-            if identity is not None and not _is_mine(commit, identity):
+            if identity is not None and not _is_mine(commit, identity, aliases):
                 filtered_commits += 1
                 continue
             seen_hashes.add(commit.hash)

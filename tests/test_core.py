@@ -75,6 +75,30 @@ def test_compare_summary():
     assert summary["lines"] > 0
 
 
+def test_identity_alias():
+    old = Commit(
+        repo="demo", hash="c" * 40, dt=datetime(2026, 2, 1, 12, 0),
+        subject="feat: old email", added=3, deleted=1, files=1,
+        author_email="old@example.com", author_name="Old Name",
+        changes=[FileChange("src/old.py", "Python", 4)],
+    )
+    repo = RepoResult(
+        path=Path("demo"), name="demo", commits=[old], root="root-old",
+        root_dt=datetime(2025, 1, 1), total_commits=1,
+    )
+    without = build_stats(
+        year=2026, root="/tmp", repos=[repo],
+        identity=("me@example.com", "Me"),
+    )
+    assert without.commit_count == 0
+    with_alias = build_stats(
+        year=2026, root="/tmp", repos=[repo],
+        identity=("me@example.com", "Me"),
+        aliases=["old@example.com"],
+    )
+    assert with_alias.commit_count == 1
+
+
 def test_language_mapping():
     assert language_for("src/main.py") == "Python"
     assert language_for("package-lock.json") is None

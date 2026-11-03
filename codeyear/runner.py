@@ -72,6 +72,7 @@ def scan(
     year: int,
     identity: tuple[str, str] | None,
     *,
+    aliases: list[str] | None = None,
     author: str | None = None,
     timeout: int = 300,
     jobs: int = 1,
@@ -129,11 +130,12 @@ def scan(
         repos=results,
         warnings=warnings,
         identity=identity,
+        aliases=aliases,
     )
     if compare:
         previous, _ = scan(
             repos, roots, year - 1, identity,
-            author=author, timeout=timeout, jobs=jobs,
+            aliases=aliases, author=author, timeout=timeout, jobs=jobs,
             progress=None, compare=False,
         )
         stats.previous = compare_summary(stats, previous)

@@ -57,6 +57,8 @@ def _build_parser() -> argparse.ArgumentParser:
     scan.add_argument("--author", default=None, help="只统计匹配的 git author（--author 参数）")
     scan.add_argument("--compare", action="store_true",
                       help="同时扫描去年，在报告里生成同比数据")
+    scan.add_argument("--alias", action="append", default=[],
+                      help="额外作者邮箱或名字，可重复；用于旧提交")
     scan.add_argument("--all-authors", action="store_true",
                       help="统计所有作者的提交（默认只统计你本人，按 git user.name / user.email 识别）")
     scan.add_argument("--max-depth", type=int, default=6, help="向下查找仓库的最大文件夹层数，默认 6")
@@ -177,7 +179,7 @@ def main(argv: list[str] | None = None) -> int:
 
     stats, warnings = scan(
         repos, roots, args.year, identity,
-        author=args.author, timeout=args.timeout,
+        aliases=args.alias, author=args.author, timeout=args.timeout,
         jobs=max(1, args.jobs), progress=progress,
         compare=args.compare,
     )
