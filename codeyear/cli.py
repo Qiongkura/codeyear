@@ -40,6 +40,10 @@ def _build_parser() -> argparse.ArgumentParser:
     scan.add_argument("--no-long", action="store_true", help="不生成完整版长图")
     scan.add_argument("--no-card", action="store_true", help="不生成 GitHub 主页卡片")
     scan.add_argument("--no-html", action="store_true", help="不生成 HTML 报告")
+    scan.add_argument("--profile-repo", default=None,
+                      help="本地 GitHub Profile 仓库路径；只写入本地，不联网")
+    scan.add_argument("--push-profile", action="store_true",
+                      help="更新后提交并推送 Profile 仓库（联网）；需同时指定 --profile-repo")
     scan.add_argument("--open", action="store_true", help="生成后自动打开报告")
     scan.add_argument("--quiet", action="store_true", help="不打印扫描进度")
     return parser
@@ -84,6 +88,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.command != "scan":
         parser.print_help()
         return 0
+
+    if args.push_profile and not args.profile_repo:
+        parser.error("--push-profile 需要同时指定 --profile-repo")
 
     root = Path(args.path).expanduser()
     try:
@@ -159,10 +166,32 @@ def main(argv: list[str] | None = None) -> int:
             long_path = render_long(stats, out_dir / f"codeyear-{args.year}-long.png")
             written.append(("LONG", long_path))
 
+    card_paths = []
     if not args.no_card:
         card_paths = render_card(stats, out_dir / f"codeyear-{args.year}-card.svg")
         written.append(("CARD", card_paths[0]))
         written.append(("CARD-DARK", card_paths[1]))
+
+    if args.profile_repo:
+        if not card_paths:
+            print("  ! 指定了 --profile-repo，但 --no-card 关闭了卡片生成",
+                  file=sys.stderr)
+        else:
+            from .profile import update_profile
+
+            try:
+                profile_repo, changed, pushed = update_profile(
+                    args.profile_repo, args.year, card_paths[0], card_paths[1],
+                    push=args.push_profile,
+                )
+                written.append(("PROFILE", profile_repo))
+                if changed:
+                    state = "已提交并推送" if pushed else "仅写入本地"
+                    print(f"\nProfile  {state} · {profile_repo}")
+                else:
+                    print(f"\nProfile  卡片已是最新 · {profile_repo}")
+            except Exception as exc:  # pragma: no cover - user environment
+                print(f"  ! 更新 Profile 失败: {exc}", file=sys.stderr)
 
     # Console summary
     active_pct = stats.active_days / (366 if _is_leap(args.year) else 365)

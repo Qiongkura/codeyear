@@ -121,6 +121,21 @@ Profile 仓库（仓库名与用户名相同，例如 `Qiongkura/Qiongkura`）�
 > 需要刷新时，把文件重命名为带版本号的名字（如 `codeyear-2026-card-v2.svg`）并同步改 README，
 > 或在图片地址后加查询参数（如 `?v=2`）。
 
+### 自动更新到 Profile 仓库
+
+如果本地已经有 Profile 仓库的 clone：
+
+```bash
+# 只写入本地，不联网
+codeyear scan ~/code --year 2026 --profile-repo ~/Qiongkura
+
+# 确认后再提交并推送（联网）
+codeyear scan ~/code --year 2026 --profile-repo ~/Qiongkura --push-profile
+```
+
+`--profile-repo` 要是本地 clone。默认只改本地文件；加 `--push-profile` 才会 commit/push，
+且只包含卡片 SVG 和 Profile README，报告和 JSON 不会上传。
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/sample-card-dark.svg">
   <img src="docs/sample-card.svg" width="640" alt="CodeYear GitHub 主页卡片示例">
@@ -149,6 +164,8 @@ Profile 仓库（仓库名与用户名相同，例如 `Qiongkura/Qiongkura`）�
 | `--no-png` / `--no-html` | 只生成其中一种 |
 | `--no-long` | 不生成完整版长图（默认生成） |
 | `--no-card` | 不生成 GitHub 主页卡片 |
+| `--profile-repo PATH` | 写入本地 Profile 仓库的卡片与 README（不联网） |
+| `--push-profile` | 更新后提交并推送 Profile 仓库（联网） |
 | `--open` | 生成后自动打开报告 |
 | `--quiet` | 不打印扫描进度 |
 
@@ -215,6 +232,7 @@ git log --since=2026-01-01 --until=2027-01-01 \
 - [ ] PyInstaller 打包 exe / 桌面壳
 - [x] English README
 - [x] 英文 HTML 报告
+- [x] 可选同步 GitHub Profile（仅本地 / 提交推送）
 - [ ] GitHub / Gitee 公开数据模式（输入用户名即可生成）
 
 ## 开发
