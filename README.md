@@ -30,23 +30,26 @@ uvx --from git+https://github.com/Qiongkura/codeyear.git codeyear scan ~/code --
 Windows 把 `~/code` 换成 `C:\code` 之类的路径。报告会生成到 `codeyear-output/`，
 `--open` 会自动打开 HTML。
 
-## 交互式向导
+## 图形界面 / 交互式向导
 
-不想记参数，直接运行：
+想点选操作，直接运行：
 
 ```bash
 codeyear
 ```
 
-会依次选择：
+会打开桌面窗口：添加多个目录、检查仓库数量、看进度条、选输出位置，完成后直接打开报告。
+Windows 也可以在仓库根目录双击 `CodeYear.cmd`。
 
-- 要扫描的目录（可以添加多个）
-- 向下扫描深度
-- 统计年份
-- 输出目录
-- 完成后是否打开报告
+需要 Tkinter；Windows/macOS 的 Python 自带，Linux 装 `python3-tk`。安装后也可以运行 `codeyear-gui`。
 
-扫描时显示仓库总数和进度条。`codeyear tui` 效果相同；用 `python -m codeyear` 运行时直接去掉 `codeyear` 即可。
+喜欢终端就用：
+
+```bash
+codeyear tui
+```
+
+终端向导同样支持多目录、仓库数量、进度条和输出目录。
 
 ## 它是什么
 
@@ -252,6 +255,7 @@ git log --since=2026-01-01 --until=2027-01-01 \
 - [x] 英文 HTML 报告
 - [x] 可选同步 GitHub Profile（仅本地 / 提交推送）
 - [x] 交互式向导（多目录 / 仓库数量 / 进度条 / 输出位置）
+- [x] 桌面 GUI（Tkinter，可双击）
 - [ ] GitHub / Gitee 公开数据模式（输入用户名即可生成）
 
 ## 开发

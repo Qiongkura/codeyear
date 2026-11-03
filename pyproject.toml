@@ -16,5 +16,8 @@ dependencies = ["Pillow>=9.0"]
 [project.scripts]
 codeyear = "codeyear.cli:main"
 
+[project.gui-scripts]
+codeyear-gui = "codeyear.gui:main"
+
 [tool.setuptools.packages.find]
 include = ["codeyear*"]

@@ -1,26 +1,21 @@
 """Interactive terminal wizard for CodeYear.
 
 The regular ``codeyear scan`` command stays non-interactive. Running
-``codeyear`` (or ``codeyear tui``) walks through directory selection,
-shows how many repos were found, scans with a progress bar, and lets the
-user choose where the outputs go.
+``codeyear tui`` walks through directory selection, shows how many repos
+were found, scans with a progress bar, and lets the user choose where the
+outputs go. The desktop GUI lives in ``gui.py`` and shares the same runner.
 """
 
 from __future__ import annotations
 
-import json
 import os
-import subprocess
 import sys
 import webbrowser
 from datetime import date
 from pathlib import Path
 
-from .card import render as render_card
-from .html_report import render as render_html, render_en as render_html_en
-from .poster import render as render_poster, render_long
-from .scanner import find_repos, scan_repo
-from .stats import build_stats, fmt_human, fmt_int
+from .runner import detect_identity, discover, render, scan
+from .stats import fmt_human, fmt_int
 
 
 def _ask(prompt: str, default: str = "") -> str:
@@ -35,24 +30,6 @@ def _yes(prompt: str, default: bool = True) -> bool:
     if not value:
         return default
     return value in {"y", "yes", "是"}
-
-
-def _detect_identity() -> tuple[str, str] | None:
-    def config(key: str) -> str:
-        try:
-            proc = subprocess.run(
-                ["git", "config", "--global", key],
-                capture_output=True, text=True, encoding="utf-8",
-                errors="replace", timeout=10,
-            )
-        except (OSError, subprocess.TimeoutExpired):
-            return ""
-        return (proc.stdout or "").strip()
-
-    email, name = config("user.email"), config("user.name")
-    if email or name:
-        return email, name
-    return None
 
 
 def _choose_roots() -> list[Path]:
@@ -99,27 +76,15 @@ def _choose_roots() -> list[Path]:
         print("未知选项。")
 
 
-def _discover(roots: list[Path], depth: int) -> list[tuple[Path, Path]]:
-    seen: set[Path] = set()
-    found: list[tuple[Path, Path]] = []
-    for root in roots:
-        for repo in find_repos(root, max_depth=depth):
-            resolved = repo.resolve()
-            if resolved not in seen:
-                seen.add(resolved)
-                found.append((resolved, root))
-    return found
-
-
-def _progress(done: int, total: int, path: Path) -> None:
+def _progress(done: int, total: int, name: str) -> None:
     if not sys.stderr.isatty():
         if done:
-            print(f"[{done}/{total}] {path.name}", file=sys.stderr)
+            print(f"[{done}/{total}] {name}", file=sys.stderr)
         return
     width = 28
     filled = int(width * done / max(total, 1))
     bar = "[" + "#" * filled + "-" * (width - filled) + f"] {done}/{total}"
-    name = path.name[:36]
+    name = name[:36]
     sys.stderr.write("\r" + bar + "  " + name.ljust(38))
     sys.stderr.flush()
     if done == total:
@@ -136,21 +101,6 @@ def _open(path: Path) -> None:
         print(f"无法自动打开报告: {exc}", file=sys.stderr)
 
 
-def _root_labels(roots: list[Path]) -> dict[Path, str]:
-    labels: dict[Path, str] = {}
-    used: set[str] = set()
-    for root in roots:
-        base = root.name or str(root)
-        label = base
-        n = 2
-        while label in used:
-            label = f"{base}-{n}"
-            n += 1
-        used.add(label)
-        labels[root] = label
-    return labels
-
-
 def run() -> int:
     try:
         roots = _choose_roots()
@@ -161,7 +111,7 @@ def run() -> int:
             depth = 6
 
         print("\n正在查找 git 仓库…")
-        repos = _discover(roots, depth)
+        repos = discover(roots, depth)
         print(f"找到 {len(repos)} 个 git 仓库。")
         if not repos:
             print("没有找到仓库，换个目录试试。")
@@ -173,7 +123,7 @@ def run() -> int:
         except ValueError:
             year = date.today().year
 
-        identity = _detect_identity()
+        identity = detect_identity()
         if identity:
             email, name = identity
             label = f"{name} <{email}>" if name and email else (email or name)
@@ -187,51 +137,14 @@ def run() -> int:
         out_dir.mkdir(parents=True, exist_ok=True)
         open_after = _yes("完成后打开报告?", True)
 
-        labels = _root_labels(roots)
-        results = []
-        warnings: list[str] = []
-        total = len(repos)
-        for i, (repo, root) in enumerate(repos):
-            _progress(i, total, repo)
-            result = scan_repo(repo, root, year)
-            if len(roots) > 1:
-                label = labels[root]
-                old = result.name
-                new = label if old == label or old in {"", "."} else f"{label}/{old}"
-                result.name = new
-                for commit in result.commits:
-                    commit.repo = new
-            if result.warning:
-                warnings.append(f"{result.name}: {result.warning}")
-            results.append(result)
-            _progress(i + 1, total, repo)
-
-        root_label = " + ".join(str(root) for root in roots)
-        stats = build_stats(
-            year=year, root=root_label, repos=results,
-            warnings=warnings, identity=identity,
+        stats, warnings = scan(
+            repos, roots, year, identity, progress=_progress,
         )
         if stats.commit_count == 0:
             print(f"\n{year} 年没有找到提交。")
             return 3
 
-        base = out_dir / f"codeyear-{year}"
-        written: list[tuple[str, Path]] = []
-        json_path = base.with_suffix(".json")
-        json_path.write_text(
-            json.dumps(stats.as_dict(), ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
-        written.append(("JSON", json_path))
-        written.append(("HTML", render_html(stats, base.with_suffix(".html"))))
-        written.append(("HTML-EN", render_html_en(
-            stats, out_dir / f"codeyear-{year}-en.html")))
-        written.append(("PNG", render_poster(stats, base.with_suffix(".png"))))
-        written.append(("LONG", render_long(
-            stats, out_dir / f"codeyear-{year}-long.png")))
-        cards = render_card(stats, out_dir / f"codeyear-{year}-card.svg")
-        written.append(("CARD", cards[0]))
-        written.append(("CARD-DARK", cards[1]))
+        written = render(stats, out_dir)
 
         print()
         print(f"CodeYear {year}  ·  {stats.persona.title}")
@@ -252,7 +165,7 @@ def run() -> int:
                 print(f"  - {warning}")
 
         if open_after:
-            _open(written[0][1])
+            _open(next(path for label, path in written if label == "HTML"))
         return 0
     except KeyboardInterrupt:
         print("\n已取消。")

@@ -29,23 +29,27 @@ uvx --from git+https://github.com/Qiongkura/codeyear.git codeyear scan ~/code --
 
 On Windows use a path such as `C:\code`. The report goes to `codeyear-output/`; `--open` opens the HTML.
 
-## Interactive wizard
+## Desktop GUI / terminal wizard
 
-Prefer prompts over flags? Run:
+Prefer clicking? Run:
 
 ```bash
 codeyear
 ```
 
-It asks for:
+This opens a desktop window: add multiple folders, check the repository count, watch progress, choose the output folder, and open the report when done.
+On Windows you can also double-click `CodeYear.cmd` in the repo root.
 
-- one or more folders to scan
-- scan depth
-- year
-- output folder
-- whether to open the report
+Tkinter is required; it ships with Python on Windows/macOS. On Linux install `python3-tk`.
+After installing the package, `codeyear-gui` works too.
 
-The scan shows the repository count and a progress bar. `codeyear tui` is an alias; with `python -m codeyear`, use `python -m codeyear tui`.
+Prefer the terminal?
+
+```bash
+codeyear tui
+```
+
+The terminal wizard supports the same folders, repository count, progress bar, and output folder.
 
 ## What it is
 
@@ -239,6 +243,7 @@ Languages are mapped from file extensions. Lockfiles, build artifacts, images, a
 - [x] English HTML report
 - [x] Optional profile sync (local or push)
 - [x] Interactive wizard (multiple folders, repo count, progress, output location)
+- [x] Desktop GUI (Tkinter, double-clickable)
 - [ ] Public GitHub / Gitee mode (username in, report out)
 
 ## Development
