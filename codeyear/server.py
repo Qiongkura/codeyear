@@ -15,7 +15,7 @@ from datetime import date
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
-from .card import build_svg
+from .card import THEMES, build_svg
 from .github_public import fetch_stats
 
 USERNAME_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$")
@@ -94,9 +94,14 @@ class Handler(BaseHTTPRequestHandler):
             self._send(400, _error_svg("invalid year"), "image/svg+xml")
             return
 
+        theme = (query.get("theme") or ["paper"])[0]
+        if theme not in THEMES:
+            theme = "paper"
         try:
             stats = _cached_stats(username, year, self.token, self.max_commits)
-            svg = build_svg(stats, dark=parsed.path.endswith("-dark.svg"))
+            svg = build_svg(
+                stats, dark=parsed.path.endswith("-dark.svg"), theme=theme,
+            )
         except Exception as exc:
             self._send(502, _error_svg(str(exc)), "image/svg+xml")
             return
@@ -141,7 +146,13 @@ pre{white-space:pre-wrap;word-break:break-all;background:#ece8dc;padding:14px;
   <div class="row">
     <input id="user" placeholder="GitHub username" value="octocat">
     <input id="year" type="number" value="__YEAR__" min="2008" max="__YEAR__" style="width:100px">
-    <select id="theme"><option value="light">浅色</option><option value="dark">深色</option></select>
+    <select id="theme">
+      <option value="paper">纸色</option>
+      <option value="mono">黑白</option>
+      <option value="forest">森林</option>
+      <option value="ocean">海洋</option>
+    </select>
+    <select id="mode"><option value="light">浅色</option><option value="dark">深色</option></select>
     <button onclick="loadCard()">生成</button>
   </div>
 
@@ -159,13 +170,15 @@ function loadCard() {
   const user = document.getElementById("user").value.trim();
   const year = document.getElementById("year").value || "__YEAR__";
   const theme = document.getElementById("theme").value;
+  const mode = document.getElementById("mode").value;
   const base = location.origin;
-  const name = theme === "dark" ? "card-dark.svg" : "card.svg";
-  const url = `${base}/${name}?username=${encodeURIComponent(user)}&year=${year}`;
+  const name = mode === "dark" ? "card-dark.svg" : "card.svg";
+  const qs = `username=${encodeURIComponent(user)}&year=${year}&theme=${theme}`;
+  const url = `${base}/${name}?${qs}`;
   document.getElementById("card").src = url + "&t=" + Date.now();
   current = `<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="${base}/card-dark.svg?username=${encodeURIComponent(user)}&year=${year}">
-  <img src="${base}/card.svg?username=${encodeURIComponent(user)}&year=${year}" width="640" alt="CodeYear ${year}">
+  <source media="(prefers-color-scheme: dark)" srcset="${base}/card-dark.svg?${qs}">
+  <img src="${base}/card.svg?${qs}" width="640" alt="CodeYear ${year}">
 </picture>`;
   document.getElementById("snippet").textContent = current;
 }

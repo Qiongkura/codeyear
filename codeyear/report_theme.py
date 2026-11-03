@@ -200,11 +200,27 @@ footer{border-top:1px solid var(--line);margin-top:88px;padding:24px 0 44px}
 @keyframes cy-fade{from{opacity:0}to{opacity:1}}
 main{animation:cy-fade .24s ease both}
 .rail-nav a,.next-link .name{transition:color .18s ease}
+.repo-search{margin-left:auto;background:transparent;border:0;
+  border-bottom:1px solid var(--line);font-family:var(--sans);font-size:13px;
+  padding:4px 2px;color:var(--ink);outline:none;min-width:200px}
+.repo-search::placeholder{color:var(--muted)}
 .rv,.rv-line{opacity:1!important;transform:none!important;transition:none!important}
 .sec-line,.bar-track i,.hour-bar,.month-col i{transform:none!important;opacity:1!important}
 @media (prefers-reduced-motion: reduce){
   main{animation:none}
 }
+@media print{
+  .rail,.to-top,.next-link,.filters,.repo-search{display:none!important}
+  body{padding-left:0;background:#fff;color:#000;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact}
+  main{animation:none!important}
+  .wrap{max-width:none;padding:0}
+  .hero{padding-top:0}
+  #records,#archives,#index,#numbers,#about{break-before:page}
+  .sec-head{border-color:#000}
+  a{color:inherit;text-decoration:none}
+}
+@page{margin:16mm}
 #tip{border:1px solid var(--line);box-shadow:none;background:var(--paper);
   font-family:var(--sans);font-size:12px}
 

@@ -277,6 +277,7 @@ def run(
     include_forks: bool = False,
     open_report: bool = False,
     quiet: bool = False,
+    theme: str = "paper",
 ) -> int:
     try:
         stats, warnings, login = fetch_stats(
@@ -288,7 +289,7 @@ def run(
         return 1
 
     out = Path(out_dir)
-    written = render(stats, out)
+    written = render(stats, out, card_theme=theme)
     embed = chr(10).join([
         "<picture>",
         f'  <source media="(prefers-color-scheme: dark)" '

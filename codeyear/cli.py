@@ -12,11 +12,11 @@ from datetime import date
 from pathlib import Path
 
 from . import __version__
-from .card import render as render_card
+from .card import THEMES, render as render_card
 from .html_report import render as render_html, render_en as render_html_en
 from .poster import render as render_poster, render_long
-from .scanner import find_repos, scan_repo
-from .stats import build_stats, fmt_int
+from .stats import fmt_int
+from .runner import discover, scan
 
 _NO_WINDOW = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
 
@@ -41,6 +41,8 @@ def _build_parser() -> argparse.ArgumentParser:
     github.add_argument("--include-forks", action="store_true", help="包含 fork 仓库")
     github.add_argument("--open", action="store_true", help="生成后打开报告")
     github.add_argument("--quiet", action="store_true", help="不打印扫描进度")
+    github.add_argument("--theme", choices=sorted(THEMES), default="paper",
+                        help="卡片主题：paper / mono / forest / ocean")
     server = sub.add_parser("serve", help="启动公开 GitHub 卡片 HTTP 服务")
     server.add_argument("--host", default="127.0.0.1", help="监听地址，默认 127.0.0.1")
     server.add_argument("--port", type=int, default=8000, help="监听端口，默认 8000")
@@ -48,7 +50,8 @@ def _build_parser() -> argparse.ArgumentParser:
     server.add_argument("--max-commits", type=int, default=200,
                         help="每张卡片最多拉取多少条提交")
     scan = sub.add_parser("scan", help="扫描一个文件夹下的所有 git 仓库")
-    scan.add_argument("path", nargs="?", default=".", help="要扫描的文件夹（默认当前目录）")
+    scan.add_argument("path", nargs="*", default=["."],
+                      help="要扫描的文件夹（可以多个，默认当前目录）")
     scan.add_argument("--year", type=int, default=date.today().year, help="统计年份，默认今年")
     scan.add_argument("--out", default="codeyear-output", help="输出目录，默认 ./codeyear-output")
     scan.add_argument("--author", default=None, help="只统计匹配的 git author（--author 参数）")
@@ -125,6 +128,7 @@ def main(argv: list[str] | None = None) -> int:
             token=args.token, max_commits=args.max_commits,
             include_forks=args.include_forks,
             open_report=args.open, quiet=args.quiet,
+            theme=args.theme,
         )
     if args.command == "serve":
         from .server import serve
@@ -140,19 +144,22 @@ def main(argv: list[str] | None = None) -> int:
     if args.push_profile and not args.profile_repo:
         parser.error("--push-profile 需要同时指定 --profile-repo")
 
-    root = Path(args.path).expanduser()
+    roots = [Path(path).expanduser() for path in (args.path or ["."])]
     try:
-        repos = find_repos(root, max_depth=args.max_depth)
+        repos = discover(roots, args.max_depth)
     except (FileNotFoundError, NotADirectoryError) as exc:
         print(f"错误: {exc}", file=sys.stderr)
         return 2
 
     if not repos:
-        print(f"在 {root} 下没有找到 git 仓库。", file=sys.stderr)
+        where = " + ".join(str(root) for root in roots)
+        print(f"在 {where} 下没有找到 git 仓库。", file=sys.stderr)
         return 2
 
     if not args.quiet:
-        print(f"CodeYear {args.year} · 在 {root} 下找到 {len(repos)} 个仓库", file=sys.stderr)
+        where = " + ".join(str(root) for root in roots)
+        print(f"CodeYear {args.year} · 在 {where} 下找到 {len(repos)} 个仓库",
+              file=sys.stderr)
 
     identity = None
     if not args.all_authors and not args.author:
@@ -161,24 +168,13 @@ def main(argv: list[str] | None = None) -> int:
             print("  ! 未检测到 git user.name / user.email，将统计所有作者的提交",
                   file=sys.stderr)
 
-    results = []
-    warnings: list[str] = []
-    for i, repo in enumerate(repos, 1):
-        if not args.quiet:
-            print(f"  [{i}/{len(repos)}] {repo}", file=sys.stderr)
-        result = scan_repo(
-            repo, root.resolve(), args.year,
-            author=args.author, timeout=args.timeout,
-        )
-        if result.warning:
-            warnings.append(f"{result.name}: {result.warning}")
-            if not args.quiet:
-                print(f"       ! {result.warning}", file=sys.stderr)
-        results.append(result)
+    def progress(done: int, total: int, name: str) -> None:
+        if not args.quiet and done:
+            print(f"  [{done}/{total}] {name}", file=sys.stderr)
 
-    stats = build_stats(
-        year=args.year, root=str(root.resolve()), repos=results,
-        warnings=warnings, identity=identity,
+    stats, warnings = scan(
+        repos, roots, args.year, identity,
+        author=args.author, timeout=args.timeout, progress=progress,
     )
 
     if stats.commit_count == 0:

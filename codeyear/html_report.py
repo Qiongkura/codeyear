@@ -456,17 +456,25 @@ JS = r"""
   const filters = $$('.filter');
   const rows = $$('.index-table tbody tr');
   const countEl = document.getElementById('row-count');
-  filters.forEach(btn=>btn.addEventListener('click',()=>{
-    filters.forEach(b=>b.classList.toggle('on', b===btn));
-    const f = btn.dataset.filter;
+  const searchEl = document.getElementById('repo-search');
+  const applyFilter = ()=>{
+    const active = document.querySelector('.filter.on');
+    const f = active ? active.dataset.filter : 'all';
+    const q = searchEl ? searchEl.value.trim().toLowerCase() : '';
     let n=0;
     rows.forEach(r=>{
-      const show = f==='all' || r.dataset.cat===f;
+      const show = (f==='all' || r.dataset.cat===f) &&
+                   (!q || r.textContent.toLowerCase().includes(q));
       r.style.display = show ? '' : 'none';
       if(show) n++;
     });
     if(countEl) countEl.textContent = n+' / '+rows.length;
+  };
+  filters.forEach(btn=>btn.addEventListener('click',()=>{
+    filters.forEach(b=>b.classList.toggle('on', b===btn));
+    applyFilter();
   }));
+  if(searchEl) searchEl.addEventListener('input', applyFilter);
 
   /* paper-style tooltip (replaces native title bubbles) */
   const tip = document.getElementById('tip');
@@ -649,7 +657,10 @@ def build_table(stats: ReportStats) -> str:
             f"</tr>"
         )
     return f"""
-    <div class="filters">{filters}</div>
+    <div class="filters">{filters}
+      <input class="repo-search" id="repo-search" type="search"
+             placeholder="搜索仓库 / 语言 / 简介" aria-label="搜索仓库">
+    </div>
     <table class="index-table">
       <thead><tr>
         <th>NO</th><th>仓库</th><th>一句话（README 原文）</th><th>栈</th>
@@ -657,8 +668,7 @@ def build_table(stats: ReportStats) -> str:
       </tr></thead>
       <tbody>{''.join(rows)}</tbody>
     </table>
-    <p class="index-note"><span id="row-count">{len(stats.repo_details)} / {len(stats.repo_details)}</span>
-      · 「一句话」直接取自每个仓库 README 的第一行——没写的就是没写。</p>
+    <p class="index-note"><span id="row-count">{len(stats.repo_details)} / {len(stats.repo_details)}</span></p>
     """
 
 

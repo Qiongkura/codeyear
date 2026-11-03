@@ -71,6 +71,7 @@ def scan(
     year: int,
     identity: tuple[str, str] | None,
     *,
+    author: str | None = None,
     timeout: int = 300,
     progress: Progress | None = None,
 ) -> tuple[ReportStats, list[str]]:
@@ -81,7 +82,7 @@ def scan(
     for i, (repo, root) in enumerate(repos):
         if progress:
             progress(i, total, repo.name)
-        result = scan_repo(repo, root, year, timeout=timeout)
+        result = scan_repo(repo, root, year, author=author, timeout=timeout)
         if len(roots) > 1:
             label = labels[root]
             old = result.name
@@ -109,6 +110,8 @@ def render(
     stats: ReportStats,
     out_dir: Path,
     formats: set[str] | None = None,
+    *,
+    card_theme: str = "paper",
 ) -> list[tuple[str, Path]]:
     formats = formats or ALL_FORMATS
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -132,7 +135,8 @@ def render(
         written.append(("LONG", render_long(
             stats, out_dir / f"codeyear-{stats.year}-long.png")))
     if "card" in formats:
-        cards = render_card(stats, out_dir / f"codeyear-{stats.year}-card.svg")
+        cards = render_card(stats, out_dir / f"codeyear-{stats.year}-card.svg",
+                            theme=card_theme)
         written.append(("CARD", cards[0]))
         written.append(("CARD-DARK", cards[1]))
     return written

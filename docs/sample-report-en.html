@@ -548,11 +548,27 @@ footer{border-top:1px solid var(--line);margin-top:88px;padding:24px 0 44px}
 @keyframes cy-fade{from{opacity:0}to{opacity:1}}
 main{animation:cy-fade .24s ease both}
 .rail-nav a,.next-link .name{transition:color .18s ease}
+.repo-search{margin-left:auto;background:transparent;border:0;
+  border-bottom:1px solid var(--line);font-family:var(--sans);font-size:13px;
+  padding:4px 2px;color:var(--ink);outline:none;min-width:200px}
+.repo-search::placeholder{color:var(--muted)}
 .rv,.rv-line{opacity:1!important;transform:none!important;transition:none!important}
 .sec-line,.bar-track i,.hour-bar,.month-col i{transform:none!important;opacity:1!important}
 @media (prefers-reduced-motion: reduce){
   main{animation:none}
 }
+@media print{
+  .rail,.to-top,.next-link,.filters,.repo-search{display:none!important}
+  body{padding-left:0;background:#fff;color:#000;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact}
+  main{animation:none!important}
+  .wrap{max-width:none;padding:0}
+  .hero{padding-top:0}
+  #records,#archives,#index,#numbers,#about{break-before:page}
+  .sec-head{border-color:#000}
+  a{color:inherit;text-decoration:none}
+}
+@page{margin:16mm}
 #tip{border:1px solid var(--line);box-shadow:none;background:var(--paper);
   font-family:var(--sans);font-size:12px}
 
@@ -727,7 +743,10 @@ main{animation:cy-fade .24s ease both}
       </div>
       <div class="sec-line"></div>
 
-    <div class="filters"><button class="filter on" data-filter="all">All<span>10</span></button><button class="filter" data-filter="Python">Python<span>5</span></button><button class="filter" data-filter="Java">Java<span>2</span></button><button class="filter" data-filter="JavaScript">JavaScript<span>1</span></button><button class="filter" data-filter="JSON">JSON<span>1</span></button><button class="filter" data-filter="C">C<span>1</span></button></div>
+    <div class="filters"><button class="filter on" data-filter="all">All<span>10</span></button><button class="filter" data-filter="Python">Python<span>5</span></button><button class="filter" data-filter="Java">Java<span>2</span></button><button class="filter" data-filter="JavaScript">JavaScript<span>1</span></button><button class="filter" data-filter="JSON">JSON<span>1</span></button><button class="filter" data-filter="C">C<span>1</span></button>
+      <input class="repo-search" id="repo-search" type="search"
+             placeholder="搜索仓库 / 语言 / 简介" aria-label="搜索仓库">
+    </div>
     <table class="index-table">
       <thead><tr>
         <th>NO</th><th>Repository</th><th>README first line</th><th>Stack</th>
@@ -735,8 +754,7 @@ main{animation:cy-fade .24s ease both}
       </tr></thead>
       <tbody><tr data-cat="Python"><td class="t-no">01</td><td class="t-name">project-0</td><td class="t-desc">A fictional repository used to demonstrate the CodeYear report.</td><td class="t-stack">Python · Markdown · TeX</td><td class="t-loc">288k</td><td class="t-stack">2026.11.03</td><td class="t-status" class="t-status hot">Active</td></tr><tr data-cat="JavaScript"><td class="t-no">02</td><td class="t-name">project-1</td><td class="t-desc">A fictional repository used to demonstrate the CodeYear report.</td><td class="t-stack">JavaScript · CSS · HTML</td><td class="t-loc">24k</td><td class="t-stack">2026.11.03</td><td class="t-status" class="t-status hot">Active</td></tr><tr data-cat="Python"><td class="t-no">03</td><td class="t-name">project-2</td><td class="t-desc">A fictional repository used to demonstrate the CodeYear report.</td><td class="t-stack">Python · Markdown · JSON</td><td class="t-loc">15k</td><td class="t-stack">2026.09.20</td><td class="t-status">Dormant</td></tr><tr data-cat="Python"><td class="t-no">04</td><td class="t-name">project-3</td><td class="t-desc">A fictional repository used to demonstrate the CodeYear report.</td><td class="t-stack">Python · HTML · Markdown</td><td class="t-loc">10k</td><td class="t-stack">2026.11.03</td><td class="t-status" class="t-status hot">Active</td></tr><tr data-cat="Python"><td class="t-no">05</td><td class="t-name">project-4</td><td class="t-desc">A fictional repository used to demonstrate the CodeYear report.</td><td class="t-stack">Python · Markdown · Batch</td><td class="t-loc">5,223</td><td class="t-stack">2026.09.20</td><td class="t-status">Dormant</td></tr><tr data-cat="JSON"><td class="t-no">06</td><td class="t-name">project-5</td><td class="t-desc">A fictional repository used to demonstrate the CodeYear report.</td><td class="t-stack">JSON · Python · C++</td><td class="t-loc">25k</td><td class="t-stack">2026.10.15</td><td class="t-status" class="t-status hot">In progress</td></tr><tr data-cat="C"><td class="t-no">07</td><td class="t-name">project-6</td><td class="t-desc">A fictional repository used to demonstrate the CodeYear report.</td><td class="t-stack">C · Python · C/C++</td><td class="t-loc">9,440</td><td class="t-stack">2026.10.11</td><td class="t-status" class="t-status hot">In progress</td></tr><tr data-cat="Python"><td class="t-no">08</td><td class="t-name">project-7</td><td class="t-desc">A fictional repository used to demonstrate the CodeYear report.</td><td class="t-stack">Python · HTML · Markdown</td><td class="t-loc">1,579</td><td class="t-stack">2026.11.02</td><td class="t-status" class="t-status hot">Active</td></tr><tr data-cat="Java"><td class="t-no">09</td><td class="t-name">project-8</td><td class="t-desc">A fictional repository used to demonstrate the CodeYear report.</td><td class="t-stack">Java · Python · Markdown</td><td class="t-loc">906</td><td class="t-stack">2026.08.09</td><td class="t-status">Dormant</td></tr><tr data-cat="Java"><td class="t-no">10</td><td class="t-name">project-9</td><td class="t-desc">A fictional repository used to demonstrate the CodeYear report.</td><td class="t-stack">Java · Markdown</td><td class="t-loc">641</td><td class="t-stack">2026.08.06</td><td class="t-status">Dormant</td></tr></tbody>
     </table>
-    <p class="index-note"><span id="row-count">10 / 10</span>
-      · 「一句话」直接取自每个仓库 README 的第一行——没写的就是没写。</p>
+    <p class="index-note"><span id="row-count">10 / 10</span></p>
 
     <a class="next-link" href="#numbers"><span class="next-kicker">Next</span><span class="name">Data analysis <i>&rarr;</i></span></a></section>
 
@@ -892,17 +910,25 @@ main{animation:cy-fade .24s ease both}
   const filters = $$('.filter');
   const rows = $$('.index-table tbody tr');
   const countEl = document.getElementById('row-count');
-  filters.forEach(btn=>btn.addEventListener('click',()=>{
-    filters.forEach(b=>b.classList.toggle('on', b===btn));
-    const f = btn.dataset.filter;
+  const searchEl = document.getElementById('repo-search');
+  const applyFilter = ()=>{
+    const active = document.querySelector('.filter.on');
+    const f = active ? active.dataset.filter : 'all';
+    const q = searchEl ? searchEl.value.trim().toLowerCase() : '';
     let n=0;
     rows.forEach(r=>{
-      const show = f==='all' || r.dataset.cat===f;
+      const show = (f==='all' || r.dataset.cat===f) &&
+                   (!q || r.textContent.toLowerCase().includes(q));
       r.style.display = show ? '' : 'none';
       if(show) n++;
     });
     if(countEl) countEl.textContent = n+' / '+rows.length;
+  };
+  filters.forEach(btn=>btn.addEventListener('click',()=>{
+    filters.forEach(b=>b.classList.toggle('on', b===btn));
+    applyFilter();
   }));
+  if(searchEl) searchEl.addEventListener('input', applyFilter);
 
   /* paper-style tooltip (replaces native title bubbles) */
   const tip = document.getElementById('tip');

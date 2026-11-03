@@ -48,6 +48,85 @@ DARK = {
     "levels": ["#262623", "#3a3936", "#5c5952", "#9a978e", "#e08a68"],
 }
 
+MONO_LIGHT = {
+    "ink": "#0a0a0a",
+    "ink2": "#2f2f2f",
+    "muted": "#707070",
+    "line": "#e4e4e4",
+    "accent": "#0a0a0a",
+    "bar": "#d4d4d4",
+    "empty_opacity": "0.12",
+    "palette": ["#0a0a0a", "#555555", "#999999", "#c4c4c4", "#e4e4e4"],
+    "levels": ["#ececec", "#d4d4d4", "#a3a3a3", "#5c5c5c", "#0a0a0a"],
+}
+
+MONO_DARK = {
+    "ink": "#f5f5f5",
+    "ink2": "#d4d4d4",
+    "muted": "#a3a3a3",
+    "line": "#333333",
+    "accent": "#f5f5f5",
+    "bar": "#4a4a4a",
+    "empty_opacity": "0.2",
+    "palette": ["#f5f5f5", "#bdbdbd", "#8a8a8a", "#5c5c5c", "#333333"],
+    "levels": ["#262626", "#3a3a3a", "#5c5c5c", "#9a9a9a", "#f5f5f5"],
+}
+
+FOREST_LIGHT = {
+    "ink": "#17261b",
+    "ink2": "#35463a",
+    "muted": "#6a7769",
+    "line": "#d3ddcd",
+    "accent": "#3f6b45",
+    "bar": "#c3d0bd",
+    "empty_opacity": "0.12",
+    "palette": ["#17261b", "#3f6b45", "#7f9179", "#a9b8a2", "#d3ddcd"],
+    "levels": ["#e6ece0", "#d3ddcd", "#a9b8a2", "#5c6f57", "#3f6b45"],
+}
+
+FOREST_DARK = {
+    "ink": "#e8efe4",
+    "ink2": "#cfd9c9",
+    "muted": "#9aa894",
+    "line": "#33402f",
+    "accent": "#8fbf8a",
+    "bar": "#43503e",
+    "empty_opacity": "0.2",
+    "palette": ["#e8efe4", "#8fbf8a", "#9aa894", "#6f7d68", "#43503e"],
+    "levels": ["#202a1d", "#33402f", "#4f5f48", "#7f9179", "#8fbf8a"],
+}
+
+OCEAN_LIGHT = {
+    "ink": "#0f1b2d",
+    "ink2": "#2b3d55",
+    "muted": "#647184",
+    "line": "#d6dee8",
+    "accent": "#2f6fb0",
+    "bar": "#c2d2e3",
+    "empty_opacity": "0.12",
+    "palette": ["#0f1b2d", "#2f6fb0", "#7c9cbf", "#a9c0d8", "#d6dee8"],
+    "levels": ["#e7eef6", "#d6e2ef", "#a9c0d8", "#5c7fa6", "#2f6fb0"],
+}
+
+OCEAN_DARK = {
+    "ink": "#e8eef6",
+    "ink2": "#cfd9e6",
+    "muted": "#93a1b5",
+    "line": "#2a3644",
+    "accent": "#6aa6e0",
+    "bar": "#3a4a5e",
+    "empty_opacity": "0.2",
+    "palette": ["#e8eef6", "#6aa6e0", "#93a1b5", "#627489", "#3a4a5e"],
+    "levels": ["#1b2430", "#2a3644", "#455a70", "#7c9cbf", "#6aa6e0"],
+}
+
+THEMES = {
+    "paper": (LIGHT, DARK),
+    "mono": (MONO_LIGHT, MONO_DARK),
+    "forest": (FOREST_LIGHT, FOREST_DARK),
+    "ocean": (OCEAN_LIGHT, OCEAN_DARK),
+}
+
 
 def _e(value: str) -> str:
     return html.escape(str(value), quote=True)
@@ -147,8 +226,10 @@ def _heatmap(stats: ReportStats, c: dict, x0: float, y0: float,
     return "".join(rects)
 
 
-def build_svg(stats: ReportStats, *, dark: bool = False) -> str:
-    c = DARK if dark else LIGHT
+def build_svg(stats: ReportStats, *, dark: bool = False,
+              theme: str = "paper") -> str:
+    light, dark_theme = THEMES.get(theme, THEMES["paper"])
+    c = dark_theme if dark else light
     monthly = stats.monthly
     peak = max(monthly) or 1
     peak_month = monthly.index(peak) + 1 if peak else 1
@@ -482,13 +563,15 @@ def _is_leap(year: int) -> bool:
     return year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
 
 
-def render(stats: ReportStats, out_path: str | Path) -> list[Path]:
+def render(stats: ReportStats, out_path: str | Path, *,
+           theme: str = "paper") -> list[Path]:
     path = Path(out_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     paths = [path]
-    path.write_text(build_svg(stats), encoding="utf-8")
+    path.write_text(build_svg(stats, theme=theme), encoding="utf-8")
 
     dark_path = path.with_name(f"{path.stem}-dark{path.suffix}")
-    dark_path.write_text(build_svg(stats, dark=True), encoding="utf-8")
+    dark_path.write_text(
+        build_svg(stats, dark=True, theme=theme), encoding="utf-8")
     paths.append(dark_path)
     return paths

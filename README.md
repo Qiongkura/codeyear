@@ -63,6 +63,7 @@ codeyear github Qiongkura --year 2026 --out ./codeyear-github
 - 需要网络；默认最多拉 200 条提交详情，可用 `--max-commits` 调整。
 - 没有 token 时最多 30 条，且容易触发 GitHub API 限流；建议设置 `GITHUB_TOKEN` 或传 `--token`。
 - 输出包含完整报告、海报、长图、卡片，以及 `codeyear-2026-embed.md`，可以直接粘到 Profile README。
+- 卡片主题：`--theme paper|mono|forest|ocean`。
 - 本地 `scan` 仍是默认模式，代码不会上传。
 
 ### 在线卡片服务
@@ -119,7 +120,7 @@ CodeYear 是给开发者做的「年度报告」。官方的 Wrapped 通常只�
 
 **全部仓库索引**
 - 每个仓库的 README 一句话、技术栈、自有代码、最近提交、活跃状态
-- 可按主要语言筛选；没写 README 的会如实标注
+- 可按主要语言筛选、按关键词搜索；没写 README 的会如实标注
 
 **数据分析**
 - 月度节奏、7×24 提交时钟、全年热力图
@@ -140,7 +141,9 @@ CodeYear 是给开发者做的「年度报告」。官方的 Wrapped 通常只�
 - 纯 vanilla JS，不依赖任何第三方前端库；尊重 `prefers-reduced-motion`
 - 字体：系统衬线（Georgia / Songti / SimSun）+ 等宽（Consolas），不加载任何外部字体
 - GitHub 卡片：640×1254 海报式布局，透明底、无整块底色，浅色/深色两版，靠大字号、细线和一个陶土色强调区分层级
-- 卡片内含 8 条大白话分析：主攻项目、写码时段、改动大小、一次写多久、写删比例、最忙月份、精力集中度、提交说明
+- 卡片内有 8 条大白话分析：主攻项目、写码时段、改动大小、一次写多久、写删比例、最忙月份、精力集中度、提交说明
+- 卡片主题：paper / mono / forest / ocean；公开卡片服务支持 `theme` 参数
+- 报告可直接通过浏览器打印/导出 PDF
 
 ## 安装与输出
 
@@ -227,7 +230,7 @@ codeyear scan ~/code --year 2026 --profile-repo ~/Qiongkura --push-profile
 | `--out ./out` | 输出目录 |
 | `--author "you@example.com"` | 只统计匹配的 git author |
 | `--all-authors` | 统计所有作者的提交（默认只统计你本人） |
-| `--max-depth 6` | 向下查找仓库的最大文件夹层数 |
+| `--max-depth 6` | 每个根目录向下查找仓库的最大文件夹层数 |
 | `--timeout 300` | 单个仓库的扫描超时（秒） |
 | `--no-png` / `--no-html` | 只生成其中一种 |
 | `--no-long` | 不生成完整版长图（默认生成） |
@@ -248,6 +251,9 @@ codeyear scan D:\code --year 2026 --author "you@example.com"
 
 # 包含团队里其他人的提交
 codeyear scan D:\code --year 2026 --all-authors
+
+# 多个根目录
+codeyear scan D:\work E:\oss --year 2026
 ```
 
 ## 隐私
@@ -305,6 +311,10 @@ git log --since=2026-01-01 --until=2027-01-01 \
 - [x] 桌面 GUI（Tkinter，可双击）
 - [x] GitHub 公开数据模式（输入用户名即可生成）
 - [ ] Gitee 公开数据模式
+- [x] 卡片主题（paper / mono / forest / ocean）
+- [x] 仓库搜索与打印样式
+- [x] 多目录 CLI
+- [x] pytest 测试 + GitHub Actions CI
 
 ## 开发
 
@@ -314,6 +324,10 @@ python -m codeyear scan I:\projects --year 2026 --out ./out
 
 # 语法检查
 python -m compileall -q codeyear
+
+# 测试
+pip install -e ".[dev]"
+pytest -q
 ```
 
 代码结构：
