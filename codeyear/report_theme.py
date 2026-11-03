@@ -567,20 +567,26 @@ def decorate(source: str, stats: ReportStats) -> str:
     compare_html = ""
     previous = stats.previous
     if previous:
-        def _delta(value: int, pct: float | None) -> str:
-            text = f"{value:+,}" if value else "0"
-            if pct is not None:
-                text += f"（{pct:+.0%}）"
-            return text
+        if not previous.get("commits"):
+            compare_html = (
+                f'<p class="compare-line">同比 {previous["year"]}：'
+                "去年没有提交，无法对比</p>"
+            )
+        else:
+            def _delta(value: int, pct: float | None) -> str:
+                text = f"{value:+,}" if value else "0"
+                if pct is not None:
+                    text += f"（{pct:+.0%}）"
+                return text
 
-        compare_html = (
-            f'<p class="compare-line">同比 {previous["year"]}：'
-            f'提交 {_delta(previous["commits"], previous["commits_pct"])} · '
-            f'行数 {_delta(previous["lines"], previous["lines_pct"])} · '
-            f'活跃 {_delta(previous["active_days"], None)} 天 · '
-            f'仓库 {_delta(previous["repos"], None)}'
-            "</p>"
-        )
+            compare_html = (
+                f'<p class="compare-line">同比 {previous["year"]}：'
+                f'提交 {_delta(previous["commits"], previous["commits_pct"])} · '
+                f'行数 {_delta(previous["lines"], previous["lines_pct"])} · '
+                f'活跃 {_delta(previous["active_days"], None)} 天 · '
+                f'仓库 {_delta(previous["repos"], None)}'
+                "</p>"
+            )
     html = re.sub(
         r'<div class="hero-stats">.*?<p class="scroll-hint[^>]*>.*?</p>',
         hero_stats + compare_html, html, count=1, flags=re.S,
