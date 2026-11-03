@@ -84,6 +84,19 @@ def _rule(y: float, color: str) -> str:
     return f'<line x1="{M}" y1="{y}" x2="{RIGHT}" y2="{y}" stroke="{color}"/>'
 
 
+def _metric(x: float, y: float, number: str, unit: str, c: dict,
+            size: float = 28) -> str:
+    """One hero number per insight, with a small muted unit."""
+    if not unit:
+        return _text(x - 1, y, number, size, c["ink"], family=SERIF)
+    dx = 1 if unit in {"%", ":1"} else 4
+    return (
+        f'<text x="{x - 1}" y="{y}" font-family="{SERIF}" font-size="{size}" '
+        f'fill="{c["ink"]}">{_e(number)}'
+        f'<tspan font-size="12.5" fill="{c["muted"]}" dx="{dx}">{_e(unit)}</tspan></text>'
+    )
+
+
 def _heatmap(stats: ReportStats, c: dict, x0: float, y0: float,
              cell: float = 8, gap: float = 2) -> str:
     daily = parse_daily(stats.daily)
@@ -213,25 +226,15 @@ def build_svg(stats: ReportStats, *, dark: bool = False) -> str:
     top_repo = stats.repo_details[0] if stats.repo_details else None
     if top_repo and stats.commit_count:
         share = top_repo["commits"] / stats.commit_count
-        focus_value = f"{_truncate(top_repo['name'], 20)} · {share:.0%}"
-        focus_sub = f"{fmt_int(top_repo['commits'])} 次提交"
+        focus_num, focus_unit = f"{share * 100:.0f}", "%"
+        focus_sub = f"{_truncate(top_repo['name'], 20)} · {fmt_int(top_repo['commits'])} 次"
     else:
-        focus_value, focus_sub = "—", "暂无数据"
+        focus_num, focus_unit, focus_sub = "—", "", "暂无数据"
 
     night, weekend = stats.night_share, stats.weekend_share
-    early = sum(stats.by_hour[5:9]) / max(stats.commit_count, 1)
-    if night >= 0.35:
-        rhythm_kind = "深夜型"
-    elif weekend >= 0.35:
-        rhythm_kind = "周末型"
-    elif early >= 0.28:
-        rhythm_kind = "清晨型"
-    else:
-        rhythm_kind = "白天型"
-    rhythm_value = f"{rhythm_kind} · 峰值 {peak_hour:02d}:00"
+    rhythm_num, rhythm_unit = f"{peak_hour:02d}:00", ""
     rhythm_sub = f"深夜 {night:.0%} · 周末 {weekend:.0%}"
 
-    avg_lines = stats.lines_changed / max(stats.commit_count, 1)
     size_map = dict(stats.size_buckets)
     size_total = sum(size_map.values()) or 1
     small_share = (size_map.get("0–10", 0) + size_map.get("10–100", 0)) / size_total
@@ -242,13 +245,12 @@ def build_svg(stats: ReportStats, *, dark: bool = False) -> str:
         style_kind = "大提交"
     else:
         style_kind = "中等粒度"
-    style_value = f"{style_kind} · {small_share:.0%} ≤100 行"
-    style_sub = f"平均 {avg_lines:.0f} 行/次 · 大提交 {large_share:.0%}"
+    style_num, style_unit = f"{small_share * 100:.0f}", "%"
+    style_sub = f"{style_kind} · 大提交 {large_share:.0%}"
 
     sessions = stats.sessions or {}
     sess_count = int(sessions.get("count") or 0)
     avg_min = int(sessions.get("avg_minutes") or 0)
-    long_min = int(sessions.get("longest_minutes") or 0)
     if avg_min >= 90:
         pace_kind = "沉浸型"
     elif avg_min >= 45:
@@ -258,12 +260,13 @@ def build_svg(stats: ReportStats, *, dark: bool = False) -> str:
     else:
         pace_kind = ""
     if avg_min:
-        avg_label = f"{avg_min / 60:.1f} 小时" if avg_min >= 90 else f"{avg_min} 分钟"
-        long_label = f"{long_min / 60:.0f} 小时" if long_min >= 90 else f"{long_min} 分钟"
-        pace_value = f"{pace_kind} · 平均 {avg_label}" if pace_kind else "—"
-        pace_sub = f"{sess_count} 次会话 · 最长 {long_label}"
+        if avg_min >= 90:
+            pace_num, pace_unit = f"{avg_min / 60:.1f}", "小时"
+        else:
+            pace_num, pace_unit = str(avg_min), "分钟"
+        pace_sub = f"{pace_kind} · {sess_count} 次会话"
     else:
-        pace_value, pace_sub = "—", "暂无会话"
+        pace_num, pace_unit, pace_sub = "—", "", "暂无会话"
 
     churn_total = stats.insertions + stats.deletions
     deletion_share = stats.deletions / churn_total if churn_total else 0
@@ -274,17 +277,21 @@ def build_svg(stats: ReportStats, *, dark: bool = False) -> str:
         churn_kind = "平衡型"
     else:
         churn_kind = "扩张型"
-    churn_value = f"{churn_kind} · {ratio:.1f}:1 增删" if ratio else f"{churn_kind} · 只增不删"
-    churn_sub = f"删除 {fmt_human(stats.deletions)} 行（{deletion_share:.0%}）"
+    if ratio:
+        churn_num, churn_unit = f"{ratio:.1f}", ":1"
+        churn_sub = f"{churn_kind} · 删除占 {deletion_share:.0%}"
+    else:
+        churn_num, churn_unit = "只增", ""
+        churn_sub = f"{churn_kind} · 没有删除"
 
     peak_share = peak / max(stats.commit_count, 1)
-    burst_value = f"{peak_month:02d} 月占 {peak_share:.0%}"
-    burst_sub = f"{peak} 次提交 · 其余 {stats.commit_count - peak} 次"
+    burst_num, burst_unit = f"{peak_share * 100:.0f}", "%"
+    burst_sub = f"{peak_month:02d} 月 · {peak} 次提交"
 
     top2 = sum(repo["commits"] for repo in stats.repo_details[:2])
     top2_share = top2 / max(stats.commit_count, 1)
-    breadth_value = f"前 2 个项目占 {top2_share:.0%}"
-    breadth_sub = f"{stats.repo_count} 个仓库 · 新开 {stats.new_repos}"
+    breadth_num, breadth_unit = f"{top2_share * 100:.0f}", "%"
+    breadth_sub = f"前 2 个项目 · 共 {stats.repo_count} 个仓库"
 
     msg_map = dict(stats.message_buckets)
     msg_total = sum(msg_map.values()) or 1
@@ -296,30 +303,30 @@ def build_svg(stats: ReportStats, *, dark: bool = False) -> str:
         msg_kind = "简洁型"
     else:
         msg_kind = "适中"
-    msg_value = f"{msg_kind} · 平均 {avg_subject} 字"
-    msg_sub = f"{mid_share:.0%} 在 40–80 字 · 规范 {stats.conventional_share:.0%}"
+    msg_num, msg_unit = str(avg_subject), "字"
+    msg_sub = f"{msg_kind} · {mid_share:.0%} 在 40–80 字"
 
     insights = [
-        ("主力项目 / FOCUS", focus_value, focus_sub),
-        ("作息 / RHYTHM", rhythm_value, rhythm_sub),
-        ("提交粒度 / GRAIN", style_value, style_sub),
-        ("工作方式 / SESSIONS", pace_value, pace_sub),
-        ("增删倾向 / CHURN", churn_value, churn_sub),
-        ("月度爆发 / BURST", burst_value, burst_sub),
-        ("项目组合 / SCOPE", breadth_value, breadth_sub),
-        ("消息风格 / MESSAGES", msg_value, msg_sub),
+        ("主力项目 / FOCUS", focus_num, focus_unit, focus_sub),
+        ("峰值时段 / RHYTHM", rhythm_num, rhythm_unit, rhythm_sub),
+        ("提交粒度 / GRAIN", style_num, style_unit, style_sub),
+        ("平均会话 / SESSIONS", pace_num, pace_unit, pace_sub),
+        ("增删比 / CHURN", churn_num, churn_unit, churn_sub),
+        ("峰值月份 / BURST", burst_num, burst_unit, burst_sub),
+        ("项目集中度 / SCOPE", breadth_num, breadth_unit, breadth_sub),
+        ("消息长度 / MESSAGES", msg_num, msg_unit, msg_sub),
     ]
     insight_svg = [
         _text(M, 572, "INSIGHTS / 观察", 9, c["muted"], spacing=1),
         f'<line x1="455" y1="572" x2="455" y2="846" stroke="{c["line"]}"/>',
     ]
-    for i, (label, value, sub) in enumerate(insights):
+    for i, (label, number, unit, sub) in enumerate(insights):
         row, col = divmod(i, 2)
         x = cols2[col]
         top = 600 + row * 62
         insight_svg.append(_text(x, top, label, 9, c["muted"], spacing=0.6))
-        insight_svg.append(_text(x - 1, top + 24, value, 20, c["ink"], family=SERIF))
-        insight_svg.append(_text(x, top + 42, sub, 9.5, c["muted"]))
+        insight_svg.append(_metric(x, top + 28, number, unit, c))
+        insight_svg.append(_text(x, top + 46, sub, 9.5, c["muted"]))
     insight_svg.append(_rule(846, c["line"]))
 
     # ---- four detail columns ------------------------------------------
