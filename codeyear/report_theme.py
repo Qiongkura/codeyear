@@ -184,6 +184,49 @@ section{padding:88px 0 0;scroll-margin-top:24px}
 .q-stack{border:0}
 .mini-stats b{font-family:var(--serif);font-size:28px;font-weight:400}
 .mini-stats span{font-family:var(--sans);font-size:12px}
+
+/* year over year */
+.cmp-panel{margin-bottom:8px}
+.cmp-row{display:grid;grid-template-columns:1.5fr .8fr .8fr 1.1fr;gap:14px;
+  align-items:baseline;border-top:1px solid var(--line);padding:10px 0;
+  font-family:var(--sans);font-size:13px}
+.cmp-row.cmp-head{border-top:1px solid var(--line);padding:14px 0 8px;
+  margin-top:18px;color:var(--muted);font-size:11px;letter-spacing:.08em}
+.cmp-k{color:var(--ink2)}
+.cmp-head .cmp-k{color:var(--muted)}
+.cmp-v{font-family:var(--mono);font-size:12.5px;color:var(--muted);
+  text-align:right}
+.cmp-v.cur{color:var(--ink)}
+.cmp-d{font-family:var(--mono);font-size:12.5px;color:var(--ink);
+  text-align:right}
+.cmp-d.zero{color:var(--muted)}
+.cmp-chart{margin-top:30px}
+.cmp-cols{display:grid;grid-template-columns:repeat(12,1fr);gap:10px;
+  align-items:end}
+.cmp-col{display:flex;flex-direction:column;gap:8px}
+.cmp-bars{display:flex;align-items:flex-end;gap:3px;height:132px;
+  padding-top:16px;border-bottom:1px solid var(--line)}
+.cmp-bar{position:relative;flex:1;height:100%;display:flex;
+  align-items:flex-end}
+.cmp-bar i{width:100%;display:block;min-height:0}
+.cmp-bar.prev i{background:var(--line2)}
+.cmp-bar.cur i{background:var(--ink)}
+.cmp-bar b{position:absolute;left:-4px;right:-4px;text-align:center;
+  font-family:var(--mono);font-size:9px;font-weight:400;line-height:1;
+  color:var(--muted);pointer-events:none}
+.cmp-bar.cur b{color:var(--ink)}
+.cmp-col span{font-family:var(--mono);font-size:10px;color:var(--muted);
+  text-align:center}
+.cmp-legend{display:flex;gap:18px;margin-top:12px;font-family:var(--sans);
+  font-size:12px;color:var(--muted)}
+.cmp-legend i{display:inline-block;width:9px;height:9px;margin-right:6px}
+.cmp-legend i.prev{background:var(--line2)}
+.cmp-legend i.cur{background:var(--ink)}
+.cmp-note{display:flex;gap:22px;flex-wrap:wrap;margin-top:14px;
+  font-family:var(--sans);font-size:12px;color:var(--muted)}
+.cmp-hint{margin:8px 0 0;font-family:var(--sans);font-size:12.5px;
+  color:var(--muted)}
+.cmp-hint code{font-family:var(--mono);font-size:12px;color:var(--ink)}
 .file-line{border-top:1px solid var(--line)}
 .file-path{font-size:12px}
 .sub-head{font-family:var(--sans);font-size:12px;letter-spacing:0}
@@ -246,6 +289,9 @@ main{animation:cy-fade .24s ease both}
   h1{font-size:44px}
   .hero-stats{grid-template-columns:1fr 1fr;padding:0 20px}
   .records{grid-template-columns:1fr}
+  .cmp-row{grid-template-columns:1.2fr .7fr .7fr 1fr;gap:8px}
+  .cmp-cols{gap:4px}
+  .cmp-bars{height:88px}
 }
 </style>
 """
@@ -271,6 +317,24 @@ EN_MAP = {
     "全部仓库索引": "Full repository index",
     "数字": "Numbers",
     "数据分析": "Data analysis",
+    "同比去年": "Year over year",
+    "指标": "Metric",
+    "变化": "Change",
+    "提交": "Commits",
+    "代码行变更": "Lines changed",
+    "新增行": "Added lines",
+    "删除行": "Deleted lines",
+    "活跃日": "Active days",
+    "涉及仓库": "Repositories",
+    "最长连续（天）": "Longest streak (days)",
+    "平均提交信息（字符）": "Avg. message (chars)",
+    "周末占比": "Weekend share",
+    "深夜占比": "Night share",
+    "搜索仓库 / 语言 / 简介": "Search repos / languages / descriptions",
+    "如果当时用过其他邮箱或名字，可以用":
+        "If you used another email or name, add",
+    "把旧身份合并进来后重新生成。":
+        "to merge the old identity, then regenerate.",
     "关于": "About",
     "2026 年，": "In 2026,",
     "次提交。": "commits.",
@@ -324,6 +388,12 @@ EN_MAP = {
     "删除最多的仓库": "Most deletions",
     "编码会话": "Coding sessions",
     "次会话": "sessions",
+    "工作节奏": "Coding rhythm",
+    "· 会话而不是次数": "· sessions, not commit counts",
+    "次编码会话": "coding sessions",
+    "最长一次连续编码": "Longest continuous session",
+    "最长会话里的提交": "Commits in longest session",
+    "平均会话时长": "Average session length",
     "最长一次": "Longest",
     "最长一次里的提交": "Commits in longest",
     "平均一次": "Average",
@@ -383,6 +453,20 @@ EN_MAP = {
 }
 
 EN_PATTERNS = [
+    (r"同比 (\d{4})（去年 0 次提交）：提交 (.*?) · 行数 (.*?) · 活跃 (.*?) 天 · 仓库 (.*)",
+     r"vs \1 (no commits last year): commits \2 · lines \3 · active \4 days · repos \5"),
+    (r"同比 (\d{4})：提交 (.*?) · 行数 (.*?) · 活跃 (.*?) 天 · 仓库 (.*)",
+     r"vs \1: commits \2 · lines \3 · active \4 days · repos \5"),
+    (r"同比 (\d{4})：去年没有提交，无法对比",
+     r"vs \1: no commits last year"),
+    (r"(\d{4}) 年在扫描范围内没有提交，以下按 0 计算。",
+     r"No commits in \1 within the scanned roots; the comparison below uses 0."),
+    (r"(\d{4}) 年在扫描范围内没有提交，无法生成有效的同比。",
+     r"No commits in \1 within the scanned roots, so year-over-year "
+     r"comparison is unavailable."),
+    (r"今年峰值 (\d+) 月 · ([\d,]+) 次", r"This year peaks in month \1 · \2 commits"),
+    (r"去年峰值 (\d+) 月 · ([\d,]+) 次", r"Last year peaks in month \1 · \2 commits"),
+    (r"([+-]?\d+) 个百分点", r"\1 pp"),
     (r"扫描目录：(.*) · (\d+) 个仓库", r"Scan roots: \1 · \2 repositories"),
     (r"38\.2\s*万\s*行代码，53 个活跃日，10 个仓库。",
      r"382k lines of code, 53 active days, 10 repositories."),
@@ -414,8 +498,10 @@ EN_PATTERNS = [
      r"Generated locally by CodeYear · \1 · your code never left this machine"),
     (r"只统计你本人作者的提交（(.*)）；已过滤 (\d+) 次他人提交。",
      r"Only your commits (\1); \2 commits by others filtered out."),
-    (r"间隔 ≤ 2 小时的提交算一次会话。最长一次：(.*) → (.*)。",
+    (r"间隔 ≤ 2 小时算同一会话。最长一次：(.*) → (.*)。",
      r"Commits within 2 hours count as one session. Longest: \1 → \2."),
+    (r"周末占 (\d+)%，深夜（22:00–05:00）占 (\d+)%。",
+     r"Weekend \1%; late night (22:00–05:00) \2%."),
 ]
 
 _block_re = re.compile(r"<(style|script)\b.*?</\1>", re.S | re.I)
@@ -482,6 +568,7 @@ def _translate_tip(value: str) -> str:
     v = re.sub(r"(\d+) 次", lambda m: f"{m.group(1)} times", v)
     v = v.replace("没有提交", "No commits").replace("无提交", "No commits")
     v = v.replace("最近的真实提交记录", "Recent real commits")
+    v = v.replace("搜索仓库", "Search repositories")
     v = v.replace("其他", "Other")
     return v
 
@@ -499,6 +586,9 @@ def translate_html(source: str) -> str:
     text = re.sub(r"@@BLOCK(\d+)@@", lambda m: blocks[int(m.group(1))], text)
     text = re.sub(r'(data-tip|aria-label)="([^"]*)"',
                   lambda m: f'{m.group(1)}="{htmlmod.escape(_translate_tip(m.group(2)), quote=True)}"',
+                  text)
+    text = re.sub(r'placeholder="([^"]*)"',
+                  lambda m: f'placeholder="{htmlmod.escape(_translate_node(m.group(1)), quote=True)}"',
                   text)
     text = text.replace('<html lang="zh-CN">', '<html lang="en">')
     text = re.sub(r'<meta name="description" content="[^"]*">',
@@ -567,26 +657,25 @@ def decorate(source: str, stats: ReportStats) -> str:
     compare_html = ""
     previous = stats.previous
     if previous:
-        if not previous.get("commits"):
-            compare_html = (
-                f'<p class="compare-line">同比 {previous["year"]}：'
-                "去年没有提交，无法对比</p>"
-            )
-        else:
-            def _delta(value: int, pct: float | None) -> str:
-                text = f"{value:+,}" if value else "0"
-                if pct is not None:
-                    text += f"（{pct:+.0%}）"
-                return text
+        prev_commits = previous.get("previous_commits")
+        if prev_commits is None:  # older JSON: derive from the delta
+            prev_commits = stats.commit_count - previous.get("commits", 0)
 
-            compare_html = (
-                f'<p class="compare-line">同比 {previous["year"]}：'
-                f'提交 {_delta(previous["commits"], previous["commits_pct"])} · '
-                f'行数 {_delta(previous["lines"], previous["lines_pct"])} · '
-                f'活跃 {_delta(previous["active_days"], None)} 天 · '
-                f'仓库 {_delta(previous["repos"], None)}'
-                "</p>"
-            )
+        def _delta(value: int, pct: float | None) -> str:
+            text = f"{value:+,}" if value else "0"
+            if pct is not None:
+                text += f"（{pct:+.0%}）"
+            return text
+
+        basis = "（去年 0 次提交）" if prev_commits == 0 else ""
+        compare_html = (
+            f'<p class="compare-line">同比 {previous["year"]}{basis}：'
+            f'提交 {_delta(previous["commits"], previous["commits_pct"])} · '
+            f'行数 {_delta(previous["lines"], previous["lines_pct"])} · '
+            f'活跃 {_delta(previous["active_days"], None)} 天 · '
+            f'仓库 {_delta(previous["repos"], None)}'
+            "</p>"
+        )
     html = re.sub(
         r'<div class="hero-stats">.*?<p class="scroll-hint[^>]*>.*?</p>',
         hero_stats + compare_html, html, count=1, flags=re.S,

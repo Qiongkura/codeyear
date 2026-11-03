@@ -236,12 +236,17 @@ section{padding:86px 0 0;scroll-margin-top:70px}
   overflow:hidden;text-overflow:ellipsis}
 
 /* ---- monthly rhythm ---- */
-.month-chart{display:flex;align-items:flex-end;gap:6px;height:150px;margin-top:8px}
-.month-col{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end}
+.month-chart{display:flex;align-items:flex-end;gap:6px;height:150px;margin-top:8px;
+  padding-top:16px}
+.month-col{position:relative;flex:1;height:100%;display:flex;
+  flex-direction:column;justify-content:flex-end}
 .month-col i{display:block;background:var(--ink);min-height:2px;transform-origin:bottom;
   transform:scaleY(0);transition:transform .85s var(--ease)}
 .in .month-col i{transform:scaleY(1)}
 .month-col.peak i{background:var(--acc)}
+.month-col b{position:absolute;left:-3px;right:-3px;text-align:center;
+  font-family:var(--mono);font-size:9px;font-weight:400;line-height:1;
+  color:var(--muted);pointer-events:none}
 .month-labels{display:flex;gap:6px;margin-top:7px;font-family:var(--mono);font-size:9px;
   color:var(--muted)}
 .month-labels span{flex:1;text-align:center}
@@ -771,13 +776,21 @@ def build_records(stats: ReportStats) -> str:
 def build_monthly(stats: ReportStats) -> str:
     max_v = max(stats.monthly) or 1
     peak = stats.monthly.index(max_v) + 1
-    cols = "".join(
-        f'<div class="month-col{" peak" if v == max_v and v > 0 else ""}" '
-        f'data-tip="{m + 1} 月 · {v} 次提交" '
-        f'aria-label="{m + 1} 月 · {v} 次提交">'
-        f'<i style="height:{max(v / max_v * 100, 1.5):.1f}%"></i></div>'
-        for m, v in enumerate(stats.monthly)
-    )
+
+    def column(month: int, value: int) -> str:
+        pct = max(value / max_v * 100, 1.5)
+        label = (
+            f'<b style="bottom:calc({pct:.1f}% + 3px)">{value:,}</b>'
+            if value else ""
+        )
+        return (
+            f'<div class="month-col{" peak" if value == max_v and value > 0 else ""}" '
+            f'data-tip="{month} 月 · {value} 次提交" '
+            f'aria-label="{month} 月 · {value} 次提交">'
+            f'<i style="height:{pct:.1f}%"></i>{label}</div>'
+        )
+
+    cols = "".join(column(m + 1, v) for m, v in enumerate(stats.monthly))
     labels = "".join(f"<span>{m:02d}</span>" for m in range(1, 13))
     return _panel(
         f"月度节奏 <b>· 峰值 {peak:02d} 月 · {max_v} 次</b>",
@@ -1030,6 +1043,144 @@ def build_dormant(stats: ReportStats) -> str:
     )
 
 
+def build_compare(stats: ReportStats) -> str:
+    """Year-over-year panel: metric table plus a month-by-month chart."""
+    previous = stats.previous
+    if not previous:
+        return ""
+
+    prev_year = previous.get("year", stats.year - 1)
+    prev_commits = previous.get("previous_commits")
+    if prev_commits is None:  # reports generated before raw values were stored
+        prev_commits = stats.commit_count - previous.get("commits", 0)
+
+    head = (
+        f'<div class="num-panel rv span2 cmp-panel">'
+        f'<h3>同比去年 <b>· {prev_year} vs {stats.year}</b></h3>'
+    )
+    hint = ""
+    if prev_commits == 0:
+        hint = (
+            f'<p class="cmp-hint">{prev_year} 年在扫描范围内没有提交，'
+            "以下按 0 计算。</p>"
+            '<p class="cmp-hint">如果当时用过其他邮箱或名字，可以用 '
+            "<code>--alias</code> 把旧身份合并进来后重新生成。</p>"
+        )
+
+    def human(value: int) -> str:
+        return fmt_human(value).replace(" ", "")
+
+    def delta_int(value: int, pct: float | None) -> str:
+        text = f"{value:+,}" if value else "0"
+        if pct is not None:
+            text += f" ({pct:+.0%})"
+        return text
+
+    def delta_human(value: int, pct: float | None) -> str:
+        if value:
+            text = ("+" if value > 0 else "-") + human(abs(value))
+        else:
+            text = "0"
+        if pct is not None:
+            text += f" ({pct:+.0%})"
+        return text
+
+    def delta_pp(value: float) -> str:
+        return f"{value * 100:+.0f} 个百分点" if value else "0"
+
+    prev_weekend = previous.get("previous_weekend_share", 0.0)
+    prev_night = previous.get("previous_night_share", 0.0)
+    rows = [
+        ("提交", f"{prev_commits:,}", f"{stats.commit_count:,}",
+         delta_int(previous["commits"], previous.get("commits_pct"))),
+        ("代码行变更", human(previous.get("previous_lines", 0)),
+         human(stats.lines_changed),
+         delta_human(previous["lines"], previous.get("lines_pct"))),
+        ("新增行", human(previous.get("previous_insertions", 0)),
+         human(stats.insertions),
+         delta_human(previous.get("insertions", 0), None)),
+        ("删除行", human(previous.get("previous_deletions", 0)),
+         human(stats.deletions),
+         delta_human(previous.get("deletions", 0), None)),
+        ("活跃日", f'{previous.get("previous_active_days", 0):,}',
+         f"{stats.active_days:,}",
+         delta_int(previous["active_days"], previous.get("active_days_pct"))),
+        ("涉及仓库", f'{previous.get("previous_repos", 0):,}',
+         f"{stats.repo_count:,}", delta_int(previous["repos"], None)),
+        ("最长连续（天）", f'{previous.get("previous_streak", 0):,}',
+         f"{stats.longest_streak:,}", delta_int(previous["streak"], None)),
+        ("平均提交信息（字符）", f'{previous.get("previous_avg_subject_len", 0):,}',
+         f"{stats.avg_subject_len:,}",
+         delta_int(previous.get("avg_subject_len", 0), None)),
+        ("周末占比", f"{prev_weekend:.0%}", f"{stats.weekend_share:.0%}",
+         delta_pp(stats.weekend_share - prev_weekend)),
+        ("深夜占比", f"{prev_night:.0%}", f"{stats.night_share:.0%}",
+         delta_pp(stats.night_share - prev_night)),
+    ]
+    table = "".join(
+        f'<div class="cmp-row"><span class="cmp-k">{label}</span>'
+        f'<span class="cmp-v">{before}</span>'
+        f'<span class="cmp-v cur">{now}</span>'
+        f'<span class="cmp-d{" zero" if change in ("0", "0pp") else ""}">{change}</span>'
+        "</div>"
+        for label, before, now, change in rows
+    )
+
+    prev_monthly = list(previous.get("previous_monthly") or [])
+    prev_monthly += [0] * (12 - len(prev_monthly))
+    cur_monthly = list(stats.monthly) + [0] * (12 - len(stats.monthly))
+    chart_max = max([1, *prev_monthly[:12], *cur_monthly[:12]])
+    cols = []
+    for i in range(12):
+        pv, cv = prev_monthly[i], cur_monthly[i]
+        pp = pv / chart_max * 100
+        cp = cv / chart_max * 100
+        prev_label = (
+            f'<b style="bottom:calc({pp:.1f}% + 3px)">{pv:,}</b>' if pv else ""
+        )
+        cur_label = (
+            f'<b style="bottom:calc({cp:.1f}% + 3px)">{cv:,}</b>' if cv else ""
+        )
+        cols.append(
+            f'<div class="cmp-col"><div class="cmp-bars">'
+            f'<div class="cmp-bar prev"><i style="height:{pp:.1f}%" '
+            f'data-tip="{prev_year} · {i + 1} 月 · {pv} 次提交"></i>'
+            f"{prev_label}</div>"
+            f'<div class="cmp-bar cur"><i style="height:{cp:.1f}%" '
+            f'data-tip="{stats.year} · {i + 1} 月 · {cv} 次提交"></i>'
+            f"{cur_label}</div>"
+            f'</div><span>{i + 1}</span></div>'
+        )
+    notes = []
+    cur_peak = max(cur_monthly[:12])
+    prev_peak = max(prev_monthly[:12])
+    if cur_peak:
+        notes.append(
+            f"<span>今年峰值 {cur_monthly.index(cur_peak) + 1} 月 · "
+            f"{cur_peak:,} 次</span>"
+        )
+    if prev_peak:
+        notes.append(
+            f"<span>去年峰值 {prev_monthly.index(prev_peak) + 1} 月 · "
+            f"{prev_peak:,} 次</span>"
+        )
+
+    chart = (
+        f'<div class="cmp-chart"><div class="cmp-cols">{"".join(cols)}</div>'
+        f'<div class="cmp-legend"><span><i class="prev"></i>{prev_year}</span>'
+        f'<span><i class="cur"></i>{stats.year}</span></div></div>'
+    )
+    note_html = f'<div class="cmp-note">{"".join(notes)}</div>' if notes else ""
+    return (
+        head + hint
+        + '<div class="cmp-row cmp-head"><span class="cmp-k">指标</span>'
+        f'<span class="cmp-v">{prev_year}</span>'
+        f'<span class="cmp-v cur">{stats.year}</span>'
+        '<span class="cmp-d">变化</span></div>'
+        + table + chart + note_html + "</div>"
+    )
+
+
 def build_numbers(stats: ReportStats) -> str:
     total_lines = max(stats.lines_changed, 1)
     details = stats.repo_details
@@ -1075,6 +1226,7 @@ def build_numbers(stats: ReportStats) -> str:
 
     return f"""
     <div class="num-grid">
+      {build_compare(stats)}
       {build_monthly(stats)}
       {build_clock(stats)}
       <div class="num-panel rv">

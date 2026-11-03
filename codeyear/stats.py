@@ -101,18 +101,37 @@ class ReportStats:
 
 
 def compare_summary(current: "ReportStats", previous: "ReportStats") -> dict:
-    def pct(now: int, before: int) -> float | None:
+    def pct(now: int | float, before: int | float) -> float | None:
         return (now - before) / before if before else None
 
     return {
         "year": previous.year,
+        # 去年原始值：0 提交时无法做同比，报告据此降级展示
+        "previous_commits": previous.commit_count,
+        "previous_lines": previous.lines_changed,
+        "previous_insertions": previous.insertions,
+        "previous_deletions": previous.deletions,
+        "previous_active_days": previous.active_days,
+        "previous_repos": previous.repo_count,
+        "previous_streak": previous.longest_streak,
+        "previous_avg_subject_len": previous.avg_subject_len,
+        "previous_weekend_share": previous.weekend_share,
+        "previous_night_share": previous.night_share,
+        "previous_monthly": list(previous.monthly),
+        # 今年 - 去年
         "commits": current.commit_count - previous.commit_count,
         "commits_pct": pct(current.commit_count, previous.commit_count),
         "lines": current.lines_changed - previous.lines_changed,
         "lines_pct": pct(current.lines_changed, previous.lines_changed),
+        "insertions": current.insertions - previous.insertions,
+        "deletions": current.deletions - previous.deletions,
         "active_days": current.active_days - previous.active_days,
+        "active_days_pct": pct(current.active_days, previous.active_days),
         "repos": current.repo_count - previous.repo_count,
         "streak": current.longest_streak - previous.longest_streak,
+        "avg_subject_len": current.avg_subject_len - previous.avg_subject_len,
+        "weekend_share": current.weekend_share - previous.weekend_share,
+        "night_share": current.night_share - previous.night_share,
     }
 
 

@@ -43,6 +43,14 @@ def _build_parser() -> argparse.ArgumentParser:
     github.add_argument("--quiet", action="store_true", help="不打印扫描进度")
     github.add_argument("--theme", choices=sorted(THEMES), default="paper",
                         help="卡片主题：paper / mono / forest / ocean")
+    github.add_argument("--card-only", action="store_true",
+                        help="只生成主页卡片和 embed 片段，不生成完整报告")
+    github.add_argument("--profile-repo", default=None,
+                        help="本地 GitHub Profile 仓库路径；自动更新 README 里的卡片")
+    github.add_argument("--push-profile", action="store_true",
+                        help="更新后提交并推送 Profile 仓库（联网）；需同时指定 --profile-repo")
+    github.add_argument("--fallback-previous", action="store_true",
+                        help="当年没有提交时回退到上一年，适合跨年自动更新")
     server = sub.add_parser("serve", help="启动公开 GitHub 卡片 HTTP 服务")
     server.add_argument("--host", default="127.0.0.1", help="监听地址，默认 127.0.0.1")
     server.add_argument("--port", type=int, default=8000, help="监听端口，默认 8000")
@@ -57,6 +65,8 @@ def _build_parser() -> argparse.ArgumentParser:
     scan.add_argument("--author", default=None, help="只统计匹配的 git author（--author 参数）")
     scan.add_argument("--compare", action="store_true",
                       help="同时扫描去年，在报告里生成同比数据")
+    scan.add_argument("--fallback-previous", action="store_true",
+                      help="当年没有提交时回退到上一年，适合跨年自动更新")
     scan.add_argument("--alias", action="append", default=[],
                       help="额外作者邮箱或名字，可重复；用于旧提交")
     scan.add_argument("--all-authors", action="store_true",
@@ -128,12 +138,17 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "github":
         from .github_public import run as run_github
 
+        if args.push_profile and not args.profile_repo:
+            parser.error("--push-profile 需要同时指定 --profile-repo")
         return run_github(
             args.username, args.year, Path(args.out),
             token=args.token, max_commits=args.max_commits,
             include_forks=args.include_forks,
             open_report=args.open, quiet=args.quiet,
-            theme=args.theme,
+            theme=args.theme, card_only=args.card_only,
+            profile_repo=args.profile_repo,
+            push_profile=args.push_profile,
+            fallback_previous=args.fallback_previous,
         )
     if args.command == "serve":
         from .server import serve
@@ -184,6 +199,21 @@ def main(argv: list[str] | None = None) -> int:
         compare=args.compare,
     )
 
+    if (
+        args.fallback_previous
+        and stats.commit_count == 0
+        and args.year == date.today().year
+    ):
+        previous, prev_warnings = scan(
+            repos, roots, args.year - 1, identity,
+            aliases=args.alias, author=args.author, timeout=args.timeout,
+            jobs=max(1, args.jobs), progress=progress,
+            compare=args.compare,
+        )
+        if previous.commit_count:
+            stats, warnings = previous, prev_warnings
+            args.year = previous.year
+
     if stats.commit_count == 0:
         print(
             f"{args.year} 年没有找到提交。可以换 --year，或检查 --author 过滤条件。",
@@ -223,10 +253,12 @@ def main(argv: list[str] | None = None) -> int:
         written.append(("CARD", card_paths[0]))
         written.append(("CARD-DARK", card_paths[1]))
 
+    exit_code = 0
     if args.profile_repo:
         if not card_paths:
             print("  ! 指定了 --profile-repo，但 --no-card 关闭了卡片生成",
                   file=sys.stderr)
+            exit_code = 1
         else:
             from .profile import update_profile
 
@@ -243,6 +275,7 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"\nProfile  卡片已是最新 · {profile_repo}")
             except Exception as exc:  # pragma: no cover - user environment
                 print(f"  ! 更新 Profile 失败: {exc}", file=sys.stderr)
+                exit_code = 1
 
     # Console summary
     active_pct = stats.active_days / (366 if _is_leap(args.year) else 365)
@@ -278,7 +311,7 @@ def main(argv: list[str] | None = None) -> int:
         target = next((p for label, p in written if label == "HTML"), written[0][1])
         _open_path(target)
 
-    return 0
+    return exit_code
 
 
 def _is_leap(year: int) -> bool:

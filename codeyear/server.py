@@ -11,6 +11,7 @@ import re
 import sys
 import threading
 import time
+from collections import OrderedDict
 from datetime import date
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
@@ -19,9 +20,31 @@ from .card import THEMES, build_svg
 from .github_public import fetch_stats
 
 USERNAME_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$")
-CACHE: dict[tuple[str, int, int], tuple[float, object]] = {}
+CACHE: OrderedDict[tuple[str, int, int], tuple[float, object]] = OrderedDict()
 CACHE_LOCK = threading.Lock()
 CACHE_TTL = 3600
+CACHE_MAX = 128
+RATE: dict[str, tuple[float, int]] = {}
+RATE_LOCK = threading.Lock()
+RATE_WINDOW = 60
+RATE_LIMIT = 60
+
+
+def _allow(ip: str) -> bool:
+    now = time.time()
+    with RATE_LOCK:
+        if len(RATE) > 1024:
+            for key, (start, _count) in list(RATE.items()):
+                if now - start >= RATE_WINDOW:
+                    RATE.pop(key, None)
+        start, count = RATE.get(ip, (now, 0))
+        if now - start >= RATE_WINDOW:
+            RATE[ip] = (now, 1)
+            return True
+        if count >= RATE_LIMIT:
+            return False
+        RATE[ip] = (start, count + 1)
+        return True
 
 
 def _cached_stats(username: str, year: int, token: str | None, max_commits: int):
@@ -30,12 +53,18 @@ def _cached_stats(username: str, year: int, token: str | None, max_commits: int)
     with CACHE_LOCK:
         item = CACHE.get(key)
         if item and now - item[0] < CACHE_TTL:
+            CACHE.move_to_end(key)
             return item[1]
+        if item:
+            CACHE.pop(key, None)
     stats, _warnings, _login = fetch_stats(
         username, year, token=token, max_commits=max_commits, quiet=True,
     )
     with CACHE_LOCK:
         CACHE[key] = (time.time(), stats)
+        CACHE.move_to_end(key)
+        while len(CACHE) > CACHE_MAX:
+            CACHE.popitem(last=False)
     return stats
 
 
@@ -64,7 +93,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(data)))
-        self.send_header("Cache-Control", "public, max-age=3600")
+        self.send_header("Cache-Control",
+                         "no-store" if status >= 400 else "public, max-age=3600")
         self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
         self.wfile.write(data)
@@ -79,6 +109,10 @@ class Handler(BaseHTTPRequestHandler):
             return
         if parsed.path not in {"/card.svg", "/card-dark.svg"}:
             self._send(404, "not found", "text/plain; charset=utf-8")
+            return
+
+        if not _allow(self.client_address[0]):
+            self._send(429, _error_svg("too many requests"), "image/svg+xml")
             return
 
         query = parse_qs(parsed.query)

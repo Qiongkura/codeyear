@@ -139,6 +139,9 @@ def _commits(
         detail = api.get(f"/repos/{full}/commits/{item['sha']}")
         if not detail:
             continue
+        # Match the local scanner's --no-merges behavior.
+        if len(detail.get("parents") or []) > 1:
+            continue
         author_date = ((detail.get("commit") or {}).get("author") or {}).get("date")
         dt = _dt(author_date)
         if dt is None:
@@ -278,18 +281,35 @@ def run(
     open_report: bool = False,
     quiet: bool = False,
     theme: str = "paper",
+    card_only: bool = False,
+    profile_repo: str | Path | None = None,
+    push_profile: bool = False,
+    fallback_previous: bool = False,
 ) -> int:
     try:
         stats, warnings, login = fetch_stats(
             username, year, token=token, max_commits=max_commits,
             include_forks=include_forks, quiet=quiet,
         )
+        if (
+            fallback_previous
+            and not stats.commit_count
+            and year == datetime.now().year
+        ):
+            previous, prev_warnings, login = fetch_stats(
+                username, year - 1, token=token, max_commits=max_commits,
+                include_forks=include_forks, quiet=quiet,
+            )
+            if previous.commit_count:
+                stats, warnings = previous, prev_warnings
     except RuntimeError as exc:
         print(str(exc), file=sys.stderr)
         return 1
 
+    year = stats.year
     out = Path(out_dir)
-    written = render(stats, out, card_theme=theme)
+    formats = {"card"} if card_only else None
+    written = render(stats, out, formats=formats, card_theme=theme)
     embed = chr(10).join([
         "<picture>",
         f'  <source media="(prefers-color-scheme: dark)" '
@@ -302,6 +322,26 @@ def run(
     embed_path = out / f"codeyear-{year}-embed.md"
     embed_path.write_text(embed, encoding="utf-8")
     written.append(("EMBED", embed_path))
+
+    if profile_repo:
+        cards = {label: path for label, path in written}
+        light, dark = cards.get("CARD"), cards.get("CARD-DARK")
+        if light and dark:
+            from .profile import update_profile
+
+            try:
+                repo, changed, pushed = update_profile(
+                    profile_repo, year, light, dark, push=push_profile,
+                )
+                written.append(("PROFILE", repo))
+                if changed:
+                    state = "已提交并推送" if pushed else "仅写入本地"
+                    print(f"\nProfile  {state} · {repo}")
+                else:
+                    print(f"\nProfile  卡片已是最新 · {repo}")
+            except Exception as exc:  # pragma: no cover - user environment
+                print(f"  ! 更新 Profile 失败: {exc}", file=sys.stderr)
+                return 1
 
     print()
     print(f"CodeYear {year}  ·  {stats.persona.title}")

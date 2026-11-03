@@ -4,7 +4,8 @@
 
 > Scan the git repositories on your own machine and turn them into a yearbook that belongs to you:
 > a bilingual paper-archive HTML report, a 2400×3200 poster, a 2400×5330 long image, and a
-> theme-aware GitHub profile card. Local git only — no sign-in, no upload.
+> theme-aware GitHub profile card. Local-first by default — no sign-in, no upload. The public
+> GitHub mode is an opt-in network feature.
 
 ![CodeYear report preview](docs/report-preview.png)
 
@@ -26,7 +27,7 @@ codeyear
 Or install the wheel from the release:
 
 ```bash
-pip install https://github.com/Qiongkura/codeyear/releases/download/v0.1.0/codeyear-0.1.0-py3-none-any.whl
+pip install https://github.com/Qiongkura/codeyear/releases/download/v0.2.0/codeyear-0.2.0-py3-none-any.whl
 ```
 
 > The exe is unsigned; Windows SmartScreen may warn. Click “More info → Run anyway”.
@@ -82,9 +83,13 @@ codeyear github Qiongkura --year 2026 --out ./codeyear-github
 ```
 
 - Reads public repositories only; private repositories are never touched.
+- **Scope:** only public repositories owned by the account (`type=owner`) and commits GitHub can associate with that login. Organization/collaborator repositories and commits from unlinked emails are not counted, and merge commits are excluded. Use local `scan` for the full history.
 - Requires network access; fetches up to 200 commit details by default (`--max-commits`).
 - Without a token it is capped at 30 commits and is easy to rate-limit; set `GITHUB_TOKEN` or pass `--token`.
 - Outputs the full report, poster, long image, cards, and `codeyear-2026-embed.md` for your profile README.
+- Card only: add `--card-only` to skip the report, poster, and long image.
+- Update the profile repo directly: add `--profile-repo ~/Qiongkura` (local only) or `--push-profile` (commit and push).
+- Cross-year automation: add `--fallback-previous` to keep last year's card until the new year has commits.
 - Card theme: `--theme paper|mono|forest|ocean`; [theme gallery](docs/themes.md).
 - The local `scan` command remains the default; your code is not uploaded.
 
@@ -120,10 +125,25 @@ If you only have Cloudflare, expose the local service with a tunnel:
 
 > Both the Action and the hosted service use public GitHub data only. To auto-update
 > a local card that includes private repositories, use a local scheduled task or a
-> self-hosted runner. On first use, paste `codeyear-2026-embed.md` into the profile
-> README once; after that the Action only updates the card files.
+> self-hosted runner.
+>
+> The Action inserts the card block into the profile README automatically (including
+> the first run) and uses versioned filenames to bypass GitHub's image cache. It runs
+> daily at 04:00 UTC by default; change the workflow `cron` to weekly (`0 4 * * 1`)
+> or monthly (`0 4 1 * *`). `--fallback-previous` keeps last year's card until the
+> new year has commits. `CODEYEAR_REF` defaults to `main`; pin it to a release tag
+> after publishing a release.
 
-GitHub Action example: [docs/codeyear-card.yml](docs/codeyear-card.yml).
+GitHub Action template: [docs/codeyear-card.yml](docs/codeyear-card.yml).
+
+Usage:
+
+1. Create `.github/workflows/codeyear-card.yml` in `<username>/<username>`
+2. Paste the template
+3. Run `Update CodeYear card` once from the Actions tab
+
+After that it updates on the cron schedule. The card block is inserted automatically
+and old-year references are replaced.
 
 ## What it is
 
@@ -210,7 +230,7 @@ The scan also produces a light and a dark card, both with transparent background
 
 With `<picture>`, GitHub picks the right version for the viewer's theme. If you only use `<img>`, dark mode will show the light card. The card is a static file: re-run the scan and commit to update it.
 
-> GitHub caches README images through its image proxy, so an updated SVG with the same name may still show the old version. To force a refresh, rename the file with a version suffix (e.g. `codeyear-2026-card-v2.svg`) and update the README, or append a query string (e.g. `?v=2`).
+> GitHub caches README images through its image proxy, so an updated SVG with the same name may still show the old version. When you use `--profile-repo` or the Action below, CodeYear writes versioned filenames and rewrites the README automatically; manual updates still need a rename or query string.
 
 ### Update the profile repo automatically
 
@@ -222,10 +242,15 @@ codeyear scan ~/code --year 2026 --profile-repo ~/Qiongkura
 
 # Commit and push after reviewing (network)
 codeyear scan ~/code --year 2026 --profile-repo ~/Qiongkura --push-profile
+
+# Cross-year task: keep last year's card until the new year has commits
+codeyear scan ~/code --year 2026 --profile-repo ~/Qiongkura --push-profile --fallback-previous
 ```
 
 `--profile-repo` must be a local clone. Without `--push-profile`, only local files change.
 With it, only the card SVGs and profile README are committed; the report and JSON stay local.
+Each update writes `codeyear-2026-card-vN.svg`, rewrites the README, and removes older
+versions; a new year also replaces the previous year's README reference.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/sample-card-dark.svg">
@@ -252,6 +277,7 @@ With it, only the card SVGs and profile README are committed; the report and JSO
 | `--author "you@example.com"` | Only count the matching git author |
 | `--all-authors` | Count every author (default: only you) |
 | `--compare` | Also scan last year and show deltas (roughly doubles scan time) |
+| `--fallback-previous` | Keep last year's report/card when the requested year has no commits |
 | `--alias "old@example.com"` | Extra author email/name, repeatable |
 | `--max-depth 6` | Maximum folder depth per root to search for repositories |
 | `--timeout 300` | Per-repository timeout in seconds |
