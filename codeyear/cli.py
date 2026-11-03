@@ -31,6 +31,16 @@ def _build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=False)
     sub.add_parser("gui", help="图形界面：点选目录、看进度、选输出位置")
     sub.add_parser("tui", help="终端交互向导：选目录、看进度、选输出位置")
+    github = sub.add_parser("github", help="从公开 GitHub 账号生成（联网，仅公开仓库）")
+    github.add_argument("username", help="GitHub 用户名")
+    github.add_argument("--year", type=int, default=date.today().year, help="统计年份")
+    github.add_argument("--out", default="codeyear-output", help="输出目录")
+    github.add_argument("--token", default=None, help="GitHub token；也可用 GITHUB_TOKEN")
+    github.add_argument("--max-commits", type=int, default=200,
+                        help="最多拉取多少条提交（无 token 时自动限制为 30）")
+    github.add_argument("--include-forks", action="store_true", help="包含 fork 仓库")
+    github.add_argument("--open", action="store_true", help="生成后打开报告")
+    github.add_argument("--quiet", action="store_true", help="不打印扫描进度")
     scan = sub.add_parser("scan", help="扫描一个文件夹下的所有 git 仓库")
     scan.add_argument("path", nargs="?", default=".", help="要扫描的文件夹（默认当前目录）")
     scan.add_argument("--year", type=int, default=date.today().year, help="统计年份，默认今年")
@@ -101,6 +111,15 @@ def main(argv: list[str] | None = None) -> int:
         from .wizard import run as run_wizard
 
         return run_wizard()
+    if args.command == "github":
+        from .github_public import run as run_github
+
+        return run_github(
+            args.username, args.year, Path(args.out),
+            token=args.token, max_commits=args.max_commits,
+            include_forks=args.include_forks,
+            open_report=args.open, quiet=args.quiet,
+        )
     if args.command != "scan":
         parser.print_help()
         return 0

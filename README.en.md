@@ -51,6 +51,22 @@ codeyear tui
 
 The terminal wizard supports the same folders, repository count, progress bar, and output folder.
 
+## Public GitHub mode (opt-in network)
+
+If you do not want to scan local repositories first, try a public account:
+
+```bash
+codeyear github Qiongkura --year 2026 --out ./codeyear-github
+```
+
+- Reads public repositories only; private repositories are never touched.
+- Requires network access; fetches up to 200 commits by default (`--max-commits`).
+- Without a token it is capped at 30 commits and is easy to rate-limit; set `GITHUB_TOKEN` or pass `--token`.
+- Outputs the full report, poster, long image, cards, and `codeyear-2026-embed.md` for your profile README.
+- The local `scan` command remains the default; your code is not uploaded.
+
+GitHub Action example: [docs/codeyear-card.yml](docs/codeyear-card.yml).
+
 ## What it is
 
 CodeYear is a year-in-review for developers. Official Wrapped-style reports usually cover only public data and require authorization, while most of our code lives in private repositories, company intranets, or Gitee. CodeYear reads `.git` on your machine, so private projects, offline environments, and work laptops all work.
@@ -246,7 +262,8 @@ Languages are mapped from file extensions. Lockfiles, build artifacts, images, a
 - [x] Optional profile sync (local or push)
 - [x] Interactive wizard (multiple folders, repo count, progress, output location)
 - [x] Desktop GUI (Tkinter, double-clickable)
-- [ ] Public GitHub / Gitee mode (username in, report out)
+- [x] Public GitHub mode (username in, report out)
+- [ ] Public Gitee mode
 
 ## Development
 

@@ -51,6 +51,22 @@ codeyear tui
 
 终端向导同样支持多目录、仓库数量、进度条和输出目录。
 
+## 公开 GitHub 模式（可选联网）
+
+不想扫描本地仓库，可以先看一个公开账号：
+
+```bash
+codeyear github Qiongkura --year 2026 --out ./codeyear-github
+```
+
+- 只读公开仓库，不会读取私有仓库。
+- 需要网络；默认最多拉 200 条提交，可用 `--max-commits` 调整。
+- 没有 token 时最多 30 条，且容易触发 GitHub API 限流；建议设置 `GITHUB_TOKEN` 或传 `--token`。
+- 输出包含完整报告、海报、长图、卡片，以及 `codeyear-2026-embed.md`，可以直接粘到 Profile README。
+- 本地 `scan` 仍是默认模式，代码不会上传。
+
+GitHub Action 自动更新示例：[docs/codeyear-card.yml](docs/codeyear-card.yml)。
+
 ## 它是什么
 
 CodeYear 是给开发者做的「年度报告」。官方的 Wrapped 通常只覆盖公开数据、还要授权；
@@ -257,7 +273,8 @@ git log --since=2026-01-01 --until=2027-01-01 \
 - [x] 可选同步 GitHub Profile（仅本地 / 提交推送）
 - [x] 交互式向导（多目录 / 仓库数量 / 进度条 / 输出位置）
 - [x] 桌面 GUI（Tkinter，可双击）
-- [ ] GitHub / Gitee 公开数据模式（输入用户名即可生成）
+- [x] GitHub 公开数据模式（输入用户名即可生成）
+- [ ] Gitee 公开数据模式
 
 ## 开发
 
