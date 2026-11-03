@@ -30,6 +30,24 @@ uvx --from git+https://github.com/Qiongkura/codeyear.git codeyear scan ~/code --
 Windows 把 `~/code` 换成 `C:\code` 之类的路径。报告会生成到 `codeyear-output/`，
 `--open` 会自动打开 HTML。
 
+## 交互式向导
+
+不想记参数，直接运行：
+
+```bash
+codeyear
+```
+
+会依次选择：
+
+- 要扫描的目录（可以添加多个）
+- 向下扫描深度
+- 统计年份
+- 输出目录
+- 完成后是否打开报告
+
+扫描时显示仓库总数和进度条。`codeyear tui` 效果相同；用 `python -m codeyear` 运行时直接去掉 `codeyear` 即可。
+
 ## 它是什么
 
 CodeYear 是给开发者做的「年度报告」。官方的 Wrapped 通常只覆盖公开数据、还要授权；
@@ -233,6 +251,7 @@ git log --since=2026-01-01 --until=2027-01-01 \
 - [x] English README
 - [x] 英文 HTML 报告
 - [x] 可选同步 GitHub Profile（仅本地 / 提交推送）
+- [x] 交互式向导（多目录 / 仓库数量 / 进度条 / 输出位置）
 - [ ] GitHub / Gitee 公开数据模式（输入用户名即可生成）
 
 ## 开发

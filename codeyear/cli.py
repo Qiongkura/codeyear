@@ -26,7 +26,8 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
 
-    sub = parser.add_subparsers(dest="command", required=True)
+    sub = parser.add_subparsers(dest="command", required=False)
+    sub.add_parser("tui", help="交互式向导：选目录、看进度、选输出位置")
     scan = sub.add_parser("scan", help="扫描一个文件夹下的所有 git 仓库")
     scan.add_argument("path", nargs="?", default=".", help="要扫描的文件夹（默认当前目录）")
     scan.add_argument("--year", type=int, default=date.today().year, help="统计年份，默认今年")
@@ -85,6 +86,10 @@ def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
 
+    if args.command in {None, "tui"}:
+        from .wizard import run as run_wizard
+
+        return run_wizard()
     if args.command != "scan":
         parser.print_help()
         return 0

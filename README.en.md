@@ -29,6 +29,24 @@ uvx --from git+https://github.com/Qiongkura/codeyear.git codeyear scan ~/code --
 
 On Windows use a path such as `C:\code`. The report goes to `codeyear-output/`; `--open` opens the HTML.
 
+## Interactive wizard
+
+Prefer prompts over flags? Run:
+
+```bash
+codeyear
+```
+
+It asks for:
+
+- one or more folders to scan
+- scan depth
+- year
+- output folder
+- whether to open the report
+
+The scan shows the repository count and a progress bar. `codeyear tui` is an alias; with `python -m codeyear`, use `python -m codeyear tui`.
+
 ## What it is
 
 CodeYear is a year-in-review for developers. Official Wrapped-style reports usually cover only public data and require authorization, while most of our code lives in private repositories, company intranets, or Gitee. CodeYear reads `.git` on your machine, so private projects, offline environments, and work laptops all work.
@@ -220,6 +238,7 @@ Languages are mapped from file extensions. Lockfiles, build artifacts, images, a
 - [x] English README
 - [x] English HTML report
 - [x] Optional profile sync (local or push)
+- [x] Interactive wizard (multiple folders, repo count, progress, output location)
 - [ ] Public GitHub / Gitee mode (username in, report out)
 
 ## Development
