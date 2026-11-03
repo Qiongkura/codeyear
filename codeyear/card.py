@@ -533,6 +533,9 @@ def build_svg(stats: ReportStats, *, dark: bool = False,
         meta_parts.append(f"最早提交 {stats.earliest_dt:%Y.%m}")
     if stats.tags_in_year:
         meta_parts.append(f"今年 {stats.tags_in_year} 个版本 tag")
+    previous = stats.previous or {}
+    if previous.get("commits_pct") is not None:
+        meta_parts.append(f"同比 {previous['commits_pct']:+.0%} 提交")
     meta_line = " · ".join(meta_parts)
     right_footer = f"生成于 {stats.generated_at.replace('-', '.')}"
     footer = [

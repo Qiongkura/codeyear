@@ -63,7 +63,7 @@ codeyear github Qiongkura --year 2026 --out ./codeyear-github
 - Requires network access; fetches up to 200 commit details by default (`--max-commits`).
 - Without a token it is capped at 30 commits and is easy to rate-limit; set `GITHUB_TOKEN` or pass `--token`.
 - Outputs the full report, poster, long image, cards, and `codeyear-2026-embed.md` for your profile README.
-- Card theme: `--theme paper|mono|forest|ocean`.
+- Card theme: `--theme paper|mono|forest|ocean`; [theme gallery](docs/themes.md).
 - The local `scan` command remains the default; your code is not uploaded.
 
 ### Online card service

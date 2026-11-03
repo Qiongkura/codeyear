@@ -12,6 +12,25 @@ license = { text = "MIT" }
 authors = [{ name = "CodeYear contributors" }]
 keywords = ["git", "annual-report", "developer-tools", "privacy", "local-first"]
 dependencies = ["Pillow>=9.0"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Environment :: Win32 (MS Windows)",
+  "Environment :: X11 Applications",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Software Development :: Version Control :: Git",
+]
+
+[project.urls]
+Homepage = "https://github.com/Qiongkura/codeyear"
+Repository = "https://github.com/Qiongkura/codeyear"
+Issues = "https://github.com/Qiongkura/codeyear/issues"
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]

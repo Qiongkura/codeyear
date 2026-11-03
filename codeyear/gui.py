@@ -35,7 +35,7 @@ class App:
         self.busy = False
 
         root.title("CodeYear · 代码手账")
-        root.geometry("860x920")
+        root.geometry("860x960")
         root.minsize(760, 720)
         root.configure(bg=PAPER)
         self._style()
@@ -200,30 +200,31 @@ class App:
         else:
             identity_text = "未检测到 git 身份，将统计所有作者"
         self.identity_var = tk.BooleanVar(value=bool(self.identity))
-        self.identity_box = tk.Frame(options, bg=PAPER, cursor="hand2")
+        self.identity_box, self._identity_draw = self._check(
+            options, identity_text, self.identity_var,
+            enabled=bool(self.identity),
+        )
         self.identity_box.grid(
             row=0, column=2, rowspan=2, sticky="w", padx=(26, 0))
-        self.identity_canvas = tk.Canvas(
-            self.identity_box, width=16, height=16, bg=PAPER,
-            highlightthickness=0, bd=0, cursor="hand2",
-        )
-        self.identity_canvas.pack(side="left", padx=(0, 8))
-        self.identity_label = tk.Label(
-            self.identity_box, text=identity_text, bg=PAPER,
-            fg=INK if self.identity else MUTED,
-            font=("Microsoft YaHei", 9),
-            cursor="hand2" if self.identity else "",
-        )
-        self.identity_label.pack(side="left")
-        if self.identity:
-            self.identity_canvas.bind("<Button-1>", self._toggle_identity)
-            self.identity_label.bind("<Button-1>", self._toggle_identity)
-        self._draw_identity_check()
 
         tk.Label(
             body, text="扫描层级 = 向下查找仓库的文件夹层数，默认 6。",
             bg=PAPER, fg=MUTED, font=("Microsoft YaHei", 8), anchor="w",
         ).pack(fill="x", pady=(0, 10))
+
+        advanced = tk.Frame(body, bg=PAPER)
+        advanced.pack(fill="x", pady=(0, 10))
+        tk.Label(advanced, text="并行数", bg=PAPER, fg=MUTED,
+                 font=("Microsoft YaHei", 9)).pack(side="left")
+        self.jobs_var = tk.StringVar(value="1")
+        ttk.Entry(
+            advanced, width=4, textvariable=self.jobs_var, style="CY.TEntry",
+        ).pack(side="left", padx=(6, 20))
+        self.compare_var = tk.BooleanVar(value=False)
+        compare_box, self._compare_draw = self._check(
+            advanced, "同比去年", self.compare_var,
+        )
+        compare_box.pack(side="left")
 
         out_row = tk.Frame(body, bg=PAPER)
         out_row.pack(fill="x", pady=(0, 14))
@@ -349,11 +350,13 @@ class App:
         try:
             year = int(self.year_var.get())
             depth = int(self.depth_var.get())
+            jobs = max(1, int(self.jobs_var.get()))
         except ValueError:
-            messagebox.showwarning("参数不对", "年份和扫描深度必须是数字。")
+            messagebox.showwarning("参数不对", "年份、扫描层级和并行数必须是数字。")
             return
         out_dir = Path(self.out_var.get()).expanduser().resolve()
         identity = self.identity if self.identity_var.get() else None
+        compare = self.compare_var.get()
 
         self._set_busy(True)
         self.written = []
@@ -363,11 +366,12 @@ class App:
         self._set_result("")
         threading.Thread(
             target=self._work,
-            args=(list(self.roots), depth, year, out_dir, identity),
+            args=(list(self.roots), depth, year, out_dir, identity,
+                  jobs, compare),
             daemon=True,
         ).start()
 
-    def _work(self, roots, depth, year, out_dir, identity) -> None:
+    def _work(self, roots, depth, year, out_dir, identity, jobs, compare) -> None:
         try:
             repos = discover(roots, depth)
             if not repos:
@@ -379,6 +383,7 @@ class App:
 
             stats, warnings = scan(
                 repos, roots, year, identity, progress=progress,
+                jobs=jobs, compare=compare,
             )
             if stats.commit_count == 0:
                 raise RuntimeError(f"{year} 年没有找到提交。")
@@ -443,26 +448,48 @@ class App:
         state = "disabled" if busy else "normal"
         self.start_btn.configure(state=state)
 
-    def _draw_identity_check(self) -> None:
-        canvas = self.identity_canvas
-        canvas.delete("all")
-        if not self.identity:
-            canvas.create_rectangle(1, 1, 15, 15, outline=LINE, fill=PAPER2)
-            return
-        if self.identity_var.get():
-            canvas.create_rectangle(1, 1, 15, 15, outline=ACCENT, fill=ACCENT)
-            canvas.create_line(
-                4, 8, 7, 11, 12, 4, fill="white", width=2,
-                capstyle="round", joinstyle="round",
-            )
-        else:
-            canvas.create_rectangle(1, 1, 15, 15, outline=LINE, fill="white")
+    def _check(self, parent, text, variable, enabled=True):
+        frame = tk.Frame(parent, bg=PAPER,
+                         cursor="hand2" if enabled else "")
+        canvas = tk.Canvas(
+            frame, width=16, height=16, bg=PAPER,
+            highlightthickness=0, bd=0,
+            cursor="hand2" if enabled else "",
+        )
+        canvas.pack(side="left", padx=(0, 8))
+        label = tk.Label(
+            frame, text=text, bg=PAPER,
+            fg=INK if enabled else MUTED,
+            font=("Microsoft YaHei", 9),
+            cursor="hand2" if enabled else "",
+        )
+        label.pack(side="left")
 
-    def _toggle_identity(self, _event=None) -> None:
-        if not self.identity or self.busy:
-            return
-        self.identity_var.set(not self.identity_var.get())
-        self._draw_identity_check()
+        def draw() -> None:
+            canvas.delete("all")
+            if not enabled:
+                canvas.create_rectangle(1, 1, 15, 15, outline=LINE, fill=PAPER2)
+                return
+            if variable.get():
+                canvas.create_rectangle(1, 1, 15, 15, outline=ACCENT, fill=ACCENT)
+                canvas.create_line(
+                    4, 8, 7, 11, 12, 4, fill="white", width=2,
+                    capstyle="round", joinstyle="round",
+                )
+            else:
+                canvas.create_rectangle(1, 1, 15, 15, outline=LINE, fill="white")
+
+        def toggle(_event=None) -> None:
+            if not enabled or self.busy:
+                return
+            variable.set(not variable.get())
+            draw()
+
+        if enabled:
+            canvas.bind("<Button-1>", toggle)
+            label.bind("<Button-1>", toggle)
+        draw()
+        return frame, draw
 
     def _set_result(self, text: str) -> None:
         self.result.configure(state="normal")

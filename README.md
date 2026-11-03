@@ -63,7 +63,7 @@ codeyear github Qiongkura --year 2026 --out ./codeyear-github
 - 需要网络；默认最多拉 200 条提交详情，可用 `--max-commits` 调整。
 - 没有 token 时最多 30 条，且容易触发 GitHub API 限流；建议设置 `GITHUB_TOKEN` 或传 `--token`。
 - 输出包含完整报告、海报、长图、卡片，以及 `codeyear-2026-embed.md`，可以直接粘到 Profile README。
-- 卡片主题：`--theme paper|mono|forest|ocean`。
+- 卡片主题：`--theme paper|mono|forest|ocean`；[主题预览](docs/themes.md)。
 - 本地 `scan` 仍是默认模式，代码不会上传。
 
 ### 在线卡片服务
