@@ -13,7 +13,7 @@ from pathlib import Path
 
 from . import __version__
 from .card import render as render_card
-from .html_report import render as render_html
+from .html_report import render as render_html, render_en as render_html_en
 from .poster import render as render_poster, render_long
 from .scanner import find_repos, scan_repo
 from .stats import build_stats, fmt_int
@@ -149,6 +149,8 @@ def main(argv: list[str] | None = None) -> int:
     if not args.no_html:
         html_path = render_html(stats, base.with_suffix(".html"))
         written.append(("HTML", html_path))
+        en_path = render_html_en(stats, out_dir / f"codeyear-{args.year}-en.html")
+        written.append(("HTML-EN", en_path))
 
     if not args.no_png:
         png_path = render_poster(stats, base.with_suffix(".png"))

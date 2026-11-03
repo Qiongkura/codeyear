@@ -8,7 +8,8 @@
 
 ![CodeYear 报告预览](docs/report-preview.png)
 
-**示例报告**：[docs/sample-report.html](docs/sample-report.html)（用本机仓库生成，可直接浏览器打开）
+**示例报告**：[中文](docs/sample-report.html) · [English](docs/sample-report-en.html)
+（用本机仓库生成，可直接浏览器打开）
 
 ## 它是什么
 
@@ -46,7 +47,9 @@ CodeYear 是给开发者做的「年度报告」。官方的 Wrapped 通常只�
 
 **设计**
 - 纸面档案：暖纸底、墨色、朱红强调，衬线大标题 + 等宽数据，方角、hairline
-- 动效：滚动进度条、逐段浮现、数字滚动、真实 commit 跑马灯、纸面风格 tooltip
+- 版式：书脊式目录、超大年份封面、浅色四格统计条；每节末尾「下一节」，
+  滚动时目录高亮，右下角一键回到顶部
+- 中英双语：同时生成中文和英文报告，页内可切换
 - 纯 vanilla JS，不依赖任何第三方前端库；尊重 `prefers-reduced-motion`
 - 字体：系统衬线（Georgia / Songti / SimSun）+ 等宽（Consolas），不加载任何外部字体
 - GitHub 卡片：640×1254 海报式布局，透明底、无整块底色，浅色/深色两版，靠大字号、细线和一个陶土色强调区分层级
@@ -73,7 +76,8 @@ codeyear scan I:\projects --year 2026 --open
 输出默认在 `./codeyear-output/`：
 
 ```text
-codeyear-2026.html          纸面档案风格报告，浏览器直接打开
+codeyear-2026.html          中文报告，浏览器直接打开
+codeyear-2026-en.html       英文报告，同一份数据
 codeyear-2026.png           2400×3200 海报（2× 渲染），直接发图
 codeyear-2026-long.png      2400×5330 完整长图，适合发长图/存档
 codeyear-2026-card.svg      640×1254 海报式 GitHub 卡片（透明底 · 浅色）
@@ -200,6 +204,7 @@ git log --since=2026-01-01 --until=2027-01-01 \
 - [ ] 文件级删除量（被删最多的文件）
 - [ ] PyInstaller 打包 exe / 桌面壳
 - [x] English README
+- [x] 英文 HTML 报告
 - [ ] GitHub / Gitee 公开数据模式（输入用户名即可生成）
 
 ## 开发

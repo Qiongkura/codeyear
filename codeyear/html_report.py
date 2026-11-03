@@ -1253,7 +1253,19 @@ def build_html(stats: ReportStats) -> str:
 
 
 def render(stats: ReportStats, out_path: str | Path) -> Path:
+    from .report_theme import decorate
+
     path = Path(out_path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(build_html(stats), encoding="utf-8")
+    path.write_text(decorate(build_html(stats), stats), encoding="utf-8")
+    return path
+
+
+def render_en(stats: ReportStats, out_path: str | Path) -> Path:
+    from .report_theme import decorate, to_english
+
+    path = Path(out_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    html = decorate(build_html(stats), stats)
+    path.write_text(to_english(html, stats), encoding="utf-8")
     return path

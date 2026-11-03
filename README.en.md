@@ -8,7 +8,7 @@
 
 ![CodeYear report preview](docs/report-preview.png)
 
-**Sample report**: [docs/sample-report.html](docs/sample-report.html) — generated from a real machine; open it directly in a browser.
+**Sample reports**: [Chinese](docs/sample-report.html) · [English](docs/sample-report-en.html) — generated from a real machine; open either directly in a browser.
 
 ## What it is
 
@@ -42,7 +42,9 @@ By default it counts only commits authored by you (matching git `user.name` / `u
 
 **Design**
 - Paper archive: warm paper, ink, vermilion accent, large serif headings + monospaced data, square corners, hairlines
-- Motion: scroll progress, staggered reveals, count-up numbers, live commit ticker, paper-style tooltips
+- Layout: a book-spine contents rail, an oversized year cover, a light four-cell stats table,
+  a "Next" link at the end of every section, scroll-spy navigation, and a back-to-top button
+- Bilingual: generates both Chinese and English reports from the same data, switchable in-page
 - Vanilla JS only; respects `prefers-reduced-motion`
 - System fonts only (Georgia / Songti / SimSun + Consolas); no external font requests
 - GitHub card: 640×1254 poster layout, transparent background, light/dark variants, hierarchy from type, hairlines, and one terracotta accent
@@ -69,7 +71,8 @@ codeyear scan I:\projects --year 2026 --open
 Outputs go to `./codeyear-output/` by default:
 
 ```text
-codeyear-2026.html          paper-archive report; open in a browser
+codeyear-2026.html          Chinese report; open in a browser
+codeyear-2026-en.html       English report, same data
 codeyear-2026.png           2400×3200 poster (2× render)
 codeyear-2026-long.png      2400×5330 full-length image
 codeyear-2026-card.svg      640×1254 GitHub profile card (transparent, light)
@@ -188,6 +191,7 @@ Languages are mapped from file extensions. Lockfiles, build artifacts, images, a
 - [ ] File-level deletions (most-deleted files)
 - [ ] PyInstaller exe / desktop shell
 - [x] English README
+- [x] English HTML report
 - [ ] Public GitHub / Gitee mode (username in, report out)
 
 ## Development

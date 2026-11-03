@@ -1,0 +1,950 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CodeYear 2026 · Annual Code Report</title>
+<meta name="description" content="CodeYear annual code report - a local-first year in review.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23d4491f'/%3E%3Ctext x='16' y='23' font-family='monospace' font-size='19' fill='%23f4f1e8' text-anchor='middle'%3EC%3C/text%3E%3C/svg%3E">
+<style>
+:root{
+  --paper:#f4f1e8; --paper2:#eceadf; --ink:#171512; --ink2:#403c33;
+  --muted:#6f6a5e; --line:#d9d3c2; --line2:#c8c1ac;
+  --acc:#d4491f; --acc2:#b23a15;
+  --serif:Georgia,"Times New Roman","Songti SC","SimSun","Noto Serif CJK SC",serif;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+  --mono:"Cascadia Mono",Consolas,"SFMono-Regular",Menlo,monospace;
+  --ease:cubic-bezier(.22,1,.36,1);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);
+  font-size:15px;line-height:1.7;-webkit-font-smoothing:antialiased}
+::selection{background:var(--acc);color:var(--paper)}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.5;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .035 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E")}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.55;
+  background-image:linear-gradient(var(--line) 1px,transparent 1px);
+  background-size:100% 220px;
+  mask-image:linear-gradient(180deg,transparent,#000 140px,#000 calc(100% - 200px),transparent)}
+.wrap{max-width:1160px;margin:0 auto;padding:0 28px;position:relative;z-index:1}
+a{color:inherit}
+h1,h2,h3{margin:0;font-weight:600}
+
+#progress{position:fixed;top:0;left:0;height:2px;width:0;background:var(--acc);z-index:99}
+header{position:sticky;top:0;z-index:50;background:rgba(244,241,232,.88);
+  backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.nav{max-width:1160px;margin:0 auto;padding:0 28px;height:58px;display:flex;
+  align-items:center;justify-content:space-between;gap:24px}
+.logo{font-family:var(--mono);font-size:13px;letter-spacing:.22em;text-decoration:none;
+  display:inline-flex;align-items:center;gap:9px}
+.logo i{width:9px;height:9px;background:var(--acc);display:inline-block}
+.nav-links{display:flex;gap:22px}
+.nav-links a{color:var(--ink2);text-decoration:none;font-family:var(--mono);font-size:12px}
+.nav-meta{display:flex;align-items:center;gap:16px;font-family:var(--mono);font-size:11px;
+  color:var(--muted)}
+.badge{border:1px solid var(--ink);padding:5px 11px;font-size:10px;letter-spacing:.1em;
+  color:var(--ink)}
+
+.u{color:var(--ink);text-decoration:none;
+  background:linear-gradient(var(--acc),var(--acc)) no-repeat 0 100%/0 2px;
+  transition:background-size .35s var(--ease);padding-bottom:2px}
+.u:hover{background-size:100% 2px}
+
+.hero{padding:84px 0 60px;display:grid;grid-template-columns:1.25fr .75fr;gap:48px;align-items:end}
+.kicker{font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--acc);margin:0 0 22px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+h1{font-family:var(--serif);font-size:clamp(44px,6vw,78px);line-height:1.08;
+  letter-spacing:-.02em}
+h1 em{font-style:normal;color:var(--acc)}
+.lede{margin:26px 0 0;font-size:16px;line-height:1.85;color:var(--ink2);max-width:600px}
+.lede b{color:var(--ink);font-weight:600}
+.hero-stats{display:grid;grid-template-columns:1fr 1fr;border-left:1px solid var(--line)}
+.hs{padding:18px 20px;border-bottom:1px solid var(--line)}
+.hs:nth-child(odd){border-right:1px solid var(--line)}
+.hs:nth-last-child(-n+2){border-bottom:0}
+.hs b{display:block;font-family:var(--mono);font-size:29px;font-weight:500;
+  letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.hs span{font-size:11px;color:var(--muted);font-family:var(--mono);letter-spacing:.06em}
+.scroll-hint{font-family:var(--mono);font-size:10px;letter-spacing:.24em;color:var(--muted);
+  margin-top:26px;display:flex;align-items:center;gap:12px}
+.scroll-hint::after{content:"";flex:1;height:1px;background:var(--line)}
+
+.ticker{border-top:1px solid var(--ink);border-bottom:1px solid var(--ink);background:var(--ink);
+  color:var(--paper);overflow:hidden;position:relative;z-index:1}
+.ticker-inner{display:flex;align-items:center;height:46px}
+.tick-label{flex:none;padding:0 18px;border-right:1px solid rgba(244,241,232,.25);
+  font-family:var(--mono);font-size:10px;letter-spacing:.18em;display:flex;align-items:center;
+  gap:8px;height:100%}
+.tick-label i{width:7px;height:7px;border-radius:50%;background:var(--acc);
+  animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.25}}
+.tick-viewport{flex:1;overflow:hidden;height:100%;display:flex;align-items:center;
+  mask-image:linear-gradient(90deg,transparent,#000 40px,#000 calc(100% - 40px),transparent)}
+.tick-track{display:flex;gap:44px;width:max-content;animation:tick 70s linear infinite;
+  padding-left:44px}
+.ticker:hover .tick-track{animation-play-state:paused}
+@keyframes tick{to{transform:translateX(-50%)}}
+.tick-item{display:flex;align-items:baseline;gap:10px;font-size:12.5px;white-space:nowrap}
+.tick-item b{font-family:var(--mono);font-size:10px;color:var(--acc);font-weight:500}
+
+section{padding:86px 0 0;scroll-margin-top:70px}
+.sec-head{display:flex;align-items:baseline;justify-content:space-between;gap:20px;
+  flex-wrap:wrap;border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:8px}
+.sec-index{font-family:var(--mono);font-size:10px;letter-spacing:.24em;color:var(--acc)}
+.sec-head h2{font-family:var(--serif);font-size:34px;letter-spacing:-.01em}
+.sec-sub{color:var(--muted);font-size:13.5px;font-family:var(--mono)}
+.sec-line{height:2px;background:var(--ink);transform:scaleX(0);transform-origin:left;
+  transition:transform .9s var(--ease) .1s}
+.sec-line.in{transform:scaleX(1)}
+
+.archive{display:grid;grid-template-columns:.92fr 1.08fr;gap:40px;padding:42px 0;
+  border-bottom:1px solid var(--line)}
+.archive.flip .plate-wrap{order:2}
+.plate-wrap{display:flex;flex-direction:column;gap:12px}
+.plate{border:1px solid var(--ink);background:var(--paper2);padding:22px;flex:1}
+.plate .big{display:flex;gap:26px;flex-wrap:wrap}
+.plate .big b{display:block;font-family:var(--mono);font-size:26px;font-weight:500;
+  letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.plate .big span{font-size:10.5px;color:var(--muted);font-family:var(--mono)}
+.plate .langs{display:flex;gap:6px;flex-wrap:wrap;margin:16px 0 4px}
+.plate .langs span{font-size:10.5px;font-family:var(--mono);border:1px solid var(--line2);
+  padding:3px 8px;color:var(--ink2);background:var(--paper)}
+.plate .rec{margin-top:14px;font-family:var(--mono);font-size:11px;line-height:1.9;color:var(--ink2)}
+.plate .rec b{color:var(--acc);font-weight:500;font-size:10px;margin-right:8px}
+.plate .rec div{border-top:1px dashed var(--line2);padding:6px 0}
+.case-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.case-no{font-family:var(--mono);font-size:12px;color:var(--acc);letter-spacing:.14em}
+.stamp{font-family:var(--mono);font-size:10px;letter-spacing:.14em;border:1px solid var(--ink);
+  padding:4px 10px;display:inline-flex;align-items:center;gap:7px}
+.stamp i{width:6px;height:6px;background:var(--acc);display:inline-block}
+.stamp.sleep i{background:var(--muted)}
+.archive h3{font-family:var(--serif);font-size:29px;letter-spacing:-.01em;margin-bottom:12px}
+.readme-quote{border-left:2px solid var(--acc);padding:4px 0 4px 14px;color:var(--ink2);
+  font-size:14px;margin:0 0 18px;font-style:italic}
+.how{list-style:none;margin:0 0 20px;padding:0;font-family:var(--mono);font-size:12.5px;line-height:1.6}
+.how li{padding:9px 0 9px 20px;border-top:1px dashed var(--line2);position:relative;color:var(--ink2)}
+.how li::before{content:"—";position:absolute;left:0;color:var(--acc)}
+.case-link{font-family:var(--mono);font-size:12px;letter-spacing:.08em;display:inline-block;
+  margin-top:4px}
+
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin:20px 0 14px}
+.filter{background:transparent;border:1px solid var(--ink);color:var(--ink);border-radius:0;
+  padding:6px 12px;font-size:11.5px;cursor:pointer;font-family:var(--mono);
+  transition:background .15s,color .15s}
+.filter span{color:var(--muted);margin-left:5px;font-size:10px}
+.filter.on{background:var(--ink);color:var(--paper)}
+.filter.on span{color:rgba(244,241,232,.6)}
+.filter:hover:not(.on){background:var(--paper2)}
+.index-table{width:100%;border-collapse:collapse;font-size:13px}
+.index-table th{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--muted);
+  text-align:left;font-weight:500;padding:9px 12px;border-bottom:2px solid var(--ink)}
+.index-table td{padding:12px;border-bottom:1px solid var(--line);vertical-align:top}
+.index-table tbody tr{transition:background .15s}
+.index-table tbody tr:hover{background:var(--paper2)}
+.t-no{font-family:var(--mono);font-size:11px;color:var(--muted);width:34px}
+.t-name{font-weight:600;white-space:nowrap}
+.t-name a{text-decoration:none}
+.t-name a:hover{color:var(--acc)}
+.t-desc{color:var(--ink2)}
+.t-desc.none{color:var(--muted);font-style:italic}
+.t-stack{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.t-loc{font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums}
+.t-status{font-family:var(--mono);font-size:11px;white-space:nowrap}
+.t-status.hot{color:var(--acc)}
+.index-note{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:12px}
+
+.num-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:26px;margin-top:34px}
+.num-panel{border:1px solid var(--ink);padding:22px;background:var(--paper)}
+.num-panel h3{font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;color:var(--muted);
+  font-weight:500;margin-bottom:18px}
+.num-panel h3 b{color:var(--acc);font-weight:500}
+.stack{display:flex;height:14px;border:1px solid var(--ink)}
+.stack i{display:block;height:100%}
+.stack-labels{display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted);
+  margin-top:8px;font-family:var(--mono)}
+.bar-row{display:flex;align-items:center;gap:12px;margin:10px 0;font-size:12.5px}
+.bar-name{width:150px;color:var(--ink2);overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;font-family:var(--mono);font-size:11.5px}
+.bar-track{flex:1;height:10px;border:1px solid var(--ink);background:var(--paper)}
+.bar-track i{display:block;height:100%;background:var(--ink);transform-origin:left;
+  transform:scaleX(0);transition:transform 1s var(--ease)}
+.in .bar-track i{transform:scaleX(1)}
+.bar-val{width:56px;text-align:right;font-family:var(--mono);font-size:11px;color:var(--muted)}
+.lang-bar{display:flex;height:26px;border:1px solid var(--ink);margin-bottom:14px}
+.lang-bar i{display:block;height:100%}
+.lang-bar i+i{border-left:1px solid var(--paper)}
+.lang-legend{display:grid;grid-template-columns:1fr 1fr;gap:8px 20px;font-size:12px}
+.lang-legend div{display:flex;align-items:center;gap:8px;color:var(--ink2);
+  font-family:var(--mono);font-size:11.5px}
+.lang-legend b{margin-left:auto;font-weight:500;color:var(--ink)}
+.sq{width:9px;height:9px;flex:none}
+.hour-chart{display:flex;align-items:flex-end;gap:3px;height:120px}
+.hour-bar{flex:1;background:var(--ink);min-height:2px;transform-origin:bottom;
+  transform:scaleY(0);transition:transform .8s var(--ease)}
+.in .hour-bar{transform:scaleY(1)}
+.hour-bar.peak{background:var(--acc)}
+.hour-labels{display:flex;gap:3px;margin-top:8px;font-family:var(--mono);font-size:9px;
+  color:var(--muted)}
+.hour-labels span{flex:1;text-align:center}
+.heat-panel{margin-top:26px}
+.heat-wrap{width:max-content;max-width:100%;margin:0 auto;overflow-x:auto;padding:6px 2px 2px;
+  border:1px solid var(--ink);background:var(--paper)}
+.months{display:grid;grid-template-columns:repeat(12,1fr);font-family:var(--mono);font-size:9px;
+  color:var(--muted);margin-bottom:6px}
+.heat{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,13px);
+  grid-auto-columns:13px;gap:3px}
+.cell{width:13px;height:13px;background:var(--paper2)}
+.cell.out{background:transparent}
+.cell.l1{background:#ddd6c4}.cell.l2{background:#a89f88}.cell.l3{background:#5c554a}
+.cell.l4{background:var(--ink)}
+.cell.today{outline:2px solid var(--acc);outline-offset:1px}
+.heat-legend{display:flex;align-items:center;justify-content:center;gap:4px;font-size:10px;
+  color:var(--muted);margin-top:12px;font-family:var(--mono)}
+.heat-legend .cell{width:10px;height:10px}
+.num-note{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:16px;line-height:1.9}
+
+/* ---- year records ---- */
+.records{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--ink);
+  border-left:1px solid var(--ink);margin-top:26px}
+.record{border-right:1px solid var(--ink);border-bottom:1px solid var(--ink);padding:20px 22px;
+  min-height:150px;display:flex;flex-direction:column;justify-content:space-between}
+.record .k{font-family:var(--mono);font-size:10px;letter-spacing:.16em;color:var(--muted)}
+.record .v{font-family:var(--serif);font-size:31px;line-height:1.15;margin:10px 0 6px;
+  letter-spacing:-.01em}
+.record .v small{font-family:var(--sans);font-size:13px;color:var(--muted);letter-spacing:0}
+.record .s{font-family:var(--mono);font-size:10.5px;color:var(--muted);line-height:1.65;
+  overflow:hidden;text-overflow:ellipsis}
+
+/* ---- monthly rhythm ---- */
+.month-chart{display:flex;align-items:flex-end;gap:6px;height:150px;margin-top:8px}
+.month-col{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end}
+.month-col i{display:block;background:var(--ink);min-height:2px;transform-origin:bottom;
+  transform:scaleY(0);transition:transform .85s var(--ease)}
+.in .month-col i{transform:scaleY(1)}
+.month-col.peak i{background:var(--acc)}
+.month-labels{display:flex;gap:6px;margin-top:7px;font-family:var(--mono);font-size:9px;
+  color:var(--muted)}
+.month-labels span{flex:1;text-align:center}
+
+/* ---- 7x24 clock ---- */
+.clock-wrap{overflow-x:auto}
+.clock{display:grid;grid-template-columns:34px repeat(24,28px);gap:3px;
+  justify-content:center;min-width:748px;padding:2px 0}
+.clock .wd{font-family:var(--mono);font-size:9.5px;color:var(--muted);text-align:right;
+  padding-right:6px;align-self:center}
+.clock .hh{font-family:var(--mono);font-size:8px;color:var(--muted);text-align:center;height:14px}
+.clock .c{width:28px;height:16px;background:var(--paper2)}
+.clock .c.l1{background:#ddd6c4}.clock .c.l2{background:#a89f88}
+.clock .c.l3{background:#5c554a}.clock .c.l4{background:var(--ink)}
+
+/* ---- lifecycle bars ---- */
+.lc-months{display:grid;grid-template-columns:190px 1fr 96px;gap:10px;
+  font-family:var(--mono);font-size:9px;color:var(--muted);margin-bottom:6px}
+.lc-month-ticks{display:grid;grid-template-columns:repeat(12,1fr)}
+.lc-month-ticks span{text-align:left}
+.lc-end{text-align:right}
+.lc-row{display:grid;grid-template-columns:190px 1fr 96px;gap:10px;
+  align-items:center;margin:7px 0}
+.lc-name{font-family:var(--mono);font-size:10.5px;color:var(--ink2);overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.lc-track{height:10px;background-color:var(--paper2);
+  background-image:linear-gradient(90deg,var(--line) 1px,transparent 1px);
+  background-size:calc(100% / 12) 100%;border:1px solid var(--line2);position:relative}
+.lc-track i{position:absolute;top:0;bottom:0;background:var(--ink);z-index:1;min-width:1px}
+.lc-track i.hot{background:var(--acc)}
+.lc-track i.dot{width:7px;height:7px;top:50%;bottom:auto;transform:translateY(-50%)}
+.lc-date{font-family:var(--mono);font-size:9.5px;color:var(--muted);text-align:right}
+
+/* ---- keyword chips / churn ---- */
+.chips-cloud{display:flex;gap:6px;flex-wrap:wrap}
+.chips-cloud span{font-family:var(--mono);font-size:10.5px;border:1px solid var(--line2);
+  padding:4px 9px;color:var(--ink2);background:var(--paper)}
+.chips-cloud b{color:var(--acc);font-weight:500;margin-left:5px}
+.pair{display:flex;height:18px;border:1px solid var(--ink);margin:10px 0}
+.pair i{display:block;height:100%}
+
+.year-span{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  margin-top:14px;padding-bottom:10px;border-bottom:1px solid var(--line);
+  font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+.year-span b{color:var(--ink);font-weight:500}
+
+.sub-head{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;color:var(--muted);
+  margin:16px 0 2px}
+
+.mini-stats{display:grid;grid-template-columns:1fr 1fr;gap:14px 18px}
+.mini-stats b{display:block;font-family:var(--mono);font-size:24px;font-weight:500;
+  letter-spacing:-.01em}
+.mini-stats span{font-size:10px;color:var(--muted);font-family:var(--mono)}
+
+.file-line{padding:10px 0;border-top:1px dashed var(--line2)}
+.file-line:first-child{border-top:0;padding-top:0}
+.file-path{font-family:var(--mono);font-size:11px;color:var(--ink2);line-height:1.55;
+  word-break:break-all;margin-bottom:6px}
+.file-meta{display:flex;align-items:center;gap:10px}
+.file-meta .bar-track{flex:1}
+
+.q-chart{display:flex;align-items:flex-end;gap:26px;height:190px;margin-top:8px}
+.q-col{flex:1;display:flex;flex-direction:column;height:100%}
+.q-stack{flex:1;display:flex;flex-direction:column-reverse;border:1px solid var(--ink);
+  background:var(--paper2)}
+.q-stack i{display:block;width:100%}
+.q-none{flex:1;display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:9.5px;color:var(--muted)}
+.q-label{font-family:var(--mono);font-size:10px;color:var(--muted);text-align:center;
+  margin-top:6px}
+.q-legend{display:flex;gap:18px;flex-wrap:wrap;font-family:var(--mono);font-size:10.5px;
+  color:var(--muted);margin-top:14px}
+.q-legend span{display:flex;align-items:center;gap:6px}
+.q-legend i{display:inline-block;width:9px;height:9px}
+
+.dormant-row{display:grid;grid-template-columns:1fr 170px 70px;gap:12px;
+  padding:9px 0;border-top:1px dashed var(--line2);font-family:var(--mono);font-size:11px}
+.dormant-row:first-child{border-top:0}
+.d-name{color:var(--ink2)}
+.d-last{color:var(--muted)}
+.d-days{text-align:right;color:var(--acc)}
+
+#tip{position:fixed;left:0;top:0;z-index:90;pointer-events:none;opacity:0;
+  background:var(--paper);border:1px solid var(--ink);box-shadow:4px 4px 0 var(--acc);
+  font-family:var(--mono);font-size:11px;line-height:1.5;color:var(--ink);
+  padding:6px 9px;max-width:300px;transition:opacity .12s var(--ease)}
+#tip.show{opacity:1}
+
+@media(min-width:921px){.num-grid .span2{grid-column:span 2}}
+
+
+.about{border:1px solid var(--ink);padding:26px;background:var(--paper)}
+.about ul{margin:0;padding:0;list-style:none;font-family:var(--mono);font-size:12px;color:var(--ink2)}
+.about li{padding:9px 0 9px 20px;border-top:1px dashed var(--line2);position:relative}
+.about li:first-child{border-top:0}
+.about li::before{content:"—";position:absolute;left:0;color:var(--acc)}
+.quote{margin:44px 0 0;padding:6px 0 6px 26px;border-left:3px solid var(--acc);
+  font-family:var(--serif);font-size:25px;line-height:1.5;color:var(--ink)}
+.quote small{display:block;font-family:var(--mono);font-size:10.5px;color:var(--muted);
+  margin-top:10px;letter-spacing:.1em}
+
+footer{border-top:2px solid var(--ink);margin-top:90px;padding:24px 0 44px}
+.foot-in{max-width:1160px;margin:0 auto;padding:0 28px;display:flex;
+  justify-content:space-between;gap:14px;flex-wrap:wrap;font-family:var(--mono);
+  font-size:11px;color:var(--muted)}
+
+.rv{opacity:0;transform:translateY(20px);transition:opacity .75s var(--ease),
+  transform .75s var(--ease);transition-delay:var(--d,0ms)}
+.rv.in{opacity:1;transform:none}
+.rv-line{opacity:0;transform:translateY(30px);transition:opacity .85s var(--ease),
+  transform .85s var(--ease);transition-delay:var(--d,0ms)}
+.rv-line.in{opacity:1;transform:none}
+
+@media(max-width:920px){
+  .hero{grid-template-columns:1fr;gap:36px;padding-top:56px}
+  .hero-stats{border-left:0;grid-template-columns:repeat(4,1fr)}
+  .hs{border-right:0!important;border-bottom:1px solid var(--line)}
+  .hs:nth-last-child(-n+2){border-bottom:1px solid var(--line)}
+  .archive,.archive.flip{grid-template-columns:1fr}
+  .archive.flip .plate-wrap{order:0}
+  .num-grid{grid-template-columns:1fr}
+  .records{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:640px){
+  .wrap,.nav,.foot-in{padding-left:20px;padding-right:20px}
+  .hero-stats{grid-template-columns:1fr 1fr}
+  .nav-links{display:none}
+  h1{font-size:42px}
+  .index-table .t-stack,.index-table .t-desc{display:none}
+  .records{grid-template-columns:1fr}
+  .lc-row{grid-template-columns:120px 1fr 76px}
+  .lc-months{grid-template-columns:120px 1fr 76px}
+  .dormant-row{grid-template-columns:1fr 120px 52px}
+  .q-chart{gap:10px}
+}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+  .rv,.rv-line{opacity:1!important;transform:none!important}
+  .sec-line,.bar-track i,.hour-bar{transform:none!important;opacity:1!important}
+  .tick-track{animation:none!important}
+}
+@media print{
+  .rv,.rv-line{opacity:1!important;transform:none!important}
+  .sec-line,.bar-track i,.hour-bar{transform:none!important}
+  .tick-track{animation:none!important}
+}
+</style>
+<noscript><style>.rv,.rv-line{opacity:1!important;transform:none!important}
+.sec-line{transform:none!important}</style></noscript>
+
+<style id="v2">
+:root{
+  --paper:#f5f2e9; --paper2:#ece8dc; --ink:#141413; --ink2:#3d3d3a;
+  --muted:#6f6a5e; --line:#d8d2c2; --line2:#c8c2b2;
+  --acc:#c8552f; --acc2:#a8431f;
+  --serif:Georgia,"Songti SC","SimSun","Noto Serif CJK SC",serif;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+  --mono:"Cascadia Mono",Consolas,"SFMono-Regular",Menlo,monospace;
+}
+body{background:var(--paper);font-size:15.5px;line-height:1.8}
+body::before,body::after{display:none!important}
+#progress,.ticker,.nav-meta,.scroll-hint,.sec-index,.sec-sub,.sec-line,.kicker{display:none!important}
+::selection{background:var(--acc);color:var(--paper)}
+
+body{padding-left:220px}
+.rail{position:fixed;left:0;top:0;bottom:0;width:220px;padding:38px 26px 26px;
+  display:flex;flex-direction:column;justify-content:space-between;
+  border-right:1px solid var(--line);background:var(--paper);z-index:20}
+.rail-brand{display:flex;align-items:center;gap:8px;font-family:var(--serif);
+  font-size:22px;letter-spacing:-.01em}
+.rail-brand i{width:7px;height:7px;background:var(--acc);display:block}
+.rail-year{font-size:12px;color:var(--muted);margin-top:8px}
+.rail-nav{display:flex;flex-direction:column;gap:14px;margin-top:52px;
+  border-top:1px solid var(--line);padding-top:22px}
+.rail-nav a{font-size:13px;color:var(--muted);text-decoration:none;position:relative}
+.rail-nav a:hover{color:var(--ink)}
+.rail-nav a.active{color:var(--ink)}
+.rail-nav a.active::before{content:"";position:absolute;left:-14px;top:50%;
+  width:4px;height:4px;background:var(--acc);transform:translateY(-50%)}
+
+.next-link{display:flex;align-items:baseline;justify-content:flex-end;gap:10px;
+  margin-top:52px;font-size:12px;color:var(--muted);text-decoration:none}
+.next-link .next-kicker{letter-spacing:.04em}
+.next-link .name{font-family:var(--serif);font-size:18px;color:var(--ink)}
+.next-link .name i{font-style:normal}
+.next-link:hover .name{color:var(--acc)}
+.rail-foot .lang{display:block;font-size:12px;color:var(--muted);
+  text-decoration:none;margin-bottom:12px}
+.rail-foot .top{display:flex;justify-content:space-between;border-top:1px solid var(--line);
+  padding-top:14px;font-size:12px;color:var(--ink);text-decoration:none}
+
+.wrap{max-width:1040px;padding:0 56px}
+.hero{display:block;padding:100px 0 0}
+.cover-kicker{font-size:12px;letter-spacing:.16em;color:var(--acc);margin-bottom:18px}
+.cover-year{font-family:var(--serif);font-size:clamp(120px,15vw,180px);line-height:.82;
+  letter-spacing:-.05em;color:var(--ink);margin-left:-6px}
+h1{font-family:var(--serif);font-weight:400;font-size:46px;line-height:1.15;
+  letter-spacing:-.02em;color:var(--ink);margin:24px 0 0}
+h1 em{font-style:normal;color:var(--acc)}
+.lede{margin:22px 0 0;max-width:640px;font-size:18px;line-height:1.8;color:var(--ink2)}
+
+.to-top{position:fixed;right:26px;bottom:26px;z-index:30;display:inline-flex;
+  align-items:center;gap:6px;background:var(--paper);border:1px solid var(--ink);
+  padding:10px 14px;font-family:var(--sans);font-size:12px;color:var(--ink);
+  text-decoration:none;opacity:0;pointer-events:none;transition:opacity .2s}
+.to-top.show{opacity:1;pointer-events:auto}
+.to-top:hover{background:var(--ink);color:var(--paper)}
+
+.hero-stats{display:grid;grid-template-columns:repeat(4,1fr);background:transparent;
+  border:1px solid var(--ink);margin-top:48px;padding:0}
+.hero-stats .hs{padding:22px 24px;border:0;border-left:1px solid var(--line);
+  text-align:left}
+.hero-stats .hs:first-child{border-left:0}
+.hs b{display:block;font-family:var(--serif);font-size:40px;line-height:1.1;
+  font-weight:400;letter-spacing:-.02em;color:var(--ink)}
+.hs span{font-family:var(--sans);font-size:12px;color:var(--muted);letter-spacing:0}
+
+section{padding:88px 0 0;scroll-margin-top:24px}
+.sec-head{border-bottom:2px solid var(--ink);padding-bottom:16px;margin-bottom:0}
+.sec-head h2{font-family:var(--serif);font-size:36px;font-weight:400;letter-spacing:-.01em}
+
+/* records: no boxes, just a quiet table */
+.records{grid-template-columns:repeat(3,1fr);border:0;margin-top:0;column-gap:56px}
+.record{border:0;padding:24px 0;min-height:auto}
+.record:nth-child(n+4){border-top:1px solid var(--line)}
+.record .k{font-family:var(--sans);font-size:12px;letter-spacing:0;color:var(--muted)}
+.record .v{font-family:var(--serif);font-size:33px;font-weight:400;letter-spacing:-.01em;
+  margin:8px 0 4px}
+.record .v small{font-family:var(--sans);font-size:13px}
+.record .s{font-family:var(--sans);font-size:12px;color:var(--muted)}
+
+/* repo archive: data plates, not cards */
+.archive{border-top:1px solid var(--ink);border-bottom:1px solid var(--line);padding:28px 0 38px;gap:56px}
+.plate{border:0;background:transparent;padding:0}
+.plate .big b{font-family:var(--serif);font-size:32px;font-weight:400;letter-spacing:-.01em}
+.plate .big span{font-family:var(--sans);font-size:12px;color:var(--muted)}
+.plate .langs{gap:0;margin:14px 0 6px}
+.plate .langs span{border:0;background:transparent;padding:0 12px 0 0;
+  font-family:var(--sans);font-size:12.5px;color:var(--muted)}
+.plate .rec{font-family:var(--sans);font-size:12.5px;line-height:1.8;color:var(--ink2)}
+.plate .rec b{font-family:var(--sans);font-size:11px;color:var(--acc)}
+.plate .rec div{border-top:1px solid var(--line);padding:7px 0}
+.case-no{display:none}
+.stamp{border:0;padding:0;font-family:var(--sans);font-size:12px;letter-spacing:0;
+  color:var(--muted)}
+.archive h3{font-family:var(--serif);font-size:32px;font-weight:400}
+.readme-quote{font-family:var(--serif);font-size:16px;color:var(--ink2);
+  border-left:2px solid var(--acc);padding-left:14px}
+.how{font-family:var(--sans);font-size:13.5px;line-height:1.8}
+.how li{border-top:1px solid var(--line);padding:9px 0 9px 18px}
+.how li::before{content:"·";color:var(--acc);left:2px}
+.case-link{font-family:var(--sans);font-size:12px;letter-spacing:0;color:var(--ink2)}
+
+/* index */
+.filters{margin:26px 0 8px;gap:24px}
+.filter{border:0;padding:4px 0;font-family:var(--sans);font-size:13px;color:var(--muted);
+  border-bottom:1px solid transparent}
+.filter.on{background:transparent;color:var(--ink);border-bottom-color:var(--ink)}
+.filter.on span{color:var(--muted)}
+.filter:hover:not(.on){background:transparent;color:var(--ink)}
+.index-table th{font-family:var(--sans);font-size:12px;letter-spacing:0;color:var(--muted);
+  border-bottom:1px solid var(--ink);padding:10px 8px;white-space:nowrap}
+.index-table td{border-bottom:1px solid var(--line);padding:12px 8px;font-size:14px}
+.index-table tbody tr:hover{background:transparent}
+.t-name{font-weight:500}
+.t-stack,.t-loc,.t-status,.t-no{font-family:var(--mono);font-size:11.5px}
+.index-note{font-family:var(--sans);font-size:12px}
+
+/* numbers: captions above charts, no cards */
+.num-grid{gap:56px 64px;margin-top:52px}
+.num-panel{border:0;background:transparent;padding:0;
+  border-top:1px solid var(--ink);padding-top:18px}
+.num-grid > .num-panel:first-child{border-top:0;padding-top:0}
+.num-panel h3{font-family:var(--sans);font-size:13px;letter-spacing:0;color:var(--ink);
+  font-weight:600;margin-bottom:20px}
+.num-panel h3 b{font-weight:400;color:var(--muted)}
+.stack{border:0;height:12px}
+.lang-bar{border:0;height:22px}
+.lang-bar i+i{border-left:2px solid var(--paper)}
+.bar-track{border:0;height:7px;background:var(--paper2)}
+.bar-track i{background:var(--ink)}
+.bar-name{font-family:var(--sans);font-size:13px;width:170px}
+.bar-val{font-family:var(--mono)}
+.lang-legend div{font-family:var(--sans);font-size:12.5px}
+.hour-chart{height:132px}
+.hour-bar{background:var(--ink)}
+.hour-bar.peak{background:var(--acc)}
+.heat-panel{margin-top:32px}
+.heat-wrap{border:0;background:transparent;padding:0}
+.cell{background:var(--paper2)}
+.clock .c{background:var(--paper2)}
+.month-col i{background:var(--ink)}
+.month-col.peak i{background:var(--acc)}
+.clock .c.l1,.cell.l1{background:#ddd6c4}
+.clock .c.l2,.cell.l2{background:#a89f88}
+.clock .c.l3,.cell.l3{background:#5c554a}
+.clock .c.l4,.cell.l4{background:var(--ink)}
+.lc-track{border:0;background:var(--paper2)}
+.chips-cloud span{border:0;background:transparent;padding:0 14px 0 0;
+  font-family:var(--sans);font-size:13px;color:var(--ink2)}
+.chips-cloud b{font-weight:400;color:var(--muted)}
+.pair{border:0;height:12px}
+.q-stack{border:0}
+.mini-stats b{font-family:var(--serif);font-size:28px;font-weight:400}
+.mini-stats span{font-family:var(--sans);font-size:12px}
+.file-line{border-top:1px solid var(--line)}
+.file-path{font-size:12px}
+.sub-head{font-family:var(--sans);font-size:12px;letter-spacing:0}
+.year-span{font-family:var(--sans);font-size:12px}
+
+/* about + footer */
+.about{border:0;background:transparent;padding:0}
+.about ul{font-family:var(--sans);font-size:14px}
+.about li{border-top:1px solid var(--line);padding:10px 0 10px 18px}
+.about li::before{content:"·";color:var(--acc);left:2px}
+.quote{font-family:var(--serif);font-size:28px;border-left:2px solid var(--acc)}
+footer{border-top:1px solid var(--line);margin-top:88px;padding:24px 0 44px}
+.foot-in{max-width:1040px;padding:0 56px;font-family:var(--sans);font-size:12px}
+
+/* no motion */
+.rv,.rv-line{opacity:1!important;transform:none!important;transition:none!important}
+.sec-line,.bar-track i,.hour-bar,.month-col i{transform:none!important;opacity:1!important}
+#tip{border:1px solid var(--line);box-shadow:none;background:var(--paper);
+  font-family:var(--sans);font-size:12px}
+
+@media(max-width:900px){
+  body{padding-left:0}
+  .rail{position:sticky;width:auto;height:auto;flex-direction:row;align-items:center;
+    justify-content:space-between;padding:16px 22px;border-right:0;
+    border-bottom:1px solid var(--line)}
+  .rail-nav,.rail-foot,.rail-year{display:none}
+  .wrap{max-width:100%;padding:0 22px}
+  .hero{padding:56px 0 0}
+  .cover-year{font-size:clamp(96px,22vw,140px)}
+  h1{font-size:38px}
+  .hero-stats{grid-template-columns:1fr 1fr}
+  .foot-in{max-width:100%;padding:0 22px}
+  .records{grid-template-columns:repeat(2,1fr);column-gap:32px}
+}
+@media(max-width:640px){
+  .wrap,.nav,.foot-in{padding-left:22px;padding-right:22px}
+  .nav-links{display:none}
+  h1{font-size:44px}
+  .hero-stats{grid-template-columns:1fr 1fr;padding:0 20px}
+  .records{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<aside class="rail">
+  <div>
+    <div class="rail-brand"><i></i>CodeYear</div>
+    <div class="rail-year">2026 Annual Code Report</div>
+    <nav class="rail-nav">
+      <a href="#records">Yearly records</a>
+      <a href="#archives">Repository profiles</a>
+      <a href="#index">Repository index</a>
+      <a href="#numbers">Numbers</a>
+      <a href="#about">About</a>
+    </nav>
+  </div>
+  <div class="rail-foot">
+    <a class="lang" href="sample-report.html">中文</a>
+    <a class="top" href="#top">Back to top <span>&uarr;</span></a>
+  </div>
+</aside>
+<div id="progress"></div>
+
+
+<main id="top">
+  <div class="wrap">
+    <section class="hero">
+      <div>
+        <p class="kicker rv">SCAN · I:\projects · 2026</p>
+        <div class="cover-year">2026</div><h1><em>1,077</em> commits.</h1>
+        <p class="lede">383k lines of code, 53 active days, 10 repositories.</p>
+      </div>
+      <div>
+
+<div class="hero-stats">
+  <div class="hs"><b>1,077</b><span>commits</span></div>
+  <div class="hs"><b>383k</b><span>lines changed</span></div>
+  <div class="hs"><b>53</b><span>active days</span></div>
+  <div class="hs"><b>10</b><span>repositories</span></div>
+</div>
+      </div>
+    </section>
+  </div>
+
+
+    <div class="ticker" aria-label="Recent real commits">
+      <div class="ticker-inner">
+        <div class="tick-label"><i></i>LIVE · GIT</div>
+        <div class="tick-viewport"><div class="tick-track"><span class="tick-item"><b>beamng-autopilot</b>LICENSE: 著作权人实名（袁哲宇，GitHub 账号 Qiongkura）</span><span class="tick-item"><b>codeyear</b>docs: add Chinese intro and English README</span><span class="tick-item"><b>codeyear</b>fix: plain-language insights and lining figures</span><span class="tick-item"><b>codeyear</b>fix: clarify card layout, calendar grid and record ranges</span><span class="tick-item"><b>codeyear</b>fix: size profile card for GitHub README column</span><span class="tick-item"><b>codeyear</b>fix: simplify insight numbers into one metric per tile</span><span class="tick-item"><b>codeyear</b>feat: scale profile card into a poster layout</span><span class="tick-item"><b>codeyear</b>feat: add owner name and eight profile insights to card</span><span class="tick-item"><b>codeyear</b>feat: transparent theme-aware profile card with richer metrics</span><span class="tick-item"><b>my-profile</b>Rename software to 弹弹弹珠吧应用软件 to match the live application record (file name in system); regenerate </span><span class="tick-item"><b>my-profile</b>Manual: add page headers (software name + version + page numbers) per registration format requiremen</span><span class="tick-item"><b>my-profile</b>Manual: add applicant&#x27;s sentences (round-end share/restart, stuck-ball refund, design intent section</span><span class="tick-item"><b>my-profile</b>Replace manual PDF with verified updated version (5 pages, user&#x27;s own words + factual fixes); remove</span><span class="tick-item"><b>my-profile</b>Regenerate manual PDF with new sentences and factual fixes (previous PDFs were locked by an open vie</span><span class="tick-item"><b>my-profile</b>Manual: add applicant&#x27;s new sentences (initial 20 marbles, pause menu functions, arcade theme colors</span><span class="tick-item"><b>codeyear</b>feat: richer GitHub profile card with languages, top repos and records</span><span class="tick-item"><b>my-profile</b>Manual rewritten with applicant&#x27;s own words verbatim (user text pasted unchanged; layout only) - reg</span><span class="tick-item"><b>codeyear</b>feat: GitHub profile SVG card output and README integration</span><span class="tick-item"><b>my-profile</b>Generate upload-ready PDFs (60-page source + 5-page manual) via headless Edge; manual chapters start</span><span class="tick-item"><b>codeyear</b>feat: 2x paper poster, full-length long image, aligned text baselines</span><span class="tick-item"><b>my-profile</b>Copyright application kit: 60-page source doc (50 lines/page) + illustrated manual with real UI scre</span><span class="tick-item"><b>codeyear</b>feat: paper-style poster, offline system fonts, remote URL normalization</span><span class="tick-item"><b>codeyear</b>fix: lifecycle bars end exactly on their last date; replace arrow glyph</span><span class="tick-item"><b>codeyear</b>docs: rewrite README to match the paper report, identity filtering and analytics</span><span class="tick-item"><b>codeyear</b>feat: aligned gantt lifecycle, full file paths, line-sorted composition, sessions/quarters/churn/dor</span><span class="tick-item"><b>codeyear</b>feat: paper-style custom tooltips for charts and timeline</span><span class="tick-item"><b>beamng-autopilot</b>LICENSE: 著作权人实名（袁哲宇，GitHub 账号 Qiongkura）</span><span class="tick-item"><b>codeyear</b>docs: add Chinese intro and English README</span><span class="tick-item"><b>codeyear</b>fix: plain-language insights and lining figures</span><span class="tick-item"><b>codeyear</b>fix: clarify card layout, calendar grid and record ranges</span><span class="tick-item"><b>codeyear</b>fix: size profile card for GitHub README column</span><span class="tick-item"><b>codeyear</b>fix: simplify insight numbers into one metric per tile</span><span class="tick-item"><b>codeyear</b>feat: scale profile card into a poster layout</span><span class="tick-item"><b>codeyear</b>feat: add owner name and eight profile insights to card</span><span class="tick-item"><b>codeyear</b>feat: transparent theme-aware profile card with richer metrics</span><span class="tick-item"><b>my-profile</b>Rename software to 弹弹弹珠吧应用软件 to match the live application record (file name in system); regenerate </span><span class="tick-item"><b>my-profile</b>Manual: add page headers (software name + version + page numbers) per registration format requiremen</span><span class="tick-item"><b>my-profile</b>Manual: add applicant&#x27;s sentences (round-end share/restart, stuck-ball refund, design intent section</span><span class="tick-item"><b>my-profile</b>Replace manual PDF with verified updated version (5 pages, user&#x27;s own words + factual fixes); remove</span><span class="tick-item"><b>my-profile</b>Regenerate manual PDF with new sentences and factual fixes (previous PDFs were locked by an open vie</span><span class="tick-item"><b>my-profile</b>Manual: add applicant&#x27;s new sentences (initial 20 marbles, pause menu functions, arcade theme colors</span><span class="tick-item"><b>codeyear</b>feat: richer GitHub profile card with languages, top repos and records</span><span class="tick-item"><b>my-profile</b>Manual rewritten with applicant&#x27;s own words verbatim (user text pasted unchanged; layout only) - reg</span><span class="tick-item"><b>codeyear</b>feat: GitHub profile SVG card output and README integration</span><span class="tick-item"><b>my-profile</b>Generate upload-ready PDFs (60-page source + 5-page manual) via headless Edge; manual chapters start</span><span class="tick-item"><b>codeyear</b>feat: 2x paper poster, full-length long image, aligned text baselines</span><span class="tick-item"><b>my-profile</b>Copyright application kit: 60-page source doc (50 lines/page) + illustrated manual with real UI scre</span><span class="tick-item"><b>codeyear</b>feat: paper-style poster, offline system fonts, remote URL normalization</span><span class="tick-item"><b>codeyear</b>fix: lifecycle bars end exactly on their last date; replace arrow glyph</span><span class="tick-item"><b>codeyear</b>docs: rewrite README to match the paper report, identity filtering and analytics</span><span class="tick-item"><b>codeyear</b>feat: aligned gantt lifecycle, full file paths, line-sorted composition, sessions/quarters/churn/dor</span><span class="tick-item"><b>codeyear</b>feat: paper-style custom tooltips for charts and timeline</span></div></div>
+      </div>
+    </div>
+
+
+  <div class="wrap">
+    <section id="records">
+      <div class="sec-head rv">
+        <div><div class="sec-index">01 / YEAR IN REVIEW</div><h2>Yearly records</h2></div>
+        <span class="sec-sub"></span>
+      </div>
+      <div class="sec-line"></div>
+      <div class="records"><div class="record rv"><div class="k">Busiest day</div><div class="v">65 <small>commits</small></div><div class="s">2026.09.27</div></div><div class="record rv"><div class="k">Busiest week</div><div class="v">175 <small>commits</small></div><div class="s">2026-W38 · from 2026.09.14</div></div><div class="record rv"><div class="k">Longest streak</div><div class="v">13 <small>days</small></div><div class="s">Current streak: 4 days</div></div><div class="record rv"><div class="k">Longest gap</div><div class="v">15 <small>days</small></div><div class="s">2026.10.16 → 2026.10.31</div></div><div class="record rv"><div class="k">Largest commit</div><div class="v">28,981 <small>lines</small></div><div class="s">beamng-autopilot · 2026.08.14</div></div><div class="record rv"><div class="k">Longest message</div><div class="v">291 <small>chars</small></div><div class="s">Marble machine: top rail flush to cabinet top (ceilingY 21, back panel removed - title/dis</div></div></div><div class="year-span rv"><span>First commit <b>2026.08.06 11:29</b> · autosnake</span><span>Last commit <b>2026.11.03 15:58</b> · beamng-autopilot</span></div>
+    <a class="next-link" href="#archives"><span class="next-kicker">Next</span><span class="name">Repository profiles <i>&rarr;</i></span></a></section>
+
+    <section id="archives">
+      <div class="sec-head rv">
+        <div><div class="sec-index">02 / REPO ARCHIVES</div><h2>Repository profiles</h2></div>
+        <span class="sec-sub"></span>
+      </div>
+      <div class="sec-line"></div>
+
+        <article class="archive">
+          <div class="plate-wrap">
+            <div class="plate">
+              <div class="big">
+                <div><b>837</b><span>commits</span></div>
+                <div><b>288k</b><span>lines changed</span></div>
+                <div><b>3</b><span>main languages</span></div>
+              </div>
+              <div class="langs"><span>Python 80%</span><span>Markdown 15%</span><span>TeX 3%</span></div>
+              <div class="rec"><div><b>11.03</b>LICENSE: 著作权人实名（袁哲宇，GitHub 账号 Qiongkura）</div><div><b>11.03</b>docs: 状态文档——条件矩阵战役（环境接线两处引擎实锤+修复、探测结果、pin 修订、部分轮与归档、续跑计划）</div><div><b>11.03</b>fsd_drive: 天气预设过渡是动画——应用后等过渡结束再设显式 TOD（矩阵 dawn_rain 实测请求 06:30 读回 09:56 被插值覆盖）；读回存证保持</div></div>
+            </div>
+          </div>
+          <div class="case-body">
+            <div class="case-top">
+              <span class="case-no">№ 01</span>
+              <span class="stamp"><i></i>Active</span>
+            </div>
+            <h3>beamng-autopilot</h3>
+            <p class="readme-quote">BeamNG-autopilot（BeamNG自动驾驶）</p>
+            <ul class="how"><li>First 2026.08.14 → latest 2026.11.03</li><li>Languages: Python 229854 · Markdown 43263 · TeX 9394</li><li>Most edited: beamng_autopilot/fsd_drive.py (10k lines changed)</li><li>837 commits (deduplicated by hash)</li></ul>
+            <a class="u case-link" href="https://github.com/Qiongkura/BeamNG-autopilot" target="_blank" rel="noopener">GITHUB ↗</a>
+          </div>
+        </article>
+
+        <article class="archive flip">
+          <div class="plate-wrap">
+            <div class="plate">
+              <div class="big">
+                <div><b>158</b><span>commits</span></div>
+                <div><b>24k</b><span>lines changed</span></div>
+                <div><b>3</b><span>main languages</span></div>
+              </div>
+              <div class="langs"><span>JavaScript 59%</span><span>CSS 18%</span><span>HTML 17%</span></div>
+              <div class="rec"><div><b>11.03</b>Rename software to 弹弹弹珠吧应用软件 to match the live application record (file name in system); r</div><div><b>11.03</b>Manual: add page headers (software name + version + page numbers) per registration format </div><div><b>11.03</b>Manual: add applicant&#x27;s sentences (round-end share/restart, stuck-ball refund, design inte</div></div>
+            </div>
+          </div>
+          <div class="case-body">
+            <div class="case-top">
+              <span class="case-no">№ 02</span>
+              <span class="stamp"><i></i>Active</span>
+            </div>
+            <h3>my-profile</h3>
+            <p class="readme-quote">Qiongkura · 个人主页</p>
+            <ul class="how"><li>First 2026.09.15 → latest 2026.11.03</li><li>Languages: JavaScript 13979 · CSS 4319 · HTML 3971</li><li>Most edited: styles.css (4,128 lines changed)</li><li>158 commits (deduplicated by hash)</li></ul>
+            <a class="u case-link" href="https://github.com/Qiongkura/my-profile" target="_blank" rel="noopener">GITHUB ↗</a>
+          </div>
+        </article>
+
+        <article class="archive">
+          <div class="plate-wrap">
+            <div class="plate">
+              <div class="big">
+                <div><b>34</b><span>commits</span></div>
+                <div><b>15k</b><span>lines changed</span></div>
+                <div><b>3</b><span>main languages</span></div>
+              </div>
+              <div class="langs"><span>Python 87%</span><span>Markdown 12%</span><span>JSON 0%</span></div>
+              <div class="rec"><div><b>09.20</b>工程化：CI 里的 action 升到 v7，清掉 Node 20 弃用警告</div><div><b>09.20</b>修复：关窗后仍会触发已排队的定时器，刷 invalid command name</div><div><b>09.20</b>修复：缩放窗口时时间条跟手太慢，以及最小宽度下内容被裁</div></div>
+            </div>
+          </div>
+          <div class="case-body">
+            <div class="case-top">
+              <span class="case-no">№ 03</span>
+              <span class="stamp sleep"><i></i>Dormant</span>
+            </div>
+            <h3>focus-time-tracker</h3>
+            <p class="readme-quote">Focus-time-tracker（屏幕使用时间统计工具）</p>
+            <ul class="how"><li>First 2026.08.10 → latest 2026.09.20</li><li>Languages: Python 13396 · Markdown 1782 · JSON 67</li><li>Most edited: tracker/app.py (4,050 lines changed)</li><li>34 commits (deduplicated by hash)</li></ul>
+            <a class="u case-link" href="https://github.com/Qiongkura/Focus-time-tracker" target="_blank" rel="noopener">GITHUB ↗</a>
+          </div>
+        </article>
+
+    <a class="next-link" href="#index"><span class="next-kicker">Next</span><span class="name">Repository index <i>&rarr;</i></span></a></section>
+
+    <section id="index">
+      <div class="sec-head rv">
+        <div><div class="sec-index">03 / FULL INDEX</div><h2>Full repository index</h2></div>
+        <span class="sec-sub">Including dormant repos and those without a README</span>
+      </div>
+      <div class="sec-line"></div>
+
+    <div class="filters"><button class="filter on" data-filter="all">All<span>10</span></button><button class="filter" data-filter="Python">Python<span>5</span></button><button class="filter" data-filter="Java">Java<span>2</span></button><button class="filter" data-filter="JavaScript">JavaScript<span>1</span></button><button class="filter" data-filter="JSON">JSON<span>1</span></button><button class="filter" data-filter="C">C<span>1</span></button></div>
+    <table class="index-table">
+      <thead><tr>
+        <th>NO</th><th>Repository</th><th>README first line</th><th>Stack</th>
+        <th>Own code</th><th>Latest commit</th><th>Status</th>
+      </tr></thead>
+      <tbody><tr data-cat="Python"><td class="t-no">01</td><td class="t-name"><a href="https://github.com/Qiongkura/BeamNG-autopilot" target="_blank" rel="noopener">beamng-autopilot ↗</a></td><td class="t-desc">BeamNG-autopilot（BeamNG自动驾驶）</td><td class="t-stack">Python · Markdown · TeX</td><td class="t-loc">288k</td><td class="t-stack">2026.11.03</td><td class="t-status" class="t-status hot">Active</td></tr><tr data-cat="JavaScript"><td class="t-no">02</td><td class="t-name"><a href="https://github.com/Qiongkura/my-profile" target="_blank" rel="noopener">my-profile ↗</a></td><td class="t-desc">Qiongkura · 个人主页</td><td class="t-stack">JavaScript · CSS · HTML</td><td class="t-loc">24k</td><td class="t-stack">2026.11.03</td><td class="t-status" class="t-status hot">Active</td></tr><tr data-cat="Python"><td class="t-no">03</td><td class="t-name"><a href="https://github.com/Qiongkura/Focus-time-tracker" target="_blank" rel="noopener">focus-time-tracker ↗</a></td><td class="t-desc">Focus-time-tracker（屏幕使用时间统计工具）</td><td class="t-stack">Python · Markdown · JSON</td><td class="t-loc">15k</td><td class="t-stack">2026.09.20</td><td class="t-status">Dormant</td></tr><tr data-cat="Python"><td class="t-no">04</td><td class="t-name"><a href="https://github.com/Qiongkura/codeyear" target="_blank" rel="noopener">codeyear ↗</a></td><td class="t-desc">CodeYear · Code Yearbook</td><td class="t-stack">Python · HTML · Markdown</td><td class="t-loc">10k</td><td class="t-stack">2026.11.03</td><td class="t-status" class="t-status hot">Active</td></tr><tr data-cat="Python"><td class="t-no">05</td><td class="t-name"><a href="https://github.com/Qiongkura/audio-visualizer" target="_blank" rel="noopener">audio-visualizer ↗</a></td><td class="t-desc">音频可视化 Audio Visualizer</td><td class="t-stack">Python · Markdown · Batch</td><td class="t-loc">5,223</td><td class="t-stack">2026.09.20</td><td class="t-status">Dormant</td></tr><tr data-cat="JSON"><td class="t-no">06</td><td class="t-name"><a href="https://github.com/Qiongkura/audiotransfer" target="_blank" rel="noopener">audiotransfer ↗</a></td><td class="t-desc">AudioTransfer Studio</td><td class="t-stack">JSON · Python · C++</td><td class="t-loc">25k</td><td class="t-stack">2026.10.15</td><td class="t-status" class="t-status hot">In progress</td></tr><tr data-cat="C"><td class="t-no">07</td><td class="t-name"><a href="https://github.com/Qiongkura/SmartCar-STM32" target="_blank" rel="noopener">SmartCar-STM32 ↗</a></td><td class="t-desc" class="t-desc none">(No README description)</td><td class="t-stack">C · Python · C/C++</td><td class="t-loc">9,440</td><td class="t-stack">2026.10.11</td><td class="t-status" class="t-status hot">In progress</td></tr><tr data-cat="Python"><td class="t-no">08</td><td class="t-name"><a href="https://github.com/Qiongkura/portfolio" target="_blank" rel="noopener">portfolio ↗</a></td><td class="t-desc">代码手账 · Code Portfolio</td><td class="t-stack">Python · HTML · Markdown</td><td class="t-loc">1,579</td><td class="t-stack">2026.11.02</td><td class="t-status" class="t-status hot">Active</td></tr><tr data-cat="Java"><td class="t-no">09</td><td class="t-name"><a href="https://github.com/Qiongkura/DQN-Reinforcement-Learning-Snake" target="_blank" rel="noopener">DQNsnake ↗</a></td><td class="t-desc">DQN-Reinforcement-Learning-Snake</td><td class="t-stack">Java · Python · Markdown</td><td class="t-loc">906</td><td class="t-stack">2026.08.09</td><td class="t-status">Dormant</td></tr><tr data-cat="Java"><td class="t-no">10</td><td class="t-name"><a href="https://github.com/Qiongkura/Java-autosnake" target="_blank" rel="noopener">autosnake ↗</a></td><td class="t-desc">java‑autosnake‑game</td><td class="t-stack">Java · Markdown</td><td class="t-loc">641</td><td class="t-stack">2026.08.06</td><td class="t-status">Dormant</td></tr></tbody>
+    </table>
+    <p class="index-note"><span id="row-count">10 / 10</span>
+      · 「一句话」直接取自每个仓库 README 的第一行——没写的就是没写。</p>
+
+    <a class="next-link" href="#numbers"><span class="next-kicker">Next</span><span class="name">Numbers <i>&rarr;</i></span></a></section>
+
+    <section id="numbers">
+      <div class="sec-head rv">
+        <div><div class="sec-index">04 / BY THE NUMBERS</div><h2>Numbers</h2></div>
+        <span class="sec-sub">What git can prove, without adjectives</span>
+      </div>
+      <div class="sec-line"></div>
+
+    <div class="num-grid">
+      <div class="num-panel rv span2"><h3>Monthly rhythm <b>· commits per month</b></h3><div class="month-chart"><div class="month-col" data-tip="Jan · 0 commits" aria-label="Jan · 0 commits"><i style="height:1.5%"></i></div><div class="month-col" data-tip="Feb · 0 commits" aria-label="Feb · 0 commits"><i style="height:1.5%"></i></div><div class="month-col" data-tip="Mar · 0 commits" aria-label="Mar · 0 commits"><i style="height:1.5%"></i></div><div class="month-col" data-tip="Apr · 0 commits" aria-label="Apr · 0 commits"><i style="height:1.5%"></i></div><div class="month-col" data-tip="May · 0 commits" aria-label="May · 0 commits"><i style="height:1.5%"></i></div><div class="month-col" data-tip="Jun · 0 commits" aria-label="Jun · 0 commits"><i style="height:1.5%"></i></div><div class="month-col" data-tip="Jul · 0 commits" aria-label="Jul · 0 commits"><i style="height:1.5%"></i></div><div class="month-col" data-tip="Aug · 207 commits" aria-label="Aug · 207 commits"><i style="height:43.8%"></i></div><div class="month-col peak" data-tip="Sep · 473 commits" aria-label="Sep · 473 commits"><i style="height:100.0%"></i></div><div class="month-col" data-tip="Oct · 295 commits" aria-label="Oct · 295 commits"><i style="height:62.4%"></i></div><div class="month-col" data-tip="Nov · 102 commits" aria-label="Nov · 102 commits"><i style="height:21.6%"></i></div><div class="month-col" data-tip="Dec · 0 commits" aria-label="Dec · 0 commits"><i style="height:1.5%"></i></div></div><div class="month-labels"><span>01</span><span>02</span><span>03</span><span>04</span><span>05</span><span>06</span><span>07</span><span>08</span><span>09</span><span>10</span><span>11</span><span>12</span></div></div>
+      <div class="num-panel rv span2"><h3>7×24 commit clock <b>· busiest weekday and hour</b></h3><div class="clock-wrap"><div class="clock"><span class="wd"></span><span class="hh">0</span><span class="hh"></span><span class="hh"></span><span class="hh">3</span><span class="hh"></span><span class="hh"></span><span class="hh">6</span><span class="hh"></span><span class="hh"></span><span class="hh">9</span><span class="hh"></span><span class="hh"></span><span class="hh">12</span><span class="hh"></span><span class="hh"></span><span class="hh">15</span><span class="hh"></span><span class="hh"></span><span class="hh">18</span><span class="hh"></span><span class="hh"></span><span class="hh">21</span><span class="hh"></span><span class="hh"></span><span class="wd">Mon</span><span class="c l1" data-tip="Mon 00:00 · 3 commits" aria-label="Mon 00:00 · 3 commits"></span><span class="c l0" data-tip="Mon 01:00 · 0 commits" aria-label="Mon 01:00 · 0 commits"></span><span class="c l0" data-tip="Mon 02:00 · 0 commits" aria-label="Mon 02:00 · 0 commits"></span><span class="c l0" data-tip="Mon 03:00 · 0 commits" aria-label="Mon 03:00 · 0 commits"></span><span class="c l0" data-tip="Mon 04:00 · 0 commits" aria-label="Mon 04:00 · 0 commits"></span><span class="c l0" data-tip="Mon 05:00 · 0 commits" aria-label="Mon 05:00 · 0 commits"></span><span class="c l0" data-tip="Mon 06:00 · 0 commits" aria-label="Mon 06:00 · 0 commits"></span><span class="c l0" data-tip="Mon 07:00 · 0 commits" aria-label="Mon 07:00 · 0 commits"></span><span class="c l0" data-tip="Mon 08:00 · 0 commits" aria-label="Mon 08:00 · 0 commits"></span><span class="c l0" data-tip="Mon 09:00 · 0 commits" aria-label="Mon 09:00 · 0 commits"></span><span class="c l0" data-tip="Mon 10:00 · 0 commits" aria-label="Mon 10:00 · 0 commits"></span><span class="c l0" data-tip="Mon 11:00 · 0 commits" aria-label="Mon 11:00 · 0 commits"></span><span class="c l1" data-tip="Mon 12:00 · 4 commits" aria-label="Mon 12:00 · 4 commits"></span><span class="c l2" data-tip="Mon 13:00 · 11 commits" aria-label="Mon 13:00 · 11 commits"></span><span class="c l0" data-tip="Mon 14:00 · 0 commits" aria-label="Mon 14:00 · 0 commits"></span><span class="c l0" data-tip="Mon 15:00 · 0 commits" aria-label="Mon 15:00 · 0 commits"></span><span class="c l0" data-tip="Mon 16:00 · 0 commits" aria-label="Mon 16:00 · 0 commits"></span><span class="c l0" data-tip="Mon 17:00 · 0 commits" aria-label="Mon 17:00 · 0 commits"></span><span class="c l1" data-tip="Mon 18:00 · 2 commits" aria-label="Mon 18:00 · 2 commits"></span><span class="c l1" data-tip="Mon 19:00 · 3 commits" aria-label="Mon 19:00 · 3 commits"></span><span class="c l2" data-tip="Mon 20:00 · 12 commits" aria-label="Mon 20:00 · 12 commits"></span><span class="c l2" data-tip="Mon 21:00 · 13 commits" aria-label="Mon 21:00 · 13 commits"></span><span class="c l4" data-tip="Mon 22:00 · 48 commits" aria-label="Mon 22:00 · 48 commits"></span><span class="c l3" data-tip="Mon 23:00 · 26 commits" aria-label="Mon 23:00 · 26 commits"></span><span class="wd">Tue</span><span class="c l2" data-tip="Tue 00:00 · 14 commits" aria-label="Tue 00:00 · 14 commits"></span><span class="c l1" data-tip="Tue 01:00 · 2 commits" aria-label="Tue 01:00 · 2 commits"></span><span class="c l3" data-tip="Tue 02:00 · 25 commits" aria-label="Tue 02:00 · 25 commits"></span><span class="c l0" data-tip="Tue 03:00 · 0 commits" aria-label="Tue 03:00 · 0 commits"></span><span class="c l0" data-tip="Tue 04:00 · 0 commits" aria-label="Tue 04:00 · 0 commits"></span><span class="c l0" data-tip="Tue 05:00 · 0 commits" aria-label="Tue 05:00 · 0 commits"></span><span class="c l0" data-tip="Tue 06:00 · 0 commits" aria-label="Tue 06:00 · 0 commits"></span><span class="c l0" data-tip="Tue 07:00 · 0 commits" aria-label="Tue 07:00 · 0 commits"></span><span class="c l0" data-tip="Tue 08:00 · 0 commits" aria-label="Tue 08:00 · 0 commits"></span><span class="c l0" data-tip="Tue 09:00 · 0 commits" aria-label="Tue 09:00 · 0 commits"></span><span class="c l0" data-tip="Tue 10:00 · 0 commits" aria-label="Tue 10:00 · 0 commits"></span><span class="c l0" data-tip="Tue 11:00 · 0 commits" aria-label="Tue 11:00 · 0 commits"></span><span class="c l2" data-tip="Tue 12:00 · 15 commits" aria-label="Tue 12:00 · 15 commits"></span><span class="c l2" data-tip="Tue 13:00 · 8 commits" aria-label="Tue 13:00 · 8 commits"></span><span class="c l3" data-tip="Tue 14:00 · 26 commits" aria-label="Tue 14:00 · 26 commits"></span><span class="c l3" data-tip="Tue 15:00 · 22 commits" aria-label="Tue 15:00 · 22 commits"></span><span class="c l3" data-tip="Tue 16:00 · 17 commits" aria-label="Tue 16:00 · 17 commits"></span><span class="c l2" data-tip="Tue 17:00 · 10 commits" aria-label="Tue 17:00 · 10 commits"></span><span class="c l2" data-tip="Tue 18:00 · 14 commits" aria-label="Tue 18:00 · 14 commits"></span><span class="c l3" data-tip="Tue 19:00 · 17 commits" aria-label="Tue 19:00 · 17 commits"></span><span class="c l2" data-tip="Tue 20:00 · 11 commits" aria-label="Tue 20:00 · 11 commits"></span><span class="c l3" data-tip="Tue 21:00 · 23 commits" aria-label="Tue 21:00 · 23 commits"></span><span class="c l3" data-tip="Tue 22:00 · 25 commits" aria-label="Tue 22:00 · 25 commits"></span><span class="c l4" data-tip="Tue 23:00 · 36 commits" aria-label="Tue 23:00 · 36 commits"></span><span class="wd">Wed</span><span class="c l0" data-tip="Wed 00:00 · 0 commits" aria-label="Wed 00:00 · 0 commits"></span><span class="c l1" data-tip="Wed 01:00 · 5 commits" aria-label="Wed 01:00 · 5 commits"></span><span class="c l1" data-tip="Wed 02:00 · 7 commits" aria-label="Wed 02:00 · 7 commits"></span><span class="c l1" data-tip="Wed 03:00 · 3 commits" aria-label="Wed 03:00 · 3 commits"></span><span class="c l0" data-tip="Wed 04:00 · 0 commits" aria-label="Wed 04:00 · 0 commits"></span><span class="c l0" data-tip="Wed 05:00 · 0 commits" aria-label="Wed 05:00 · 0 commits"></span><span class="c l0" data-tip="Wed 06:00 · 0 commits" aria-label="Wed 06:00 · 0 commits"></span><span class="c l0" data-tip="Wed 07:00 · 0 commits" aria-label="Wed 07:00 · 0 commits"></span><span class="c l0" data-tip="Wed 08:00 · 0 commits" aria-label="Wed 08:00 · 0 commits"></span><span class="c l0" data-tip="Wed 09:00 · 0 commits" aria-label="Wed 09:00 · 0 commits"></span><span class="c l0" data-tip="Wed 10:00 · 0 commits" aria-label="Wed 10:00 · 0 commits"></span><span class="c l1" data-tip="Wed 11:00 · 5 commits" aria-label="Wed 11:00 · 5 commits"></span><span class="c l1" data-tip="Wed 12:00 · 6 commits" aria-label="Wed 12:00 · 6 commits"></span><span class="c l1" data-tip="Wed 13:00 · 7 commits" aria-label="Wed 13:00 · 7 commits"></span><span class="c l2" data-tip="Wed 14:00 · 8 commits" aria-label="Wed 14:00 · 8 commits"></span><span class="c l1" data-tip="Wed 15:00 · 5 commits" aria-label="Wed 15:00 · 5 commits"></span><span class="c l1" data-tip="Wed 16:00 · 2 commits" aria-label="Wed 16:00 · 2 commits"></span><span class="c l0" data-tip="Wed 17:00 · 0 commits" aria-label="Wed 17:00 · 0 commits"></span><span class="c l1" data-tip="Wed 18:00 · 2 commits" aria-label="Wed 18:00 · 2 commits"></span><span class="c l1" data-tip="Wed 19:00 · 4 commits" aria-label="Wed 19:00 · 4 commits"></span><span class="c l1" data-tip="Wed 20:00 · 4 commits" aria-label="Wed 20:00 · 4 commits"></span><span class="c l2" data-tip="Wed 21:00 · 9 commits" aria-label="Wed 21:00 · 9 commits"></span><span class="c l1" data-tip="Wed 22:00 · 4 commits" aria-label="Wed 22:00 · 4 commits"></span><span class="c l3" data-tip="Wed 23:00 · 19 commits" aria-label="Wed 23:00 · 19 commits"></span><span class="wd">Thu</span><span class="c l1" data-tip="Thu 00:00 · 6 commits" aria-label="Thu 00:00 · 6 commits"></span><span class="c l0" data-tip="Thu 01:00 · 0 commits" aria-label="Thu 01:00 · 0 commits"></span><span class="c l0" data-tip="Thu 02:00 · 0 commits" aria-label="Thu 02:00 · 0 commits"></span><span class="c l0" data-tip="Thu 03:00 · 0 commits" aria-label="Thu 03:00 · 0 commits"></span><span class="c l0" data-tip="Thu 04:00 · 0 commits" aria-label="Thu 04:00 · 0 commits"></span><span class="c l0" data-tip="Thu 05:00 · 0 commits" aria-label="Thu 05:00 · 0 commits"></span><span class="c l0" data-tip="Thu 06:00 · 0 commits" aria-label="Thu 06:00 · 0 commits"></span><span class="c l0" data-tip="Thu 07:00 · 0 commits" aria-label="Thu 07:00 · 0 commits"></span><span class="c l0" data-tip="Thu 08:00 · 0 commits" aria-label="Thu 08:00 · 0 commits"></span><span class="c l0" data-tip="Thu 09:00 · 0 commits" aria-label="Thu 09:00 · 0 commits"></span><span class="c l0" data-tip="Thu 10:00 · 0 commits" aria-label="Thu 10:00 · 0 commits"></span><span class="c l1" data-tip="Thu 11:00 · 1 commits" aria-label="Thu 11:00 · 1 commits"></span><span class="c l0" data-tip="Thu 12:00 · 0 commits" aria-label="Thu 12:00 · 0 commits"></span><span class="c l1" data-tip="Thu 13:00 · 1 commits" aria-label="Thu 13:00 · 1 commits"></span><span class="c l0" data-tip="Thu 14:00 · 0 commits" aria-label="Thu 14:00 · 0 commits"></span><span class="c l0" data-tip="Thu 15:00 · 0 commits" aria-label="Thu 15:00 · 0 commits"></span><span class="c l0" data-tip="Thu 16:00 · 0 commits" aria-label="Thu 16:00 · 0 commits"></span><span class="c l1" data-tip="Thu 17:00 · 2 commits" aria-label="Thu 17:00 · 2 commits"></span><span class="c l2" data-tip="Thu 18:00 · 11 commits" aria-label="Thu 18:00 · 11 commits"></span><span class="c l1" data-tip="Thu 19:00 · 2 commits" aria-label="Thu 19:00 · 2 commits"></span><span class="c l1" data-tip="Thu 20:00 · 1 commits" aria-label="Thu 20:00 · 1 commits"></span><span class="c l1" data-tip="Thu 21:00 · 5 commits" aria-label="Thu 21:00 · 5 commits"></span><span class="c l3" data-tip="Thu 22:00 · 23 commits" aria-label="Thu 22:00 · 23 commits"></span><span class="c l3" data-tip="Thu 23:00 · 25 commits" aria-label="Thu 23:00 · 25 commits"></span><span class="wd">Fri</span><span class="c l1" data-tip="Fri 00:00 · 4 commits" aria-label="Fri 00:00 · 4 commits"></span><span class="c l2" data-tip="Fri 01:00 · 10 commits" aria-label="Fri 01:00 · 10 commits"></span><span class="c l0" data-tip="Fri 02:00 · 0 commits" aria-label="Fri 02:00 · 0 commits"></span><span class="c l0" data-tip="Fri 03:00 · 0 commits" aria-label="Fri 03:00 · 0 commits"></span><span class="c l0" data-tip="Fri 04:00 · 0 commits" aria-label="Fri 04:00 · 0 commits"></span><span class="c l0" data-tip="Fri 05:00 · 0 commits" aria-label="Fri 05:00 · 0 commits"></span><span class="c l0" data-tip="Fri 06:00 · 0 commits" aria-label="Fri 06:00 · 0 commits"></span><span class="c l0" data-tip="Fri 07:00 · 0 commits" aria-label="Fri 07:00 · 0 commits"></span><span class="c l1" data-tip="Fri 08:00 · 3 commits" aria-label="Fri 08:00 · 3 commits"></span><span class="c l1" data-tip="Fri 09:00 · 1 commits" aria-label="Fri 09:00 · 1 commits"></span><span class="c l1" data-tip="Fri 10:00 · 7 commits" aria-label="Fri 10:00 · 7 commits"></span><span class="c l0" data-tip="Fri 11:00 · 0 commits" aria-label="Fri 11:00 · 0 commits"></span><span class="c l1" data-tip="Fri 12:00 · 1 commits" aria-label="Fri 12:00 · 1 commits"></span><span class="c l1" data-tip="Fri 13:00 · 2 commits" aria-label="Fri 13:00 · 2 commits"></span><span class="c l1" data-tip="Fri 14:00 · 7 commits" aria-label="Fri 14:00 · 7 commits"></span><span class="c l1" data-tip="Fri 15:00 · 3 commits" aria-label="Fri 15:00 · 3 commits"></span><span class="c l2" data-tip="Fri 16:00 · 13 commits" aria-label="Fri 16:00 · 13 commits"></span><span class="c l1" data-tip="Fri 17:00 · 5 commits" aria-label="Fri 17:00 · 5 commits"></span><span class="c l1" data-tip="Fri 18:00 · 3 commits" aria-label="Fri 18:00 · 3 commits"></span><span class="c l1" data-tip="Fri 19:00 · 7 commits" aria-label="Fri 19:00 · 7 commits"></span><span class="c l1" data-tip="Fri 20:00 · 5 commits" aria-label="Fri 20:00 · 5 commits"></span><span class="c l2" data-tip="Fri 21:00 · 8 commits" aria-label="Fri 21:00 · 8 commits"></span><span class="c l1" data-tip="Fri 22:00 · 2 commits" aria-label="Fri 22:00 · 2 commits"></span><span class="c l2" data-tip="Fri 23:00 · 9 commits" aria-label="Fri 23:00 · 9 commits"></span><span class="wd">Sat</span><span class="c l2" data-tip="Sat 00:00 · 8 commits" aria-label="Sat 00:00 · 8 commits"></span><span class="c l1" data-tip="Sat 01:00 · 6 commits" aria-label="Sat 01:00 · 6 commits"></span><span class="c l2" data-tip="Sat 02:00 · 12 commits" aria-label="Sat 02:00 · 12 commits"></span><span class="c l1" data-tip="Sat 03:00 · 2 commits" aria-label="Sat 03:00 · 2 commits"></span><span class="c l0" data-tip="Sat 04:00 · 0 commits" aria-label="Sat 04:00 · 0 commits"></span><span class="c l0" data-tip="Sat 05:00 · 0 commits" aria-label="Sat 05:00 · 0 commits"></span><span class="c l0" data-tip="Sat 06:00 · 0 commits" aria-label="Sat 06:00 · 0 commits"></span><span class="c l0" data-tip="Sat 07:00 · 0 commits" aria-label="Sat 07:00 · 0 commits"></span><span class="c l0" data-tip="Sat 08:00 · 0 commits" aria-label="Sat 08:00 · 0 commits"></span><span class="c l0" data-tip="Sat 09:00 · 0 commits" aria-label="Sat 09:00 · 0 commits"></span><span class="c l1" data-tip="Sat 10:00 · 4 commits" aria-label="Sat 10:00 · 4 commits"></span><span class="c l1" data-tip="Sat 11:00 · 7 commits" aria-label="Sat 11:00 · 7 commits"></span><span class="c l2" data-tip="Sat 12:00 · 14 commits" aria-label="Sat 12:00 · 14 commits"></span><span class="c l1" data-tip="Sat 13:00 · 7 commits" aria-label="Sat 13:00 · 7 commits"></span><span class="c l2" data-tip="Sat 14:00 · 8 commits" aria-label="Sat 14:00 · 8 commits"></span><span class="c l1" data-tip="Sat 15:00 · 4 commits" aria-label="Sat 15:00 · 4 commits"></span><span class="c l2" data-tip="Sat 16:00 · 9 commits" aria-label="Sat 16:00 · 9 commits"></span><span class="c l2" data-tip="Sat 17:00 · 9 commits" aria-label="Sat 17:00 · 9 commits"></span><span class="c l2" data-tip="Sat 18:00 · 10 commits" aria-label="Sat 18:00 · 10 commits"></span><span class="c l1" data-tip="Sat 19:00 · 6 commits" aria-label="Sat 19:00 · 6 commits"></span><span class="c l2" data-tip="Sat 20:00 · 13 commits" aria-label="Sat 20:00 · 13 commits"></span><span class="c l2" data-tip="Sat 21:00 · 9 commits" aria-label="Sat 21:00 · 9 commits"></span><span class="c l2" data-tip="Sat 22:00 · 13 commits" aria-label="Sat 22:00 · 13 commits"></span><span class="c l2" data-tip="Sat 23:00 · 8 commits" aria-label="Sat 23:00 · 8 commits"></span><span class="wd">Sun</span><span class="c l4" data-tip="Sun 00:00 · 32 commits" aria-label="Sun 00:00 · 32 commits"></span><span class="c l4" data-tip="Sun 01:00 · 37 commits" aria-label="Sun 01:00 · 37 commits"></span><span class="c l1" data-tip="Sun 02:00 · 6 commits" aria-label="Sun 02:00 · 6 commits"></span><span class="c l0" data-tip="Sun 03:00 · 0 commits" aria-label="Sun 03:00 · 0 commits"></span><span class="c l0" data-tip="Sun 04:00 · 0 commits" aria-label="Sun 04:00 · 0 commits"></span><span class="c l0" data-tip="Sun 05:00 · 0 commits" aria-label="Sun 05:00 · 0 commits"></span><span class="c l0" data-tip="Sun 06:00 · 0 commits" aria-label="Sun 06:00 · 0 commits"></span><span class="c l1" data-tip="Sun 07:00 · 2 commits" aria-label="Sun 07:00 · 2 commits"></span><span class="c l2" data-tip="Sun 08:00 · 9 commits" aria-label="Sun 08:00 · 9 commits"></span><span class="c l2" data-tip="Sun 09:00 · 8 commits" aria-label="Sun 09:00 · 8 commits"></span><span class="c l1" data-tip="Sun 10:00 · 4 commits" aria-label="Sun 10:00 · 4 commits"></span><span class="c l1" data-tip="Sun 11:00 · 5 commits" aria-label="Sun 11:00 · 5 commits"></span><span class="c l4" data-tip="Sun 12:00 · 39 commits" aria-label="Sun 12:00 · 39 commits"></span><span class="c l3" data-tip="Sun 13:00 · 21 commits" aria-label="Sun 13:00 · 21 commits"></span><span class="c l1" data-tip="Sun 14:00 · 7 commits" aria-label="Sun 14:00 · 7 commits"></span><span class="c l1" data-tip="Sun 15:00 · 7 commits" aria-label="Sun 15:00 · 7 commits"></span><span class="c l1" data-tip="Sun 16:00 · 5 commits" aria-label="Sun 16:00 · 5 commits"></span><span class="c l2" data-tip="Sun 17:00 · 15 commits" aria-label="Sun 17:00 · 15 commits"></span><span class="c l1" data-tip="Sun 18:00 · 7 commits" aria-label="Sun 18:00 · 7 commits"></span><span class="c l2" data-tip="Sun 19:00 · 9 commits" aria-label="Sun 19:00 · 9 commits"></span><span class="c l2" data-tip="Sun 20:00 · 11 commits" aria-label="Sun 20:00 · 11 commits"></span><span class="c l2" data-tip="Sun 21:00 · 10 commits" aria-label="Sun 21:00 · 10 commits"></span><span class="c l3" data-tip="Sun 22:00 · 17 commits" aria-label="Sun 22:00 · 17 commits"></span><span class="c l4" data-tip="Sun 23:00 · 33 commits" aria-label="Sun 23:00 · 33 commits"></span></div></div><p class="num-note">Weekend 40%; late night (22:00–05:00) 44%.</p></div>
+      <div class="num-panel rv">
+        <h3>Code composition <b>· repos with the most code</b></h3>
+        <div class="stack">
+          <i style="width:75.2%;background:var(--acc)"></i>
+          <i style="width:24.8%;background:var(--ink)"></i>
+        </div>
+        <div class="stack-labels"><span>beamng-autopilot · 288k</span><span>Other 9 repos · 95k</span></div>
+        <div class="bar-row"><span class="bar-name">audiotransfer</span><div class="bar-track"><i style="width:100.0%"></i></div><span class="bar-val">25k</span></div><div class="bar-row"><span class="bar-name">my-profile</span><div class="bar-track"><i style="width:94.8%"></i></div><span class="bar-val">24k</span></div><div class="bar-row"><span class="bar-name">focus-time-tracker</span><div class="bar-track"><i style="width:61.3%"></i></div><span class="bar-val">15k</span></div><div class="bar-row"><span class="bar-name">codeyear</span><div class="bar-track"><i style="width:40.5%"></i></div><span class="bar-val">10k</span></div><div class="bar-row"><span class="bar-name">SmartCar-STM32</span><div class="bar-track"><i style="width:37.7%"></i></div><span class="bar-val">9,440</span></div>
+      </div>
+      <div class="num-panel rv" style="--d:90ms">
+        <h3>Languages <b>· lines by language</b></h3>
+        <div class="lang-bar"><i style="width:71.19%;background:#171512"></i><i style="width:12.56%;background:#d4491f"></i><i style="width:4.33%;background:#8f8672"></i><i style="width:3.68%;background:#b3ab97"></i><i style="width:2.47%;background:#6f6a5e"></i><i style="width:1.62%;background:#c8c1ac"></i><i style="width:4.14%;background:#171512"></i></div>
+        <div class="lang-legend"><div><span class="sq" style="background:#171512"></span>Python<b>71%</b></div><div><span class="sq" style="background:#d4491f"></span>Markdown<b>13%</b></div><div><span class="sq" style="background:#8f8672"></span>JSON<b>4%</b></div><div><span class="sq" style="background:#b3ab97"></span>JavaScript<b>4%</b></div><div><span class="sq" style="background:#6f6a5e"></span>TeX<b>2%</b></div><div><span class="sq" style="background:#c8c1ac"></span>C<b>2%</b></div><div><span class="sq" style="background:#171512"></span>Other<b>4%</b></div></div>
+      </div>
+      <div class="num-panel rv span2"><h3>Language mix <b>· share by quarter</b></h3><div class="q-chart"><div class="q-col"><div class="q-stack"><span class="q-none">No commits</span></div><span class="q-label">Q1</span></div><div class="q-col"><div class="q-stack"><span class="q-none">No commits</span></div><span class="q-label">Q2</span></div><div class="q-col"><div class="q-stack"><i style="height:82.57%;background:#171512" data-tip="Python · 83% · 226k lines"></i><i style="height:10.45%;background:#d4491f" data-tip="Markdown · 10% · 29k lines"></i><i style="height:0.82%;background:#8f8672" data-tip="JSON · 1% · 2,241 lines"></i><i style="height:2.59%;background:#b3ab97" data-tip="JavaScript · 3% · 7,086 lines"></i><i style="height:3.58%;background:#c8c1ac" data-tip="Other · 4% · 9,824 lines"></i></div><span class="q-label">Q3</span></div><div class="q-col"><div class="q-stack"><i style="height:41.67%;background:#171512" data-tip="Python · 42% · 44k lines"></i><i style="height:18.04%;background:#d4491f" data-tip="Markdown · 18% · 19k lines"></i><i style="height:13.46%;background:#8f8672" data-tip="JSON · 13% · 14k lines"></i><i style="height:6.53%;background:#b3ab97" data-tip="JavaScript · 7% · 6,893 lines"></i><i style="height:20.29%;background:#c8c1ac" data-tip="Other · 20% · 21k lines"></i></div><span class="q-label">Q4</span></div></div><div class="q-legend"><span><i style="background:#171512"></i>Python</span><span><i style="background:#d4491f"></i>Markdown</span><span><i style="background:#8f8672"></i>JSON</span><span><i style="background:#b3ab97"></i>JavaScript</span><span><i style="background:#c8c1ac"></i>Other</span></div></div>
+      <div class="num-panel rv"><h3>Commit size <b>· lines changed per commit</b></h3><div class="bar-row"><span class="bar-name">0–10 lines</span><div class="bar-track"><i style="width:28.2%"></i></div><span class="bar-val">143</span></div><div class="bar-row"><span class="bar-name">10–100 lines</span><div class="bar-track"><i style="width:100.0%"></i></div><span class="bar-val">507</span></div><div class="bar-row"><span class="bar-name">100–500 lines</span><div class="bar-track"><i style="width:55.2%"></i></div><span class="bar-val">280</span></div><div class="bar-row"><span class="bar-name">500–2k lines</span><div class="bar-track"><i style="width:20.9%"></i></div><span class="bar-val">106</span></div><div class="bar-row"><span class="bar-name">2k+ lines</span><div class="bar-track"><i style="width:8.1%"></i></div><span class="bar-val">41</span></div></div>
+      <div class="num-panel rv"><h3>Commit types <b>· which type appears most</b></h3><div class="bar-row"><span class="bar-name">docs</span><div class="bar-track"><i style="width:100.0%"></i></div><span class="bar-val">244</span></div><div class="bar-row"><span class="bar-name">fix</span><div class="bar-track"><i style="width:24.2%"></i></div><span class="bar-val">59</span></div><div class="bar-row"><span class="bar-name">feat</span><div class="bar-track"><i style="width:19.3%"></i></div><span class="bar-val">47</span></div><div class="bar-row"><span class="bar-name">perf</span><div class="bar-track"><i style="width:8.6%"></i></div><span class="bar-val">21</span></div><div class="bar-row"><span class="bar-name">tests</span><div class="bar-track"><i style="width:7.4%"></i></div><span class="bar-val">18</span></div><div class="bar-row"><span class="bar-name">refactor</span><div class="bar-track"><i style="width:5.3%"></i></div><span class="bar-val">13</span></div><div class="bar-row"><span class="bar-name">test</span><div class="bar-track"><i style="width:3.3%"></i></div><span class="bar-val">8</span></div><div class="bar-row"><span class="bar-name">chore</span><div class="bar-track"><i style="width:2.0%"></i></div><span class="bar-val">5</span></div></div>
+      <div class="num-panel rv"><h3>Keywords <b>· words in commit messages</b></h3><div class="chips-cloud"><span>改动<b>69</b></span><span>当日<b>68</b></span><span>原提<b>65</b></span><span>日改<b>65</b></span><span>fsd<b>54</b></span><span>lane<b>53</b></span><span>marble<b>52</b></span><span>machine<b>49</b></span><span>结果<b>49</b></span><span>measured<b>44</b></span><span>注册<b>39</b></span><span>预注<b>39</b></span><span>训练<b>37</b></span><span>squash<b>33</b></span></div><p class="num-note">Average 62 characters.</p></div>
+      <div class="num-panel rv"><h3>Message length <b>· how long commit messages are</b></h3><div class="bar-row"><span class="bar-name">0–20 chars</span><div class="bar-track"><i style="width:2.9%"></i></div><span class="bar-val">19</span></div><div class="bar-row"><span class="bar-name">20–40 chars</span><div class="bar-track"><i style="width:32.3%"></i></div><span class="bar-val">212</span></div><div class="bar-row"><span class="bar-name">40–80 chars</span><div class="bar-track"><i style="width:100.0%"></i></div><span class="bar-val">657</span></div><div class="bar-row"><span class="bar-name">80–160 chars</span><div class="bar-track"><i style="width:24.7%"></i></div><span class="bar-val">162</span></div><div class="bar-row"><span class="bar-name">160+ chars</span><div class="bar-track"><i style="width:4.1%"></i></div><span class="bar-val">27</span></div><p class="num-note">Longest message in "Yearly records".</p></div>
+      <div class="num-panel rv"><h3>Add/delete ratio <b>· lines added vs deleted</b></h3><div class="pair"><i style="width:89.8%;background:var(--ink)"></i><i style="width:10.2%;background:var(--acc)"></i></div><div class="stack-labels"><span>Added 344k lines</span><span>Deleted 39k lines</span></div><p class="num-note">Deletions / additions = 11%. Largest deletion: 4,406 lines (beamng-autopilot, 2026.08.18).</p><div class="sub-head">Most deletions</div><div class="bar-row"><span class="bar-name">beamng-autopilot</span><div class="bar-track"><i style="width:100.0%;background:var(--acc)"></i></div><span class="bar-val">27k</span></div><div class="bar-row"><span class="bar-name">my-profile</span><div class="bar-track"><i style="width:16.5%;background:var(--acc)"></i></div><span class="bar-val">4,461</span></div><div class="bar-row"><span class="bar-name">focus-time-tracker</span><div class="bar-track"><i style="width:10.9%;background:var(--acc)"></i></div><span class="bar-val">2,938</span></div></div>
+      <div class="num-panel rv"><h3>工作节奏 <b>· 会话而不是次数</b></h3><div class="mini-stats"><div><b>91</b><span>次编码会话</span></div><div><b>16h 01m</b><span>最长一次连续编码</span></div><div><b>62</b><span>最长会话里的提交</span></div><div><b>123m</b><span>平均会话时长</span></div></div><p class="num-note">间隔 ≤ 2 小时算同一会话。最长一次：2026.10.31 10:41 → 2026.11.01 02:42。</p></div>
+      <div class="num-panel rv span2"><h3>Repository lifecycle <b>· active span per repo</b></h3><div class="lc-chart"><div class="lc-months"><span></span><div class="lc-month-ticks"><span>01</span><span>02</span><span>03</span><span>04</span><span>05</span><span>06</span><span>07</span><span>08</span><span>09</span><span>10</span><span>11</span><span>12</span></div><span class="lc-end">First–latest</span></div><div class="lc-row"><span class="lc-name" data-tip="autosnake · 1 commits · 1 active days">autosnake</span><div class="lc-track" data-tip="1 commits · 641 lines changed · 1 active days"><i class="dot" style="left:calc(59.62% - 3px)"></i></div><span class="lc-date">08.06</span></div><div class="lc-row"><span class="lc-name" data-tip="DQNsnake · 1 commits · 1 active days">DQNsnake</span><div class="lc-track" data-tip="1 commits · 906 lines changed · 1 active days"><i class="dot" style="left:calc(60.44% - 3px)"></i></div><span class="lc-date">08.09</span></div><div class="lc-row"><span class="lc-name" data-tip="focus-time-tracker · 34 commits · 7 active days">focus-time-tracker</span><div class="lc-track" data-tip="34 commits · 15k lines changed · 7 active days"><i class="" style="left:60.7%;width:11.26%"></i></div><span class="lc-date">08.10–09.20</span></div><div class="lc-row"><span class="lc-name" data-tip="beamng-autopilot · 837 commits · 46 active days">beamng-autopilot</span><div class="lc-track" data-tip="837 commits · 288k lines changed · 46 active days"><i class="hot" style="left:61.8%;width:22.25%"></i></div><span class="lc-date">08.14–11.03</span></div><div class="lc-row"><span class="lc-name" data-tip="audio-visualizer · 16 commits · 3 active days">audio-visualizer</span><div class="lc-track" data-tip="16 commits · 5,223 lines changed · 3 active days"><i class="" style="left:67.9%;width:4.12%"></i></div><span class="lc-date">09.05–09.20</span></div><div class="lc-row"><span class="lc-name" data-tip="my-profile · 158 commits · 8 active days">my-profile</span><div class="lc-track" data-tip="158 commits · 24k lines changed · 8 active days"><i class="hot" style="left:70.6%;width:13.46%"></i></div><span class="lc-date">09.15–11.03</span></div><div class="lc-row"><span class="lc-name" data-tip="SmartCar-STM32 · 1 commits · 1 active days">SmartCar-STM32</span><div class="lc-track" data-tip="1 commits · 9,440 lines changed · 1 active days"><i class="dot hot" style="left:calc(77.75% - 3px)"></i></div><span class="lc-date">10.11</span></div><div class="lc-row"><span class="lc-name" data-tip="audiotransfer · 8 commits · 3 active days">audiotransfer</span><div class="lc-track" data-tip="8 commits · 25k lines changed · 3 active days"><i class="hot" style="left:78.3%;width:0.55%"></i></div><span class="lc-date">10.13–10.15</span></div><div class="lc-row"><span class="lc-name" data-tip="codeyear · 20 commits · 2 active days">codeyear</span><div class="lc-track" data-tip="20 commits · 10k lines changed · 2 active days"><i class="hot" style="left:83.8%;width:0.27%"></i></div><span class="lc-date">11.02–11.03</span></div><div class="lc-row"><span class="lc-name" data-tip="portfolio · 1 commits · 1 active days">portfolio</span><div class="lc-track" data-tip="1 commits · 1,579 lines changed · 1 active days"><i class="dot hot" style="left:calc(83.79% - 3px)"></i></div><span class="lc-date">11.02</span></div></div></div>
+      <div class="num-panel rv span2"><h3>Repo graveyard <b>· repos untouched for 30+ days</b></h3><div class="dormant-row"><span class="d-name">autosnake</span><span class="d-last">Last commit 2026.08.06</span><span class="d-days">89 days</span></div><div class="dormant-row"><span class="d-name">DQNsnake</span><span class="d-last">Last commit 2026.08.09</span><span class="d-days">86 days</span></div><div class="dormant-row"><span class="d-name">focus-time-tracker</span><span class="d-last">Last commit 2026.09.20</span><span class="d-days">44 days</span></div><div class="dormant-row"><span class="d-name">audio-visualizer</span><span class="d-last">Last commit 2026.09.20</span><span class="d-days">44 days</span></div></div>
+      <div class="num-panel rv span2">
+        <h3>Most edited files <b>· changed lines per file</b></h3>
+        <div class="file-line"><div class="file-path">beamng-autopilot/beamng_autopilot/fsd_drive.py</div><div class="file-meta"><div class="bar-track"><i style="width:100.0%"></i></div><span class="bar-val">10k</span></div></div><div class="file-line"><div class="file-path">beamng-autopilot/scripts/m5_autopilot.py</div><div class="file-meta"><div class="bar-track"><i style="width:95.5%"></i></div><span class="bar-val">9,880</span></div></div><div class="file-line"><div class="file-path">beamng-autopilot/scripts/m5_fsd_drive.py</div><div class="file-meta"><div class="bar-track"><i style="width:57.7%"></i></div><span class="bar-val">5,971</span></div></div><div class="file-line"><div class="file-path">beamng-autopilot/scripts/m5_seg_dashboard.py</div><div class="file-meta"><div class="bar-track"><i style="width:56.4%"></i></div><span class="bar-val">5,836</span></div></div><div class="file-line"><div class="file-path">beamng-autopilot/beamng_autopilot/planner.py</div><div class="file-meta"><div class="bar-track"><i style="width:55.3%"></i></div><span class="bar-val">5,722</span></div></div><div class="file-line"><div class="file-path">my-profile/styles.css</div><div class="file-meta"><div class="bar-track"><i style="width:39.9%"></i></div><span class="bar-val">4,128</span></div></div><div class="file-line"><div class="file-path">beamng-autopilot/scripts/m5_seg_autoloop.py</div><div class="file-meta"><div class="bar-track"><i style="width:39.2%"></i></div><span class="bar-val">4,056</span></div></div><div class="file-line"><div class="file-path">focus-time-tracker/tracker/app.py</div><div class="file-meta"><div class="bar-track"><i style="width:39.2%"></i></div><span class="bar-val">4,050</span></div></div>
+      </div>
+
+    <div class="num-panel heat-panel rv span2">
+      <h3>2026 activity <b>· days with commits</b></h3>
+      <div class="heat-wrap">
+        <div class="months"><span>01</span><span>02</span><span>03</span><span>04</span><span>05</span><span>06</span><span>07</span><span>08</span><span>09</span><span>10</span><span>11</span><span>12</span></div>
+        <div class="heat"><span class="cell out"></span><span class="cell out"></span><span class="cell out"></span><span class="cell l0" data-tip="2026-01-01 · 0 commits" aria-label="2026-01-01 · 0 commits"></span><span class="cell l0" data-tip="2026-01-02 · 0 commits" aria-label="2026-01-02 · 0 commits"></span><span class="cell l0" data-tip="2026-01-03 · 0 commits" aria-label="2026-01-03 · 0 commits"></span><span class="cell l0" data-tip="2026-01-04 · 0 commits" aria-label="2026-01-04 · 0 commits"></span><span class="cell l0" data-tip="2026-01-05 · 0 commits" aria-label="2026-01-05 · 0 commits"></span><span class="cell l0" data-tip="2026-01-06 · 0 commits" aria-label="2026-01-06 · 0 commits"></span><span class="cell l0" data-tip="2026-01-07 · 0 commits" aria-label="2026-01-07 · 0 commits"></span><span class="cell l0" data-tip="2026-01-08 · 0 commits" aria-label="2026-01-08 · 0 commits"></span><span class="cell l0" data-tip="2026-01-09 · 0 commits" aria-label="2026-01-09 · 0 commits"></span><span class="cell l0" data-tip="2026-01-10 · 0 commits" aria-label="2026-01-10 · 0 commits"></span><span class="cell l0" data-tip="2026-01-11 · 0 commits" aria-label="2026-01-11 · 0 commits"></span><span class="cell l0" data-tip="2026-01-12 · 0 commits" aria-label="2026-01-12 · 0 commits"></span><span class="cell l0" data-tip="2026-01-13 · 0 commits" aria-label="2026-01-13 · 0 commits"></span><span class="cell l0" data-tip="2026-01-14 · 0 commits" aria-label="2026-01-14 · 0 commits"></span><span class="cell l0" data-tip="2026-01-15 · 0 commits" aria-label="2026-01-15 · 0 commits"></span><span class="cell l0" data-tip="2026-01-16 · 0 commits" aria-label="2026-01-16 · 0 commits"></span><span class="cell l0" data-tip="2026-01-17 · 0 commits" aria-label="2026-01-17 · 0 commits"></span><span class="cell l0" data-tip="2026-01-18 · 0 commits" aria-label="2026-01-18 · 0 commits"></span><span class="cell l0" data-tip="2026-01-19 · 0 commits" aria-label="2026-01-19 · 0 commits"></span><span class="cell l0" data-tip="2026-01-20 · 0 commits" aria-label="2026-01-20 · 0 commits"></span><span class="cell l0" data-tip="2026-01-21 · 0 commits" aria-label="2026-01-21 · 0 commits"></span><span class="cell l0" data-tip="2026-01-22 · 0 commits" aria-label="2026-01-22 · 0 commits"></span><span class="cell l0" data-tip="2026-01-23 · 0 commits" aria-label="2026-01-23 · 0 commits"></span><span class="cell l0" data-tip="2026-01-24 · 0 commits" aria-label="2026-01-24 · 0 commits"></span><span class="cell l0" data-tip="2026-01-25 · 0 commits" aria-label="2026-01-25 · 0 commits"></span><span class="cell l0" data-tip="2026-01-26 · 0 commits" aria-label="2026-01-26 · 0 commits"></span><span class="cell l0" data-tip="2026-01-27 · 0 commits" aria-label="2026-01-27 · 0 commits"></span><span class="cell l0" data-tip="2026-01-28 · 0 commits" aria-label="2026-01-28 · 0 commits"></span><span class="cell l0" data-tip="2026-01-29 · 0 commits" aria-label="2026-01-29 · 0 commits"></span><span class="cell l0" data-tip="2026-01-30 · 0 commits" aria-label="2026-01-30 · 0 commits"></span><span class="cell l0" data-tip="2026-01-31 · 0 commits" aria-label="2026-01-31 · 0 commits"></span><span class="cell l0" data-tip="2026-02-01 · 0 commits" aria-label="2026-02-01 · 0 commits"></span><span class="cell l0" data-tip="2026-02-02 · 0 commits" aria-label="2026-02-02 · 0 commits"></span><span class="cell l0" data-tip="2026-02-03 · 0 commits" aria-label="2026-02-03 · 0 commits"></span><span class="cell l0" data-tip="2026-02-04 · 0 commits" aria-label="2026-02-04 · 0 commits"></span><span class="cell l0" data-tip="2026-02-05 · 0 commits" aria-label="2026-02-05 · 0 commits"></span><span class="cell l0" data-tip="2026-02-06 · 0 commits" aria-label="2026-02-06 · 0 commits"></span><span class="cell l0" data-tip="2026-02-07 · 0 commits" aria-label="2026-02-07 · 0 commits"></span><span class="cell l0" data-tip="2026-02-08 · 0 commits" aria-label="2026-02-08 · 0 commits"></span><span class="cell l0" data-tip="2026-02-09 · 0 commits" aria-label="2026-02-09 · 0 commits"></span><span class="cell l0" data-tip="2026-02-10 · 0 commits" aria-label="2026-02-10 · 0 commits"></span><span class="cell l0" data-tip="2026-02-11 · 0 commits" aria-label="2026-02-11 · 0 commits"></span><span class="cell l0" data-tip="2026-02-12 · 0 commits" aria-label="2026-02-12 · 0 commits"></span><span class="cell l0" data-tip="2026-02-13 · 0 commits" aria-label="2026-02-13 · 0 commits"></span><span class="cell l0" data-tip="2026-02-14 · 0 commits" aria-label="2026-02-14 · 0 commits"></span><span class="cell l0" data-tip="2026-02-15 · 0 commits" aria-label="2026-02-15 · 0 commits"></span><span class="cell l0" data-tip="2026-02-16 · 0 commits" aria-label="2026-02-16 · 0 commits"></span><span class="cell l0" data-tip="2026-02-17 · 0 commits" aria-label="2026-02-17 · 0 commits"></span><span class="cell l0" data-tip="2026-02-18 · 0 commits" aria-label="2026-02-18 · 0 commits"></span><span class="cell l0" data-tip="2026-02-19 · 0 commits" aria-label="2026-02-19 · 0 commits"></span><span class="cell l0" data-tip="2026-02-20 · 0 commits" aria-label="2026-02-20 · 0 commits"></span><span class="cell l0" data-tip="2026-02-21 · 0 commits" aria-label="2026-02-21 · 0 commits"></span><span class="cell l0" data-tip="2026-02-22 · 0 commits" aria-label="2026-02-22 · 0 commits"></span><span class="cell l0" data-tip="2026-02-23 · 0 commits" aria-label="2026-02-23 · 0 commits"></span><span class="cell l0" data-tip="2026-02-24 · 0 commits" aria-label="2026-02-24 · 0 commits"></span><span class="cell l0" data-tip="2026-02-25 · 0 commits" aria-label="2026-02-25 · 0 commits"></span><span class="cell l0" data-tip="2026-02-26 · 0 commits" aria-label="2026-02-26 · 0 commits"></span><span class="cell l0" data-tip="2026-02-27 · 0 commits" aria-label="2026-02-27 · 0 commits"></span><span class="cell l0" data-tip="2026-02-28 · 0 commits" aria-label="2026-02-28 · 0 commits"></span><span class="cell l0" data-tip="2026-03-01 · 0 commits" aria-label="2026-03-01 · 0 commits"></span><span class="cell l0" data-tip="2026-03-02 · 0 commits" aria-label="2026-03-02 · 0 commits"></span><span class="cell l0" data-tip="2026-03-03 · 0 commits" aria-label="2026-03-03 · 0 commits"></span><span class="cell l0" data-tip="2026-03-04 · 0 commits" aria-label="2026-03-04 · 0 commits"></span><span class="cell l0" data-tip="2026-03-05 · 0 commits" aria-label="2026-03-05 · 0 commits"></span><span class="cell l0" data-tip="2026-03-06 · 0 commits" aria-label="2026-03-06 · 0 commits"></span><span class="cell l0" data-tip="2026-03-07 · 0 commits" aria-label="2026-03-07 · 0 commits"></span><span class="cell l0" data-tip="2026-03-08 · 0 commits" aria-label="2026-03-08 · 0 commits"></span><span class="cell l0" data-tip="2026-03-09 · 0 commits" aria-label="2026-03-09 · 0 commits"></span><span class="cell l0" data-tip="2026-03-10 · 0 commits" aria-label="2026-03-10 · 0 commits"></span><span class="cell l0" data-tip="2026-03-11 · 0 commits" aria-label="2026-03-11 · 0 commits"></span><span class="cell l0" data-tip="2026-03-12 · 0 commits" aria-label="2026-03-12 · 0 commits"></span><span class="cell l0" data-tip="2026-03-13 · 0 commits" aria-label="2026-03-13 · 0 commits"></span><span class="cell l0" data-tip="2026-03-14 · 0 commits" aria-label="2026-03-14 · 0 commits"></span><span class="cell l0" data-tip="2026-03-15 · 0 commits" aria-label="2026-03-15 · 0 commits"></span><span class="cell l0" data-tip="2026-03-16 · 0 commits" aria-label="2026-03-16 · 0 commits"></span><span class="cell l0" data-tip="2026-03-17 · 0 commits" aria-label="2026-03-17 · 0 commits"></span><span class="cell l0" data-tip="2026-03-18 · 0 commits" aria-label="2026-03-18 · 0 commits"></span><span class="cell l0" data-tip="2026-03-19 · 0 commits" aria-label="2026-03-19 · 0 commits"></span><span class="cell l0" data-tip="2026-03-20 · 0 commits" aria-label="2026-03-20 · 0 commits"></span><span class="cell l0" data-tip="2026-03-21 · 0 commits" aria-label="2026-03-21 · 0 commits"></span><span class="cell l0" data-tip="2026-03-22 · 0 commits" aria-label="2026-03-22 · 0 commits"></span><span class="cell l0" data-tip="2026-03-23 · 0 commits" aria-label="2026-03-23 · 0 commits"></span><span class="cell l0" data-tip="2026-03-24 · 0 commits" aria-label="2026-03-24 · 0 commits"></span><span class="cell l0" data-tip="2026-03-25 · 0 commits" aria-label="2026-03-25 · 0 commits"></span><span class="cell l0" data-tip="2026-03-26 · 0 commits" aria-label="2026-03-26 · 0 commits"></span><span class="cell l0" data-tip="2026-03-27 · 0 commits" aria-label="2026-03-27 · 0 commits"></span><span class="cell l0" data-tip="2026-03-28 · 0 commits" aria-label="2026-03-28 · 0 commits"></span><span class="cell l0" data-tip="2026-03-29 · 0 commits" aria-label="2026-03-29 · 0 commits"></span><span class="cell l0" data-tip="2026-03-30 · 0 commits" aria-label="2026-03-30 · 0 commits"></span><span class="cell l0" data-tip="2026-03-31 · 0 commits" aria-label="2026-03-31 · 0 commits"></span><span class="cell l0" data-tip="2026-04-01 · 0 commits" aria-label="2026-04-01 · 0 commits"></span><span class="cell l0" data-tip="2026-04-02 · 0 commits" aria-label="2026-04-02 · 0 commits"></span><span class="cell l0" data-tip="2026-04-03 · 0 commits" aria-label="2026-04-03 · 0 commits"></span><span class="cell l0" data-tip="2026-04-04 · 0 commits" aria-label="2026-04-04 · 0 commits"></span><span class="cell l0" data-tip="2026-04-05 · 0 commits" aria-label="2026-04-05 · 0 commits"></span><span class="cell l0" data-tip="2026-04-06 · 0 commits" aria-label="2026-04-06 · 0 commits"></span><span class="cell l0" data-tip="2026-04-07 · 0 commits" aria-label="2026-04-07 · 0 commits"></span><span class="cell l0" data-tip="2026-04-08 · 0 commits" aria-label="2026-04-08 · 0 commits"></span><span class="cell l0" data-tip="2026-04-09 · 0 commits" aria-label="2026-04-09 · 0 commits"></span><span class="cell l0" data-tip="2026-04-10 · 0 commits" aria-label="2026-04-10 · 0 commits"></span><span class="cell l0" data-tip="2026-04-11 · 0 commits" aria-label="2026-04-11 · 0 commits"></span><span class="cell l0" data-tip="2026-04-12 · 0 commits" aria-label="2026-04-12 · 0 commits"></span><span class="cell l0" data-tip="2026-04-13 · 0 commits" aria-label="2026-04-13 · 0 commits"></span><span class="cell l0" data-tip="2026-04-14 · 0 commits" aria-label="2026-04-14 · 0 commits"></span><span class="cell l0" data-tip="2026-04-15 · 0 commits" aria-label="2026-04-15 · 0 commits"></span><span class="cell l0" data-tip="2026-04-16 · 0 commits" aria-label="2026-04-16 · 0 commits"></span><span class="cell l0" data-tip="2026-04-17 · 0 commits" aria-label="2026-04-17 · 0 commits"></span><span class="cell l0" data-tip="2026-04-18 · 0 commits" aria-label="2026-04-18 · 0 commits"></span><span class="cell l0" data-tip="2026-04-19 · 0 commits" aria-label="2026-04-19 · 0 commits"></span><span class="cell l0" data-tip="2026-04-20 · 0 commits" aria-label="2026-04-20 · 0 commits"></span><span class="cell l0" data-tip="2026-04-21 · 0 commits" aria-label="2026-04-21 · 0 commits"></span><span class="cell l0" data-tip="2026-04-22 · 0 commits" aria-label="2026-04-22 · 0 commits"></span><span class="cell l0" data-tip="2026-04-23 · 0 commits" aria-label="2026-04-23 · 0 commits"></span><span class="cell l0" data-tip="2026-04-24 · 0 commits" aria-label="2026-04-24 · 0 commits"></span><span class="cell l0" data-tip="2026-04-25 · 0 commits" aria-label="2026-04-25 · 0 commits"></span><span class="cell l0" data-tip="2026-04-26 · 0 commits" aria-label="2026-04-26 · 0 commits"></span><span class="cell l0" data-tip="2026-04-27 · 0 commits" aria-label="2026-04-27 · 0 commits"></span><span class="cell l0" data-tip="2026-04-28 · 0 commits" aria-label="2026-04-28 · 0 commits"></span><span class="cell l0" data-tip="2026-04-29 · 0 commits" aria-label="2026-04-29 · 0 commits"></span><span class="cell l0" data-tip="2026-04-30 · 0 commits" aria-label="2026-04-30 · 0 commits"></span><span class="cell l0" data-tip="2026-05-01 · 0 commits" aria-label="2026-05-01 · 0 commits"></span><span class="cell l0" data-tip="2026-05-02 · 0 commits" aria-label="2026-05-02 · 0 commits"></span><span class="cell l0" data-tip="2026-05-03 · 0 commits" aria-label="2026-05-03 · 0 commits"></span><span class="cell l0" data-tip="2026-05-04 · 0 commits" aria-label="2026-05-04 · 0 commits"></span><span class="cell l0" data-tip="2026-05-05 · 0 commits" aria-label="2026-05-05 · 0 commits"></span><span class="cell l0" data-tip="2026-05-06 · 0 commits" aria-label="2026-05-06 · 0 commits"></span><span class="cell l0" data-tip="2026-05-07 · 0 commits" aria-label="2026-05-07 · 0 commits"></span><span class="cell l0" data-tip="2026-05-08 · 0 commits" aria-label="2026-05-08 · 0 commits"></span><span class="cell l0" data-tip="2026-05-09 · 0 commits" aria-label="2026-05-09 · 0 commits"></span><span class="cell l0" data-tip="2026-05-10 · 0 commits" aria-label="2026-05-10 · 0 commits"></span><span class="cell l0" data-tip="2026-05-11 · 0 commits" aria-label="2026-05-11 · 0 commits"></span><span class="cell l0" data-tip="2026-05-12 · 0 commits" aria-label="2026-05-12 · 0 commits"></span><span class="cell l0" data-tip="2026-05-13 · 0 commits" aria-label="2026-05-13 · 0 commits"></span><span class="cell l0" data-tip="2026-05-14 · 0 commits" aria-label="2026-05-14 · 0 commits"></span><span class="cell l0" data-tip="2026-05-15 · 0 commits" aria-label="2026-05-15 · 0 commits"></span><span class="cell l0" data-tip="2026-05-16 · 0 commits" aria-label="2026-05-16 · 0 commits"></span><span class="cell l0" data-tip="2026-05-17 · 0 commits" aria-label="2026-05-17 · 0 commits"></span><span class="cell l0" data-tip="2026-05-18 · 0 commits" aria-label="2026-05-18 · 0 commits"></span><span class="cell l0" data-tip="2026-05-19 · 0 commits" aria-label="2026-05-19 · 0 commits"></span><span class="cell l0" data-tip="2026-05-20 · 0 commits" aria-label="2026-05-20 · 0 commits"></span><span class="cell l0" data-tip="2026-05-21 · 0 commits" aria-label="2026-05-21 · 0 commits"></span><span class="cell l0" data-tip="2026-05-22 · 0 commits" aria-label="2026-05-22 · 0 commits"></span><span class="cell l0" data-tip="2026-05-23 · 0 commits" aria-label="2026-05-23 · 0 commits"></span><span class="cell l0" data-tip="2026-05-24 · 0 commits" aria-label="2026-05-24 · 0 commits"></span><span class="cell l0" data-tip="2026-05-25 · 0 commits" aria-label="2026-05-25 · 0 commits"></span><span class="cell l0" data-tip="2026-05-26 · 0 commits" aria-label="2026-05-26 · 0 commits"></span><span class="cell l0" data-tip="2026-05-27 · 0 commits" aria-label="2026-05-27 · 0 commits"></span><span class="cell l0" data-tip="2026-05-28 · 0 commits" aria-label="2026-05-28 · 0 commits"></span><span class="cell l0" data-tip="2026-05-29 · 0 commits" aria-label="2026-05-29 · 0 commits"></span><span class="cell l0" data-tip="2026-05-30 · 0 commits" aria-label="2026-05-30 · 0 commits"></span><span class="cell l0" data-tip="2026-05-31 · 0 commits" aria-label="2026-05-31 · 0 commits"></span><span class="cell l0" data-tip="2026-06-01 · 0 commits" aria-label="2026-06-01 · 0 commits"></span><span class="cell l0" data-tip="2026-06-02 · 0 commits" aria-label="2026-06-02 · 0 commits"></span><span class="cell l0" data-tip="2026-06-03 · 0 commits" aria-label="2026-06-03 · 0 commits"></span><span class="cell l0" data-tip="2026-06-04 · 0 commits" aria-label="2026-06-04 · 0 commits"></span><span class="cell l0" data-tip="2026-06-05 · 0 commits" aria-label="2026-06-05 · 0 commits"></span><span class="cell l0" data-tip="2026-06-06 · 0 commits" aria-label="2026-06-06 · 0 commits"></span><span class="cell l0" data-tip="2026-06-07 · 0 commits" aria-label="2026-06-07 · 0 commits"></span><span class="cell l0" data-tip="2026-06-08 · 0 commits" aria-label="2026-06-08 · 0 commits"></span><span class="cell l0" data-tip="2026-06-09 · 0 commits" aria-label="2026-06-09 · 0 commits"></span><span class="cell l0" data-tip="2026-06-10 · 0 commits" aria-label="2026-06-10 · 0 commits"></span><span class="cell l0" data-tip="2026-06-11 · 0 commits" aria-label="2026-06-11 · 0 commits"></span><span class="cell l0" data-tip="2026-06-12 · 0 commits" aria-label="2026-06-12 · 0 commits"></span><span class="cell l0" data-tip="2026-06-13 · 0 commits" aria-label="2026-06-13 · 0 commits"></span><span class="cell l0" data-tip="2026-06-14 · 0 commits" aria-label="2026-06-14 · 0 commits"></span><span class="cell l0" data-tip="2026-06-15 · 0 commits" aria-label="2026-06-15 · 0 commits"></span><span class="cell l0" data-tip="2026-06-16 · 0 commits" aria-label="2026-06-16 · 0 commits"></span><span class="cell l0" data-tip="2026-06-17 · 0 commits" aria-label="2026-06-17 · 0 commits"></span><span class="cell l0" data-tip="2026-06-18 · 0 commits" aria-label="2026-06-18 · 0 commits"></span><span class="cell l0" data-tip="2026-06-19 · 0 commits" aria-label="2026-06-19 · 0 commits"></span><span class="cell l0" data-tip="2026-06-20 · 0 commits" aria-label="2026-06-20 · 0 commits"></span><span class="cell l0" data-tip="2026-06-21 · 0 commits" aria-label="2026-06-21 · 0 commits"></span><span class="cell l0" data-tip="2026-06-22 · 0 commits" aria-label="2026-06-22 · 0 commits"></span><span class="cell l0" data-tip="2026-06-23 · 0 commits" aria-label="2026-06-23 · 0 commits"></span><span class="cell l0" data-tip="2026-06-24 · 0 commits" aria-label="2026-06-24 · 0 commits"></span><span class="cell l0" data-tip="2026-06-25 · 0 commits" aria-label="2026-06-25 · 0 commits"></span><span class="cell l0" data-tip="2026-06-26 · 0 commits" aria-label="2026-06-26 · 0 commits"></span><span class="cell l0" data-tip="2026-06-27 · 0 commits" aria-label="2026-06-27 · 0 commits"></span><span class="cell l0" data-tip="2026-06-28 · 0 commits" aria-label="2026-06-28 · 0 commits"></span><span class="cell l0" data-tip="2026-06-29 · 0 commits" aria-label="2026-06-29 · 0 commits"></span><span class="cell l0" data-tip="2026-06-30 · 0 commits" aria-label="2026-06-30 · 0 commits"></span><span class="cell l0" data-tip="2026-07-01 · 0 commits" aria-label="2026-07-01 · 0 commits"></span><span class="cell l0" data-tip="2026-07-02 · 0 commits" aria-label="2026-07-02 · 0 commits"></span><span class="cell l0" data-tip="2026-07-03 · 0 commits" aria-label="2026-07-03 · 0 commits"></span><span class="cell l0" data-tip="2026-07-04 · 0 commits" aria-label="2026-07-04 · 0 commits"></span><span class="cell l0" data-tip="2026-07-05 · 0 commits" aria-label="2026-07-05 · 0 commits"></span><span class="cell l0" data-tip="2026-07-06 · 0 commits" aria-label="2026-07-06 · 0 commits"></span><span class="cell l0" data-tip="2026-07-07 · 0 commits" aria-label="2026-07-07 · 0 commits"></span><span class="cell l0" data-tip="2026-07-08 · 0 commits" aria-label="2026-07-08 · 0 commits"></span><span class="cell l0" data-tip="2026-07-09 · 0 commits" aria-label="2026-07-09 · 0 commits"></span><span class="cell l0" data-tip="2026-07-10 · 0 commits" aria-label="2026-07-10 · 0 commits"></span><span class="cell l0" data-tip="2026-07-11 · 0 commits" aria-label="2026-07-11 · 0 commits"></span><span class="cell l0" data-tip="2026-07-12 · 0 commits" aria-label="2026-07-12 · 0 commits"></span><span class="cell l0" data-tip="2026-07-13 · 0 commits" aria-label="2026-07-13 · 0 commits"></span><span class="cell l0" data-tip="2026-07-14 · 0 commits" aria-label="2026-07-14 · 0 commits"></span><span class="cell l0" data-tip="2026-07-15 · 0 commits" aria-label="2026-07-15 · 0 commits"></span><span class="cell l0" data-tip="2026-07-16 · 0 commits" aria-label="2026-07-16 · 0 commits"></span><span class="cell l0" data-tip="2026-07-17 · 0 commits" aria-label="2026-07-17 · 0 commits"></span><span class="cell l0" data-tip="2026-07-18 · 0 commits" aria-label="2026-07-18 · 0 commits"></span><span class="cell l0" data-tip="2026-07-19 · 0 commits" aria-label="2026-07-19 · 0 commits"></span><span class="cell l0" data-tip="2026-07-20 · 0 commits" aria-label="2026-07-20 · 0 commits"></span><span class="cell l0" data-tip="2026-07-21 · 0 commits" aria-label="2026-07-21 · 0 commits"></span><span class="cell l0" data-tip="2026-07-22 · 0 commits" aria-label="2026-07-22 · 0 commits"></span><span class="cell l0" data-tip="2026-07-23 · 0 commits" aria-label="2026-07-23 · 0 commits"></span><span class="cell l0" data-tip="2026-07-24 · 0 commits" aria-label="2026-07-24 · 0 commits"></span><span class="cell l0" data-tip="2026-07-25 · 0 commits" aria-label="2026-07-25 · 0 commits"></span><span class="cell l0" data-tip="2026-07-26 · 0 commits" aria-label="2026-07-26 · 0 commits"></span><span class="cell l0" data-tip="2026-07-27 · 0 commits" aria-label="2026-07-27 · 0 commits"></span><span class="cell l0" data-tip="2026-07-28 · 0 commits" aria-label="2026-07-28 · 0 commits"></span><span class="cell l0" data-tip="2026-07-29 · 0 commits" aria-label="2026-07-29 · 0 commits"></span><span class="cell l0" data-tip="2026-07-30 · 0 commits" aria-label="2026-07-30 · 0 commits"></span><span class="cell l0" data-tip="2026-07-31 · 0 commits" aria-label="2026-07-31 · 0 commits"></span><span class="cell l0" data-tip="2026-08-01 · 0 commits" aria-label="2026-08-01 · 0 commits"></span><span class="cell l0" data-tip="2026-08-02 · 0 commits" aria-label="2026-08-02 · 0 commits"></span><span class="cell l0" data-tip="2026-08-03 · 0 commits" aria-label="2026-08-03 · 0 commits"></span><span class="cell l0" data-tip="2026-08-04 · 0 commits" aria-label="2026-08-04 · 0 commits"></span><span class="cell l0" data-tip="2026-08-05 · 0 commits" aria-label="2026-08-05 · 0 commits"></span><span class="cell l1" data-tip="2026-08-06 · 1 commits" aria-label="2026-08-06 · 1 commits"></span><span class="cell l0" data-tip="2026-08-07 · 0 commits" aria-label="2026-08-07 · 0 commits"></span><span class="cell l0" data-tip="2026-08-08 · 0 commits" aria-label="2026-08-08 · 0 commits"></span><span class="cell l1" data-tip="2026-08-09 · 1 commits" aria-label="2026-08-09 · 1 commits"></span><span class="cell l4" data-tip="2026-08-10 · 9 commits" aria-label="2026-08-10 · 9 commits"></span><span class="cell l3" data-tip="2026-08-11 · 5 commits" aria-label="2026-08-11 · 5 commits"></span><span class="cell l0" data-tip="2026-08-12 · 0 commits" aria-label="2026-08-12 · 0 commits"></span><span class="cell l0" data-tip="2026-08-13 · 0 commits" aria-label="2026-08-13 · 0 commits"></span><span class="cell l1" data-tip="2026-08-14 · 1 commits" aria-label="2026-08-14 · 1 commits"></span><span class="cell l4" data-tip="2026-08-15 · 37 commits" aria-label="2026-08-15 · 37 commits"></span><span class="cell l2" data-tip="2026-08-16 · 2 commits" aria-label="2026-08-16 · 2 commits"></span><span class="cell l2" data-tip="2026-08-17 · 3 commits" aria-label="2026-08-17 · 3 commits"></span><span class="cell l4" data-tip="2026-08-18 · 23 commits" aria-label="2026-08-18 · 23 commits"></span><span class="cell l0" data-tip="2026-08-19 · 0 commits" aria-label="2026-08-19 · 0 commits"></span><span class="cell l0" data-tip="2026-08-20 · 0 commits" aria-label="2026-08-20 · 0 commits"></span><span class="cell l4" data-tip="2026-08-21 · 17 commits" aria-label="2026-08-21 · 17 commits"></span><span class="cell l2" data-tip="2026-08-22 · 2 commits" aria-label="2026-08-22 · 2 commits"></span><span class="cell l0" data-tip="2026-08-23 · 0 commits" aria-label="2026-08-23 · 0 commits"></span><span class="cell l0" data-tip="2026-08-24 · 0 commits" aria-label="2026-08-24 · 0 commits"></span><span class="cell l0" data-tip="2026-08-25 · 0 commits" aria-label="2026-08-25 · 0 commits"></span><span class="cell l0" data-tip="2026-08-26 · 0 commits" aria-label="2026-08-26 · 0 commits"></span><span class="cell l4" data-tip="2026-08-27 · 20 commits" aria-label="2026-08-27 · 20 commits"></span><span class="cell l4" data-tip="2026-08-28 · 35 commits" aria-label="2026-08-28 · 35 commits"></span><span class="cell l4" data-tip="2026-08-29 · 13 commits" aria-label="2026-08-29 · 13 commits"></span><span class="cell l4" data-tip="2026-08-30 · 28 commits" aria-label="2026-08-30 · 28 commits"></span><span class="cell l4" data-tip="2026-08-31 · 10 commits" aria-label="2026-08-31 · 10 commits"></span><span class="cell l3" data-tip="2026-09-01 · 5 commits" aria-label="2026-09-01 · 5 commits"></span><span class="cell l3" data-tip="2026-09-02 · 6 commits" aria-label="2026-09-02 · 6 commits"></span><span class="cell l4" data-tip="2026-09-03 · 17 commits" aria-label="2026-09-03 · 17 commits"></span><span class="cell l4" data-tip="2026-09-04 · 22 commits" aria-label="2026-09-04 · 22 commits"></span><span class="cell l4" data-tip="2026-09-05 · 36 commits" aria-label="2026-09-05 · 36 commits"></span><span class="cell l4" data-tip="2026-09-06 · 21 commits" aria-label="2026-09-06 · 21 commits"></span><span class="cell l3" data-tip="2026-09-07 · 4 commits" aria-label="2026-09-07 · 4 commits"></span><span class="cell l3" data-tip="2026-09-08 · 4 commits" aria-label="2026-09-08 · 4 commits"></span><span class="cell l0" data-tip="2026-09-09 · 0 commits" aria-label="2026-09-09 · 0 commits"></span><span class="cell l4" data-tip="2026-09-10 · 19 commits" aria-label="2026-09-10 · 19 commits"></span><span class="cell l0" data-tip="2026-09-11 · 0 commits" aria-label="2026-09-11 · 0 commits"></span><span class="cell l4" data-tip="2026-09-12 · 7 commits" aria-label="2026-09-12 · 7 commits"></span><span class="cell l4" data-tip="2026-09-13 · 13 commits" aria-label="2026-09-13 · 13 commits"></span><span class="cell l4" data-tip="2026-09-14 · 38 commits" aria-label="2026-09-14 · 38 commits"></span><span class="cell l4" data-tip="2026-09-15 · 39 commits" aria-label="2026-09-15 · 39 commits"></span><span class="cell l4" data-tip="2026-09-16 · 31 commits" aria-label="2026-09-16 · 31 commits"></span><span class="cell l3" data-tip="2026-09-17 · 6 commits" aria-label="2026-09-17 · 6 commits"></span><span class="cell l0" data-tip="2026-09-18 · 0 commits" aria-label="2026-09-18 · 0 commits"></span><span class="cell l3" data-tip="2026-09-19 · 4 commits" aria-label="2026-09-19 · 4 commits"></span><span class="cell l4" data-tip="2026-09-20 · 57 commits" aria-label="2026-09-20 · 57 commits"></span><span class="cell l0" data-tip="2026-09-21 · 0 commits" aria-label="2026-09-21 · 0 commits"></span><span class="cell l4" data-tip="2026-09-22 · 22 commits" aria-label="2026-09-22 · 22 commits"></span><span class="cell l3" data-tip="2026-09-23 · 5 commits" aria-label="2026-09-23 · 5 commits"></span><span class="cell l4" data-tip="2026-09-24 · 9 commits" aria-label="2026-09-24 · 9 commits"></span><span class="cell l3" data-tip="2026-09-25 · 6 commits" aria-label="2026-09-25 · 6 commits"></span><span class="cell l0" data-tip="2026-09-26 · 0 commits" aria-label="2026-09-26 · 0 commits"></span><span class="cell l4" data-tip="2026-09-27 · 65 commits" aria-label="2026-09-27 · 65 commits"></span><span class="cell l4" data-tip="2026-09-28 · 13 commits" aria-label="2026-09-28 · 13 commits"></span><span class="cell l4" data-tip="2026-09-29 · 24 commits" aria-label="2026-09-29 · 24 commits"></span><span class="cell l0" data-tip="2026-09-30 · 0 commits" aria-label="2026-09-30 · 0 commits"></span><span class="cell l0" data-tip="2026-10-01 · 0 commits" aria-label="2026-10-01 · 0 commits"></span><span class="cell l0" data-tip="2026-10-02 · 0 commits" aria-label="2026-10-02 · 0 commits"></span><span class="cell l0" data-tip="2026-10-03 · 0 commits" aria-label="2026-10-03 · 0 commits"></span><span class="cell l0" data-tip="2026-10-04 · 0 commits" aria-label="2026-10-04 · 0 commits"></span><span class="cell l0" data-tip="2026-10-05 · 0 commits" aria-label="2026-10-05 · 0 commits"></span><span class="cell l4" data-tip="2026-10-06 · 56 commits" aria-label="2026-10-06 · 56 commits"></span><span class="cell l4" data-tip="2026-10-07 · 38 commits" aria-label="2026-10-07 · 38 commits"></span><span class="cell l0" data-tip="2026-10-08 · 0 commits" aria-label="2026-10-08 · 0 commits"></span><span class="cell l0" data-tip="2026-10-09 · 0 commits" aria-label="2026-10-09 · 0 commits"></span><span class="cell l3" data-tip="2026-10-10 · 4 commits" aria-label="2026-10-10 · 4 commits"></span><span class="cell l4" data-tip="2026-10-11 · 62 commits" aria-label="2026-10-11 · 62 commits"></span><span class="cell l4" data-tip="2026-10-12 · 8 commits" aria-label="2026-10-12 · 8 commits"></span><span class="cell l4" data-tip="2026-10-13 · 57 commits" aria-label="2026-10-13 · 57 commits"></span><span class="cell l4" data-tip="2026-10-14 · 10 commits" aria-label="2026-10-14 · 10 commits"></span><span class="cell l3" data-tip="2026-10-15 · 5 commits" aria-label="2026-10-15 · 5 commits"></span><span class="cell l4" data-tip="2026-10-16 · 9 commits" aria-label="2026-10-16 · 9 commits"></span><span class="cell l0" data-tip="2026-10-17 · 0 commits" aria-label="2026-10-17 · 0 commits"></span><span class="cell l0" data-tip="2026-10-18 · 0 commits" aria-label="2026-10-18 · 0 commits"></span><span class="cell l0" data-tip="2026-10-19 · 0 commits" aria-label="2026-10-19 · 0 commits"></span><span class="cell l0" data-tip="2026-10-20 · 0 commits" aria-label="2026-10-20 · 0 commits"></span><span class="cell l0" data-tip="2026-10-21 · 0 commits" aria-label="2026-10-21 · 0 commits"></span><span class="cell l0" data-tip="2026-10-22 · 0 commits" aria-label="2026-10-22 · 0 commits"></span><span class="cell l0" data-tip="2026-10-23 · 0 commits" aria-label="2026-10-23 · 0 commits"></span><span class="cell l0" data-tip="2026-10-24 · 0 commits" aria-label="2026-10-24 · 0 commits"></span><span class="cell l0" data-tip="2026-10-25 · 0 commits" aria-label="2026-10-25 · 0 commits"></span><span class="cell l0" data-tip="2026-10-26 · 0 commits" aria-label="2026-10-26 · 0 commits"></span><span class="cell l0" data-tip="2026-10-27 · 0 commits" aria-label="2026-10-27 · 0 commits"></span><span class="cell l0" data-tip="2026-10-28 · 0 commits" aria-label="2026-10-28 · 0 commits"></span><span class="cell l0" data-tip="2026-10-29 · 0 commits" aria-label="2026-10-29 · 0 commits"></span><span class="cell l0" data-tip="2026-10-30 · 0 commits" aria-label="2026-10-30 · 0 commits"></span><span class="cell l4" data-tip="2026-10-31 · 46 commits" aria-label="2026-10-31 · 46 commits"></span><span class="cell l4" data-tip="2026-11-01 · 35 commits" aria-label="2026-11-01 · 35 commits"></span><span class="cell l4" data-tip="2026-11-02 · 37 commits" aria-label="2026-11-02 · 37 commits"></span><span class="cell l4 today" data-tip="2026-11-03 · 30 commits" aria-label="2026-11-03 · 30 commits"></span><span class="cell l0" data-tip="2026-11-04 · 0 commits" aria-label="2026-11-04 · 0 commits"></span><span class="cell l0" data-tip="2026-11-05 · 0 commits" aria-label="2026-11-05 · 0 commits"></span><span class="cell l0" data-tip="2026-11-06 · 0 commits" aria-label="2026-11-06 · 0 commits"></span><span class="cell l0" data-tip="2026-11-07 · 0 commits" aria-label="2026-11-07 · 0 commits"></span><span class="cell l0" data-tip="2026-11-08 · 0 commits" aria-label="2026-11-08 · 0 commits"></span><span class="cell l0" data-tip="2026-11-09 · 0 commits" aria-label="2026-11-09 · 0 commits"></span><span class="cell l0" data-tip="2026-11-10 · 0 commits" aria-label="2026-11-10 · 0 commits"></span><span class="cell l0" data-tip="2026-11-11 · 0 commits" aria-label="2026-11-11 · 0 commits"></span><span class="cell l0" data-tip="2026-11-12 · 0 commits" aria-label="2026-11-12 · 0 commits"></span><span class="cell l0" data-tip="2026-11-13 · 0 commits" aria-label="2026-11-13 · 0 commits"></span><span class="cell l0" data-tip="2026-11-14 · 0 commits" aria-label="2026-11-14 · 0 commits"></span><span class="cell l0" data-tip="2026-11-15 · 0 commits" aria-label="2026-11-15 · 0 commits"></span><span class="cell l0" data-tip="2026-11-16 · 0 commits" aria-label="2026-11-16 · 0 commits"></span><span class="cell l0" data-tip="2026-11-17 · 0 commits" aria-label="2026-11-17 · 0 commits"></span><span class="cell l0" data-tip="2026-11-18 · 0 commits" aria-label="2026-11-18 · 0 commits"></span><span class="cell l0" data-tip="2026-11-19 · 0 commits" aria-label="2026-11-19 · 0 commits"></span><span class="cell l0" data-tip="2026-11-20 · 0 commits" aria-label="2026-11-20 · 0 commits"></span><span class="cell l0" data-tip="2026-11-21 · 0 commits" aria-label="2026-11-21 · 0 commits"></span><span class="cell l0" data-tip="2026-11-22 · 0 commits" aria-label="2026-11-22 · 0 commits"></span><span class="cell l0" data-tip="2026-11-23 · 0 commits" aria-label="2026-11-23 · 0 commits"></span><span class="cell l0" data-tip="2026-11-24 · 0 commits" aria-label="2026-11-24 · 0 commits"></span><span class="cell l0" data-tip="2026-11-25 · 0 commits" aria-label="2026-11-25 · 0 commits"></span><span class="cell l0" data-tip="2026-11-26 · 0 commits" aria-label="2026-11-26 · 0 commits"></span><span class="cell l0" data-tip="2026-11-27 · 0 commits" aria-label="2026-11-27 · 0 commits"></span><span class="cell l0" data-tip="2026-11-28 · 0 commits" aria-label="2026-11-28 · 0 commits"></span><span class="cell l0" data-tip="2026-11-29 · 0 commits" aria-label="2026-11-29 · 0 commits"></span><span class="cell l0" data-tip="2026-11-30 · 0 commits" aria-label="2026-11-30 · 0 commits"></span><span class="cell l0" data-tip="2026-12-01 · 0 commits" aria-label="2026-12-01 · 0 commits"></span><span class="cell l0" data-tip="2026-12-02 · 0 commits" aria-label="2026-12-02 · 0 commits"></span><span class="cell l0" data-tip="2026-12-03 · 0 commits" aria-label="2026-12-03 · 0 commits"></span><span class="cell l0" data-tip="2026-12-04 · 0 commits" aria-label="2026-12-04 · 0 commits"></span><span class="cell l0" data-tip="2026-12-05 · 0 commits" aria-label="2026-12-05 · 0 commits"></span><span class="cell l0" data-tip="2026-12-06 · 0 commits" aria-label="2026-12-06 · 0 commits"></span><span class="cell l0" data-tip="2026-12-07 · 0 commits" aria-label="2026-12-07 · 0 commits"></span><span class="cell l0" data-tip="2026-12-08 · 0 commits" aria-label="2026-12-08 · 0 commits"></span><span class="cell l0" data-tip="2026-12-09 · 0 commits" aria-label="2026-12-09 · 0 commits"></span><span class="cell l0" data-tip="2026-12-10 · 0 commits" aria-label="2026-12-10 · 0 commits"></span><span class="cell l0" data-tip="2026-12-11 · 0 commits" aria-label="2026-12-11 · 0 commits"></span><span class="cell l0" data-tip="2026-12-12 · 0 commits" aria-label="2026-12-12 · 0 commits"></span><span class="cell l0" data-tip="2026-12-13 · 0 commits" aria-label="2026-12-13 · 0 commits"></span><span class="cell l0" data-tip="2026-12-14 · 0 commits" aria-label="2026-12-14 · 0 commits"></span><span class="cell l0" data-tip="2026-12-15 · 0 commits" aria-label="2026-12-15 · 0 commits"></span><span class="cell l0" data-tip="2026-12-16 · 0 commits" aria-label="2026-12-16 · 0 commits"></span><span class="cell l0" data-tip="2026-12-17 · 0 commits" aria-label="2026-12-17 · 0 commits"></span><span class="cell l0" data-tip="2026-12-18 · 0 commits" aria-label="2026-12-18 · 0 commits"></span><span class="cell l0" data-tip="2026-12-19 · 0 commits" aria-label="2026-12-19 · 0 commits"></span><span class="cell l0" data-tip="2026-12-20 · 0 commits" aria-label="2026-12-20 · 0 commits"></span><span class="cell l0" data-tip="2026-12-21 · 0 commits" aria-label="2026-12-21 · 0 commits"></span><span class="cell l0" data-tip="2026-12-22 · 0 commits" aria-label="2026-12-22 · 0 commits"></span><span class="cell l0" data-tip="2026-12-23 · 0 commits" aria-label="2026-12-23 · 0 commits"></span><span class="cell l0" data-tip="2026-12-24 · 0 commits" aria-label="2026-12-24 · 0 commits"></span><span class="cell l0" data-tip="2026-12-25 · 0 commits" aria-label="2026-12-25 · 0 commits"></span><span class="cell l0" data-tip="2026-12-26 · 0 commits" aria-label="2026-12-26 · 0 commits"></span><span class="cell l0" data-tip="2026-12-27 · 0 commits" aria-label="2026-12-27 · 0 commits"></span><span class="cell l0" data-tip="2026-12-28 · 0 commits" aria-label="2026-12-28 · 0 commits"></span><span class="cell l0" data-tip="2026-12-29 · 0 commits" aria-label="2026-12-29 · 0 commits"></span><span class="cell l0" data-tip="2026-12-30 · 0 commits" aria-label="2026-12-30 · 0 commits"></span><span class="cell l0" data-tip="2026-12-31 · 0 commits" aria-label="2026-12-31 · 0 commits"></span><span class="cell out"></span><span class="cell out"></span><span class="cell out"></span></div>
+      </div>
+      <div class="heat-legend"><span class="cell l0"></span><span class="cell l1"></span><span class="cell l2"></span><span class="cell l3"></span><span class="cell l4"></span><span style="margin-left:6px">Less → more · today outlined</span></div>
+    </div>
+
+    </div>
+
+    <a class="next-link" href="#about"><span class="next-kicker">Next</span><span class="name">About this report <i>&rarr;</i></span></a></section>
+
+    <section id="about">
+      <div class="sec-head rv">
+        <div><div class="sec-index">05 / ABOUT THIS REPORT</div><h2>About this report</h2></div>
+        <span class="sec-sub">Method</span>
+      </div>
+      <div class="sec-line"></div>
+
+    <div class="about rv">
+      <ul>
+        <li>Generated by CodeYear on your computer. Your code never leaves it.</li>
+        <li>Only your commits (Qiongkura &lt;2447402326@qq.com&gt;); 4 commits by others filtered out.</li>
+        <li>Only commits from 2026 are counted; merge commits (--no-merges) are excluded.</li>
+        <li>Copies of the same project collapse into one; each commit is counted once.</li>
+        <li>Dates use author date, i.e. the author's local time.</li>
+        <li>“Own code” means non-empty lines, excluding third-party libraries, generated projects, and binaries.</li>
+      </ul>
+    </div>
+    <div class="quote rv">"Git never lies —<em style="font-style:normal;color:var(--acc)"> especially with --no-merges.</em>"
+      <small>CODEYEAR · 2026-11-03 16:25</small>
+    </div>
+
+    <a class="next-link" href="#top"><span class="name">Back to top <i>&uarr;</i></span></a></section>
+  </div>
+</main>
+
+<footer>
+  <div class="foot-in">
+    <span>CODEYEAR · 2026</span>
+    <span>Scanned I:\projects · 2026.08.06 — 2026.11.03</span>
+    <span>Generated locally by CodeYear · 2026-11-03 16:25 · your code never left this machine</span>
+  </div>
+</footer>
+
+<div id="tip" aria-hidden="true"></div>
+<a class="to-top" href="#top" aria-label="Back to top">&uarr; <span>Top</span></a>
+<script>
+(function(){
+  const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const $$ = (s,c)=> [...(c||document).querySelectorAll(s)];
+
+  const bar = document.getElementById('progress');
+  const onScroll = ()=>{
+    const h = document.documentElement;
+    const p = h.scrollTop / (h.scrollHeight - h.clientHeight || 1);
+    if(bar) bar.style.width = (p*100).toFixed(2)+'%';
+  };
+  addEventListener('scroll', onScroll, {passive:true}); onScroll();
+
+  const clock = document.getElementById('clock');
+  const pad = n=> String(n).padStart(2,'0');
+  const tickClock = ()=>{
+    const d = new Date();
+    clock.textContent = pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
+  };
+  if(clock){ tickClock(); setInterval(tickClock, 1000); }
+
+  const targets = $$('.rv, .rv-line, .sec-line');
+  if(RM || !('IntersectionObserver' in window)){
+    targets.forEach(el=>el.classList.add('in'));
+  }else{
+    const io = new IntersectionObserver(es=>{
+      es.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target);} });
+    },{threshold:.1, rootMargin:'0px 0px -30px 0px'});
+    targets.forEach(el=>io.observe(el));
+  }
+
+  const counters = $$('[data-count]');
+  const finalText = el=>{
+    const t = parseFloat(el.dataset.count), dec = parseInt(el.dataset.dec||'0',10);
+    let s = t.toFixed(dec);
+    if('sep' in el.dataset) s = Number(s).toLocaleString('en-US');
+    return s + (el.dataset.suffix||'');
+  };
+  const run = el=>{
+    const target = parseFloat(el.dataset.count);
+    const dec = parseInt(el.dataset.dec||'0',10);
+    const suffix = el.dataset.suffix||'';
+    const sep = 'sep' in el.dataset;
+    const dur = 1300, t0 = performance.now();
+    const step = now=>{
+      const p = Math.min((now-t0)/dur, 1);
+      const e = 1-Math.pow(1-p,3);
+      let s = (target*e).toFixed(dec);
+      if(sep) s = Number(s).toLocaleString('en-US');
+      el.textContent = s + suffix;
+      if(p<1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  };
+  if(RM || !('IntersectionObserver' in window)){
+    counters.forEach(el=>el.textContent = finalText(el));
+  }else{
+    const cio = new IntersectionObserver(es=>{
+      es.forEach(e=>{ if(e.isIntersecting){ run(e.target); cio.unobserve(e.target);} });
+    },{threshold:.5});
+    counters.forEach(el=>cio.observe(el));
+  }
+
+  const filters = $$('.filter');
+  const rows = $$('.index-table tbody tr');
+  const countEl = document.getElementById('row-count');
+  filters.forEach(btn=>btn.addEventListener('click',()=>{
+    filters.forEach(b=>b.classList.toggle('on', b===btn));
+    const f = btn.dataset.filter;
+    let n=0;
+    rows.forEach(r=>{
+      const show = f==='all' || r.dataset.cat===f;
+      r.style.display = show ? '' : 'none';
+      if(show) n++;
+    });
+    if(countEl) countEl.textContent = n+' / '+rows.length;
+  }));
+
+  /* paper-style tooltip (replaces native title bubbles) */
+  const tip = document.getElementById('tip');
+  if(tip){
+    let target = null;
+    const place = ev=>{
+      const gap = 14;
+      let x = ev.clientX + gap, y = ev.clientY + gap;
+      const r = tip.getBoundingClientRect();
+      if(x + r.width > innerWidth - 8) x = ev.clientX - r.width - gap;
+      if(y + r.height > innerHeight - 8) y = ev.clientY - r.height - gap;
+      tip.style.transform = 'translate('+x+'px,'+y+'px)';
+    };
+    document.addEventListener('mouseover', ev=>{
+      const el = ev.target.closest ? ev.target.closest('[data-tip]') : null;
+      if(!el) return;
+      target = el;
+      tip.textContent = el.dataset.tip;
+      tip.classList.add('show');
+      place(ev);
+    });
+    document.addEventListener('mouseout', ev=>{
+      if(!target) return;
+      if(ev.relatedTarget && target.contains(ev.relatedTarget)) return;
+      target = null;
+      tip.classList.remove('show');
+    });
+    document.addEventListener('mousemove', ev=>{ if(target) place(ev); });
+    addEventListener('scroll', ()=>{ target=null; tip.classList.remove('show'); }, {passive:true});
+    addEventListener('blur', ()=>{ target=null; tip.classList.remove('show'); });
+  }
+})();
+</script>
+<script>
+(()=>{
+  const t=document.querySelector('.to-top');
+  const f=()=>t.classList.toggle('show',scrollY>700);
+  addEventListener('scroll',f,{passive:true});f();
+  const links=[...document.querySelectorAll('.rail-nav a')];
+  const byId=new Map(links.map(a=>[a.getAttribute('href').slice(1),a]));
+  const spy=new IntersectionObserver(es=>{
+    es.forEach(e=>{
+      if(!e.isIntersecting)return;
+      links.forEach(a=>a.classList.remove('active'));
+      const a=byId.get(e.target.id);
+      if(a)a.classList.add('active');
+    });
+  },{rootMargin:'-25% 0px -65% 0px'});
+  document.querySelectorAll('section[id]').forEach(s=>spy.observe(s));
+})();
+</script>
+</body>
+</html>
