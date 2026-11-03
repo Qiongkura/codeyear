@@ -558,3 +558,27 @@ def test_scan_profile_failure_returns_nonzero(tmp_path):
         cwd=project, capture_output=True, text=True,
     )
     assert result.returncode == 1
+
+
+def test_public_mode_report_labels():
+    from dataclasses import replace
+
+    from codeyear.report_theme import decorate, to_english
+
+    public = replace(_stats(), root="https://github.com/me")
+    html = build_html(public)
+    assert "PUBLIC DATA" in html
+    assert "公开 GitHub 数据" in html
+    assert "不读取私有仓库" in html
+    assert "LOCAL ONLY" not in html
+
+    local = build_html(_stats())
+    assert "LOCAL ONLY" in local
+    assert "代码从未离开这台电脑" in local
+
+    decorated = decorate(html, public)
+    assert "数据来源：https://github.com/me" in decorated
+    en = to_english(decorated, public)
+    assert "Source: https://github.com/me" in en
+    assert "Generated from public GitHub data" in en
+    assert "no local code was read or uploaded" in en

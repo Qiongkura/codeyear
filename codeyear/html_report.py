@@ -1262,31 +1262,47 @@ def build_numbers(stats: ReportStats) -> str:
 
 
 def build_about(stats: ReportStats) -> str:
-    if stats.identity_label:
+    public = stats.public_source
+    if public:
+        privacy_line = "这份报告根据公开 GitHub 数据生成；没有读取或上传本机代码。"
         identity_line = (
-            f"只统计你本人作者的提交（{escape(stats.identity_label)}）；"
-            f"已过滤 {stats.filtered_commits} 次他人提交。"
+            "只统计该账号名下的公开仓库，以及 GitHub 能关联到该账号的提交；"
+            "不读取私有仓库。"
         )
+        merge_line = f"只统计 {stats.year} 年的提交；合并提交不计入。"
     else:
-        identity_line = "未检测到 git 身份，统计了所有作者的提交（可用 --all-authors 显式开启）。"
+        privacy_line = "这份报告由 CodeYear 在你的电脑上生成，代码从未离开这台机器。"
+        if stats.identity_label:
+            identity_line = (
+                f"只统计你本人作者的提交（{escape(stats.identity_label)}）；"
+                f"已过滤 {stats.filtered_commits} 次他人提交。"
+            )
+        else:
+            identity_line = "未检测到 git 身份，统计了所有作者的提交（可用 --all-authors 显式开启）。"
+        merge_line = f"只统计 {stats.year} 年的提交；合并提交（--no-merges）不计入。"
+    quote_tail = (
+        "尤其是加了 --no-merges 的时候。" if not public
+        else "尤其是只读公开数据的时候。"
+    )
     return f"""
     <div class="about rv">
       <ul>
-        <li>这份报告由 CodeYear 在你的电脑上生成，代码从未离开这台机器。</li>
+        <li>{privacy_line}</li>
         <li>{identity_line}</li>
-        <li>只统计 {stats.year} 年的提交；合并提交（--no-merges）不计入。</li>
+        <li>{merge_line}</li>
         <li>同一项目出现在多个目录时只保留提交最多的一个；同一 commit 只计一次。</li>
         <li>时间取 author date；跨时区协作时以提交者本地时间为准。</li>
         <li>「自有代码」= 非空行；已剔除第三方库、生成工程与二进制。</li>
       </ul>
     </div>
-    <div class="quote rv">「git 不会说谎——<em style="font-style:normal;color:var(--acc)">尤其是加了 --no-merges 的时候。</em>」
+    <div class="quote rv">「git 不会说谎——<em style="font-style:normal;color:var(--acc)">{quote_tail}</em>」
       <small>CODEYEAR · {stats.generated_at}</small>
     </div>
     """
 
 
 def build_html(stats: ReportStats) -> str:
+    public = stats.public_source
     total_k = stats.lines_changed / 10000
     if stats.lines_changed >= 10000:
         lines_value, lines_dec, lines_suffix = total_k, 1, "万"
@@ -1327,7 +1343,7 @@ def build_html(stats: ReportStats) -> str:
     </div>
     <div class="nav-meta">
       <span id="clock">--:--:--</span>
-      <span class="badge">LOCAL ONLY · 数据未上传</span>
+      <span class="badge">{'PUBLIC DATA · 来自 GitHub' if public else 'LOCAL ONLY · 数据未上传'}</span>
     </div>
   </div>
 </header>
@@ -1340,7 +1356,7 @@ def build_html(stats: ReportStats) -> str:
         <h1 class="rv-line"><span>{stats.year} 年，</span><br><em>{fmt_int(stats.commit_count)} 次提交，<span style="white-space:nowrap">{fmt_human(stats.lines_changed)} 行。</span></em></h1>
         <p class="lede rv" style="--d:160ms">{escape(stats.persona.subtitle)}
         代码行变更是 <b>+{fmt_human(stats.insertions)} / -{fmt_human(stats.deletions)}</b>，最忙的一天是 <b>{busiest}</b>。
-        下面每个数字都来自本机 git——<b>这份报告没有上传任何东西</b>。</p>
+        下面每个数字都来自{'公开 GitHub 数据' if public else '本机 git'}——<b>{'没有读取或上传本地代码' if public else '这份报告没有上传任何东西'}</b>。</p>
       </div>
       <div>
         <div class="hero-stats">{hero_stats}</div>
@@ -1403,7 +1419,7 @@ def build_html(stats: ReportStats) -> str:
   <div class="foot-in">
     <span>CODEYEAR · 代码手账 {stats.year}</span>
     <span>扫描范围 {escape(stats.root)} · {escape(span)}</span>
-    <span>由 CodeYear 在本机生成 · {escape(stats.generated_at)} · 代码从未离开这台电脑</span>
+    <span>由 CodeYear {'根据公开 GitHub 数据生成' if public else '在本机生成'} · {escape(stats.generated_at)} · {'没有读取或上传本地代码' if public else '代码从未离开这台电脑'}</span>
   </div>
 </footer>
 

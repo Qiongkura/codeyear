@@ -26,7 +26,7 @@ codeyear
 也可以从 Release 下载 wheel：
 
 ```bash
-pip install https://github.com/Qiongkura/codeyear/releases/download/v0.2.0/codeyear-0.2.0-py3-none-any.whl
+pip install https://github.com/Qiongkura/codeyear/releases/download/v0.2.1/codeyear-0.2.1-py3-none-any.whl
 ```
 
 > exe 未做代码签名，Windows SmartScreen 可能提示；点「更多信息 → 仍要运行」。
@@ -98,7 +98,7 @@ codeyear github Qiongkura --year 2026 --out ./codeyear-github
 codeyear serve --port 8000
 ```
 
-打开 `http://127.0.0.1:8000`，输入用户名即可生成卡片；服务端缓存 1 小时。
+打开 `http://127.0.0.1:8000`，输入用户名即可生成卡片；服务端带 1 小时 LRU 缓存和每 IP 限流。
 
 部署到 Render / Railway / Fly / VPS：设置 `GITHUB_TOKEN`，启动命令：
 
@@ -128,7 +128,7 @@ https://your-host/card-dark.svg?username=Qiongkura&year=2026
 > 文件名绕过 GitHub 的图片缓存；无需手动粘贴 embed 片段。模板默认每天 04:00 UTC
 > 更新；改 workflow 里的 `cron` 可切成每周一 `0 4 * * 1` 或每月 1 日 `0 4 1 * *`。
 > 跨年时如果新的一年还没有提交，`--fallback-previous` 会继续显示上一年的卡片。
-> 模板里的 `CODEYEAR_REF` 默认 `main`；发版后建议改成 release tag，避免每天跟随 main。
+> 模板里的 `CODEYEAR_REF` 已固定到 `v0.2.1`；升级时改这个变量即可。
 
 GitHub Action 自动更新模板：[docs/codeyear-card.yml](docs/codeyear-card.yml)。
 
@@ -173,7 +173,7 @@ CodeYear 是给开发者做的「年度报告」。官方的 Wrapped 通常只�
 - 最常改的文件（完整路径）
 - 本地仓库考古：全历史提交总数、最早一次提交（码龄）、今年新开的仓库、版本 tag
   （仓库口径，与只统计你本人的年度数字分开展示）
-- 同比去年：`--compare` 会多扫一年，在封面统计条下面显示提交/行数/活跃天/仓库变化
+- 同比去年：`--compare` 会多扫一年；封面显示摘要，数据分析区有 10 项指标对照和 12 个月双柱图
 
 **设计**
 - 纸面档案：暖纸底、墨色、朱红强调，衬线大标题 + 等宽数据，方角、hairline
@@ -293,7 +293,7 @@ codeyear github Qiongkura --year 2026 --card-only \
 | `--max-depth 6` | 每个根目录向下查找仓库的最大文件夹层数 |
 | `--timeout 300` | 单个仓库的扫描超时（秒） |
 | `--jobs 4` | 并行扫描的仓库数，项目多时明显加快 |
-| `--no-png` / `--no-html` | 只生成其中一种 |
+| `--no-png` / `--no-html` | 跳过 PNG / HTML（可同时使用） |
 | `--no-long` | 不生成完整版长图（默认生成） |
 | `--no-card` | 不生成 GitHub 主页卡片 |
 | `--profile-repo PATH` | 写入本地 Profile 仓库的卡片与 README（不联网） |
@@ -322,10 +322,11 @@ codeyear scan D:\code --year 2026 --compare
 
 ## 隐私
 
-- 所有统计都在本地完成，**没有任何网络请求**。
-- 只读 `git log`、`git tag`、仓库根目录 README 的第一行和 `git remote`；不读取其它工作区文件。
+- 默认 `scan` 模式所有统计都在本地完成，**没有任何网络请求**。
+- `github` 公开模式、`serve` 在线服务和 `--push-profile` 是可选联网功能；它们只读取公开 GitHub 数据或推送卡片，不会上传本地代码。
+- 本地模式只读 `git log`、`git tag`、仓库根目录 README 的第一行和 `git remote`；不读取其它工作区文件。
 - 输出文件默认忽略在 `.gitignore` 里。
-- 报告顶部与页脚标注 `LOCAL ONLY · 数据未上传`。
+- 本地报告页脚标注 `LOCAL ONLY · 数据未上传`；公开模式报告会标注公开数据来源。
 - 遇到 git 的 `dubious ownership`（常见于拷贝来的仓库），只对当前仓库做一次
   `safe.directory` 重试，不会改你的全局 git 配置。
 
@@ -365,15 +366,17 @@ git log --since=2026-01-01 --until=2027-01-01 \
 - [x] 项目副本按血统合并
 - [x] 年度之最 / 7×24 / 编码会话 / 季度语言 / 仓库墓园
 - [x] PNG 海报重绘为纸面主题
-- [ ] 同比去年（2025 vs 2026）
+- [x] 同比去年（封面摘要 + 数据分析面板）
 - [ ] 文件级删除量（被删最多的文件）
-- [ ] PyInstaller 打包 exe / 桌面壳
+- [x] PyInstaller 打包 exe / 桌面壳
 - [x] English README
 - [x] 英文 HTML 报告
 - [x] 可选同步 GitHub Profile（仅本地 / 提交推送）
+- [x] 每日自动更新 GitHub 主页卡片（GitHub Action）
 - [x] 交互式向导（多目录 / 仓库数量 / 进度条 / 输出位置）
 - [x] 桌面 GUI（Tkinter，可双击）
 - [x] GitHub 公开数据模式（输入用户名即可生成）
+- [x] 在线卡片服务（Render / Docker / Cloudflare Tunnel）
 - [ ] Gitee 公开数据模式
 - [x] 卡片主题（paper / mono / forest / ocean）
 - [x] 仓库搜索与打印样式
@@ -403,7 +406,7 @@ codeyear/
   keywords.py     提交关键词提取
   languages.py    扩展名 → 语言映射与过滤
   html_report.py  纸面档案 HTML 报告（内联 CSS/JS）
-  report_theme.py 新版报告主题 / 英文版 / 嵌入片段
+  report_theme.py 新版报告主题 / 英文版
   card.py         GitHub 主页卡片
   poster.py       PNG 海报（Pillow）
   personas.py     代码人格

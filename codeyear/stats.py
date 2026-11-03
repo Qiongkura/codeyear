@@ -99,6 +99,11 @@ class ReportStats:
         data["earliest_dt"] = self.earliest_dt.isoformat() if self.earliest_dt else None
         return data
 
+    @property
+    def public_source(self) -> bool:
+        """True when stats came from the optional public GitHub mode."""
+        return self.root.startswith(("https://github.com/", "http://github.com/"))
+
 
 def compare_summary(current: "ReportStats", previous: "ReportStats") -> dict:
     def pct(now: int | float, before: int | float) -> float | None:

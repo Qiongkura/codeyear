@@ -27,7 +27,7 @@ codeyear
 Or install the wheel from the release:
 
 ```bash
-pip install https://github.com/Qiongkura/codeyear/releases/download/v0.2.0/codeyear-0.2.0-py3-none-any.whl
+pip install https://github.com/Qiongkura/codeyear/releases/download/v0.2.1/codeyear-0.2.1-py3-none-any.whl
 ```
 
 > The exe is unsigned; Windows SmartScreen may warn. Click “More info → Run anyway”.
@@ -99,7 +99,7 @@ codeyear github Qiongkura --year 2026 --out ./codeyear-github
 codeyear serve --port 8000
 ```
 
-Open `http://127.0.0.1:8000`, enter a username, and get a card; responses are cached for one hour.
+Open `http://127.0.0.1:8000`, enter a username, and get a card; the service uses a one-hour LRU cache and per-IP rate limiting.
 
 Deploy to Render / Railway / Fly / a VPS: set `GITHUB_TOKEN` and run:
 
@@ -131,8 +131,7 @@ If you only have Cloudflare, expose the local service with a tunnel:
 > the first run) and uses versioned filenames to bypass GitHub's image cache. It runs
 > daily at 04:00 UTC by default; change the workflow `cron` to weekly (`0 4 * * 1`)
 > or monthly (`0 4 1 * *`). `--fallback-previous` keeps last year's card until the
-> new year has commits. `CODEYEAR_REF` defaults to `main`; pin it to a release tag
-> after publishing a release.
+> new year has commits. `CODEYEAR_REF` is pinned to `v0.2.1`; bump it when upgrading.
 
 GitHub Action template: [docs/codeyear-card.yml](docs/codeyear-card.yml).
 
@@ -174,7 +173,7 @@ By default it counts only commits authored by you (matching git `user.name` / `u
 - Repository lifecycle Gantt chart, **repo graveyard** (untouched for 30 days)
 - Most-edited files (full paths)
 - Local repository archaeology: all-time commits, first commit (code age), repositories started this year, version tags (repository scope, shown separately from your personal yearly numbers)
-- Year-over-year: `--compare` scans the previous year and shows commit/line/active-day/repo deltas under the hero stats
+- Year-over-year: `--compare` scans the previous year; the cover shows a summary, and the data section has a 10-metric table plus a 12-month grouped bar chart
 
 **Design**
 - Paper archive: warm paper, ink, vermilion accent, large serif headings + monospaced data, square corners, hairlines
@@ -311,10 +310,11 @@ codeyear scan D:\code --year 2026 --compare
 
 ## Privacy
 
-- Everything runs locally. **There are no network requests.**
-- Reads only `git log`, `git tag`, the first line of each repository README, and `git remote`; no other workspace files.
+- The default `scan` mode runs entirely locally with **no network requests**.
+- `github`, `serve`, and `--push-profile` are optional network features; they only read public GitHub data or push cards, and never upload local code.
+- The local mode reads only `git log`, `git tag`, the first line of each repository README, and `git remote`; no other workspace files.
 - Output files are ignored by `.gitignore` by default.
-- The report header and footer say `LOCAL ONLY · no data uploaded`.
+- Local reports say `LOCAL ONLY · no data uploaded` in the footer; public-mode reports label their public data source.
 - On git's `dubious ownership` error (common with copied repositories), it retries with `safe.directory` for that repository only; your global git config is never changed.
 
 ## Known limitations
@@ -352,21 +352,22 @@ Languages are mapped from file extensions. Lockfiles, build artifacts, images, a
 - [x] Yearly records / 7×24 clock / coding sessions / quarterly languages / repo graveyard
 - [x] Paper-themed PNG poster
 - [x] Theme-aware GitHub profile card (light/dark, transparent)
-- [ ] Year-over-year comparison (2025 vs 2026)
+- [x] Year-over-year comparison (cover summary + data panel)
 - [ ] File-level deletions (most-deleted files)
-- [ ] PyInstaller exe / desktop shell
+- [x] PyInstaller exe / desktop shell
 - [x] English README
 - [x] English HTML report
 - [x] Optional profile sync (local or push)
+- [x] Daily GitHub profile card update (Action)
 - [x] Interactive wizard (multiple folders, repo count, progress, output location)
 - [x] Desktop GUI (Tkinter, double-clickable)
 - [x] Public GitHub mode (username in, report out)
+- [x] Public card service (Render / Docker / Cloudflare Tunnel)
 - [ ] Public Gitee mode
 - [x] Card themes (paper / mono / forest / ocean)
 - [x] Repository search and print styles
 - [x] Multi-root CLI
 - [x] pytest suite + GitHub Actions CI
-- [x] Year-over-year comparison
 - [x] Parallel scanning (`--jobs`)
 - [x] Old identity aliases (`--alias`)
 
@@ -393,7 +394,7 @@ codeyear/
   keywords.py     commit keyword extraction
   languages.py    extension → language mapping and filters
   html_report.py  paper-archive HTML report (inline CSS/JS)
-  report_theme.py new report theme / English edition / embed snippet
+  report_theme.py new report theme / English edition
   card.py         GitHub profile card
   poster.py       PNG poster (Pillow)
   personas.py     coding persona
