@@ -15,7 +15,7 @@ from .stats import (
     parse_daily,
 )
 
-W, H = 900, 512
+W, H = 900, 668
 M = 36
 RIGHT = W - M
 COL_W = 207
@@ -126,13 +126,20 @@ def build_svg(stats: ReportStats, *, dark: bool = False) -> str:
     monthly = stats.monthly
     peak = max(monthly) or 1
     peak_month = monthly.index(peak) + 1 if peak else 1
+    peak_hour = stats.by_hour.index(max(stats.by_hour)) if any(stats.by_hour) else 0
 
     # ---- header -------------------------------------------------------
     title = _truncate(stats.persona.title, 24)
     subtitle = _truncate(stats.persona.subtitle, 96)
+    owner = (stats.identity_label or "").split(" <")[0].strip()
     header = [
-        _text(M, 30, "CODEYEAR", 8.5, c["accent"], spacing=2.6),
-        _text(RIGHT, 30, f"{stats.year} · LOCAL-FIRST", 8, c["muted"], anchor="end"),
+        _text(M, 30, f"CODEYEAR · {stats.year}", 8.5, c["accent"], spacing=2.4),
+        (
+            _text(RIGHT, 32, _truncate(owner, 26), 16, c["ink"], family=SERIF,
+                  anchor="end")
+            if owner
+            else _text(RIGHT, 30, "LOCAL-FIRST", 8, c["muted"], anchor="end")
+        ),
         _text(M - 1, 68, title, 30, c["ink"], family=SERIF),
         _text(M, 90, subtitle, 10, c["ink2"], family=SANS),
         _rule(104, c["line"]),
@@ -184,15 +191,126 @@ def build_svg(stats: ReportStats, *, dark: bool = False) -> str:
         _rule(304, c["line"]),
     ]
 
-    # ---- four data columns -------------------------------------------
+    # ---- derived insights ---------------------------------------------
     cols = [M, M + COL_W, M + 2 * COL_W, M + 3 * COL_W]
-    row_y = [342 + i * 24 for i in range(5)]
+
+    top_repo = stats.repo_details[0] if stats.repo_details else None
+    if top_repo and stats.commit_count:
+        share = top_repo["commits"] / stats.commit_count
+        focus_value = f"{_truncate(top_repo['name'], 18)} · {share:.0%}"
+        focus_sub = f"{fmt_int(top_repo['commits'])} 次提交"
+    else:
+        focus_value, focus_sub = "—", "暂无数据"
+
+    night, weekend = stats.night_share, stats.weekend_share
+    early = sum(stats.by_hour[5:9]) / max(stats.commit_count, 1)
+    if night >= 0.35:
+        rhythm_kind = "深夜型"
+    elif weekend >= 0.35:
+        rhythm_kind = "周末型"
+    elif early >= 0.28:
+        rhythm_kind = "清晨型"
+    else:
+        rhythm_kind = "白天型"
+    rhythm_value = f"{rhythm_kind} · 峰值 {peak_hour:02d}:00"
+    rhythm_sub = f"深夜 {night:.0%} · 周末 {weekend:.0%}"
+
+    avg_lines = stats.lines_changed / max(stats.commit_count, 1)
+    size_map = dict(stats.size_buckets)
+    size_total = sum(size_map.values()) or 1
+    small_share = (size_map.get("0–10", 0) + size_map.get("10–100", 0)) / size_total
+    large_share = (size_map.get("500–2k", 0) + size_map.get("2k+", 0)) / size_total
+    if small_share >= 0.6:
+        style_kind = "小步迭代"
+    elif large_share >= 0.35:
+        style_kind = "大提交"
+    else:
+        style_kind = "中等粒度"
+    style_value = f"{style_kind} · {small_share:.0%} ≤100 行"
+    style_sub = f"平均 {avg_lines:.0f} 行/次 · 大提交 {large_share:.0%}"
+
+    sessions = stats.sessions or {}
+    sess_count = int(sessions.get("count") or 0)
+    avg_min = int(sessions.get("avg_minutes") or 0)
+    long_min = int(sessions.get("longest_minutes") or 0)
+    if avg_min >= 90:
+        pace_kind = "沉浸型"
+    elif avg_min >= 45:
+        pace_kind = "专注型"
+    elif avg_min > 0:
+        pace_kind = "碎片型"
+    else:
+        pace_kind = ""
+    if avg_min:
+        avg_label = f"{avg_min / 60:.1f} 小时" if avg_min >= 90 else f"{avg_min} 分钟"
+        long_label = f"{long_min / 60:.0f} 小时" if long_min >= 90 else f"{long_min} 分钟"
+        pace_value = f"{pace_kind} · 平均 {avg_label}" if pace_kind else "—"
+        pace_sub = f"{sess_count} 次会话 · 最长 {long_label}"
+    else:
+        pace_value, pace_sub = "—", "暂无会话"
+
+    churn_total = stats.insertions + stats.deletions
+    deletion_share = stats.deletions / churn_total if churn_total else 0
+    ratio = stats.insertions / stats.deletions if stats.deletions else 0
+    if deletion_share >= 0.5:
+        churn_kind = "重构型"
+    elif deletion_share >= 0.3:
+        churn_kind = "平衡型"
+    else:
+        churn_kind = "扩张型"
+    churn_value = f"{churn_kind} · {ratio:.1f}:1 增删" if ratio else f"{churn_kind} · 只增不删"
+    churn_sub = f"删除 {fmt_human(stats.deletions)} 行（{deletion_share:.0%}）"
+
+    peak_share = peak / max(stats.commit_count, 1)
+    burst_value = f"{peak_month:02d} 月占 {peak_share:.0%}"
+    burst_sub = f"{peak} 次提交 · 其余 {stats.commit_count - peak} 次"
+
+    top2 = sum(repo["commits"] for repo in stats.repo_details[:2])
+    top2_share = top2 / max(stats.commit_count, 1)
+    breadth_value = f"前 2 个项目占 {top2_share:.0%}"
+    breadth_sub = f"{stats.repo_count} 个仓库 · 新开 {stats.new_repos}"
+
+    msg_map = dict(stats.message_buckets)
+    msg_total = sum(msg_map.values()) or 1
+    mid_share = msg_map.get("40–80", 0) / msg_total
+    avg_subject = stats.avg_subject_len
+    if avg_subject >= 50:
+        msg_kind = "详细型"
+    elif avg_subject <= 25:
+        msg_kind = "简洁型"
+    else:
+        msg_kind = "适中"
+    msg_value = f"{msg_kind} · 平均 {avg_subject} 字"
+    msg_sub = f"{mid_share:.0%} 在 40–80 字 · 规范 {stats.conventional_share:.0%}"
+
+    insights = [
+        ("主力项目 / FOCUS", focus_value, focus_sub),
+        ("作息 / RHYTHM", rhythm_value, rhythm_sub),
+        ("提交粒度 / GRAIN", style_value, style_sub),
+        ("工作方式 / SESSIONS", pace_value, pace_sub),
+        ("增删倾向 / CHURN", churn_value, churn_sub),
+        ("月度爆发 / BURST", burst_value, burst_sub),
+        ("项目组合 / SCOPE", breadth_value, breadth_sub),
+        ("消息风格 / MESSAGES", msg_value, msg_sub),
+    ]
+    insight_svg = [_text(M, 320, "INSIGHTS / 观察", 8, c["muted"], spacing=1)]
+    for i, (label, value, sub) in enumerate(insights):
+        row, col = divmod(i, 4)
+        x = cols[col]
+        top = 342 + row * 66
+        insight_svg.append(_text(x, top, label, 7.5, c["muted"], spacing=0.6))
+        insight_svg.append(_text(x - 1, top + 22, value, 15, c["ink"], family=SERIF))
+        insight_svg.append(_text(x, top + 38, sub, 7, c["muted"]))
+    insight_svg.append(_rule(462, c["line"]))
+
+    # ---- four data columns -------------------------------------------
+    row_y = [500 + i * 24 for i in range(5)]
     sections = []
 
     # Four named languages + the "其他" bucket keeps the column at five rows.
     lang_rows, lang_total = language_breakdown(stats.languages, limit=4, min_share=0.01)
     lang_total = lang_total or 1
-    sections.append(_text(cols[0], 320, f"LANGUAGES · {stats.language_count} 种", 8,
+    sections.append(_text(cols[0], 478, f"LANGUAGES · {stats.language_count} 种", 8,
                           c["muted"], spacing=1))
     for i, (name, value) in enumerate(lang_rows[:5]):
         y = row_y[i]
@@ -212,7 +330,7 @@ def build_svg(stats: ReportStats, *, dark: bool = False) -> str:
 
     type_rows = stats.commit_types[:5]
     type_total = sum(value for _, value in stats.commit_types) or 1
-    sections.append(_text(cols[1], 320, "COMMIT TYPES", 8, c["muted"], spacing=1))
+    sections.append(_text(cols[1], 478, "COMMIT TYPES", 8, c["muted"], spacing=1))
     for i, (name, value) in enumerate(type_rows[:5]):
         y = row_y[i]
         sections.append(_text(cols[1], y, _truncate(name, 14), 8, c["ink2"]))
@@ -229,7 +347,7 @@ def build_svg(stats: ReportStats, *, dark: bool = False) -> str:
 
     repos = stats.repo_details[:4]
     max_commits = max((r["commits"] for r in repos), default=1)
-    sections.append(_text(cols[2], 320, f"TOP REPOS · {stats.repo_count} 个", 8,
+    sections.append(_text(cols[2], 478, f"TOP REPOS · {stats.repo_count} 个", 8,
                           c["muted"], spacing=1))
     for i, repo in enumerate(repos):
         y = row_y[i]
@@ -262,36 +380,38 @@ def build_svg(stats: ReportStats, *, dark: bool = False) -> str:
     if stats.top_files:
         path, _lines = stats.top_files[0]
         record_items.append(("最常改文件", _truncate(path.split("/")[-1], 24)))
-    sections.append(_text(cols[3], 320, "RECORDS / 年度之最", 8, c["muted"], spacing=1))
+    sections.append(_text(cols[3], 478, "RECORDS / 年度之最", 8, c["muted"], spacing=1))
     for i, (label, value) in enumerate(record_items[:5]):
         y = row_y[i]
         sections.append(_text(cols[3], y, label, 7.5, c["muted"]))
         sections.append(_text(cols[3] + COL_W - 12, y, value, 8, c["ink2"], anchor="end"))
 
     # ---- footer -------------------------------------------------------
-    peak_hour = stats.by_hour.index(max(stats.by_hour)) if any(stats.by_hour) else 0
     meta_parts = []
     if stats.earliest_dt:
         meta_parts.append(f"最早提交 {stats.earliest_dt:%Y.%m}")
     if stats.tags_in_year:
         meta_parts.append(f"今年 {stats.tags_in_year} 个版本 tag")
     meta_line = " · ".join(meta_parts)
-    right_footer = (f"峰值 {peak_hour:02d}:00 · 深夜 {stats.night_share:.0%}"
-                    f" · 周末 {stats.weekend_share:.0%}")
+    right_footer = f"生成于 {stats.generated_at.replace('-', '.')}"
     footer = [
-        _rule(460, c["line"]),
-        _text(M, 478, meta_line, 7, c["muted"]),
-        _text(RIGHT, 478, right_footer, 7, c["muted"], anchor="end"),
-        _text(M, 496, f"CODEYEAR · {stats.year} · generated locally · no data uploaded",
+        _rule(618, c["line"]),
+        _text(M, 634, meta_line, 7, c["muted"]),
+        _text(RIGHT, 634, right_footer, 7, c["muted"], anchor="end"),
+        _text(M, 652, f"CODEYEAR · {stats.year} · generated locally · no data uploaded",
               7, c["muted"]),
-        _text(RIGHT, 496, "LOCAL ONLY", 7, c["accent"], anchor="end", spacing=1),
+        _text(RIGHT, 652, "LOCAL ONLY", 7, c["accent"], anchor="end", spacing=1),
     ]
 
-    return f"""<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}" role="img" aria-label="CodeYear {stats.year} · {_e(title)}">
-  <title>CodeYear {stats.year} · {_e(title)}</title>
+    label = f"{owner} · CodeYear {stats.year} · {title}" if owner else (
+        f"CodeYear {stats.year} · {title}"
+    )
+    return f"""<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}" role="img" aria-label="{_e(label)}">
+  <title>{_e(label)}</title>
   {''.join(header)}
   {''.join(tile_svg)}
   {''.join(charts)}
+  {''.join(insight_svg)}
   {''.join(sections)}
   {''.join(footer)}
 </svg>
