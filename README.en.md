@@ -72,7 +72,7 @@ By default it counts only commits authored by you (matching git `user.name` / `u
 - One-line README summary, stack, own code, latest commit, activity status
 - Filter by main language; repositories without a README are marked honestly
 
-**Numbers**
+**Data analysis**
 - Monthly rhythm, 7×24 commit clock, full-year heatmap
 - Code composition by lines, language breakdown, **quarterly language shifts**
 - Commit-size distribution, commit types, keywords, **message-length distribution**
@@ -86,7 +86,7 @@ By default it counts only commits authored by you (matching git `user.name` / `u
 - Layout: a book-spine contents rail, an oversized year cover (showing the scanned folders),
   a light four-cell stats table, a "Next" link at the end of every section, scroll-spy navigation,
   and a back-to-top button
-- Motion: a subtle cover entrance, section reveals, and bar growth; respects `prefers-reduced-motion`
+- Motion: a quiet page fade plus short hover/active transitions; no scroll bouncing or count-up numbers; respects `prefers-reduced-motion`
 - Bilingual: generates both Chinese and English reports from the same data, switchable in-page
 - Vanilla JS only; respects `prefers-reduced-motion`
 - System fonts only (Georgia / Songti / SimSun + Consolas); no external font requests

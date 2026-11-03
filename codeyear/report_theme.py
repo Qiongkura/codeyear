@@ -196,15 +196,14 @@ section{padding:88px 0 0;scroll-margin-top:24px}
 footer{border-top:1px solid var(--line);margin-top:88px;padding:24px 0 44px}
 .foot-in{max-width:1040px;padding:0 56px;font-family:var(--sans);font-size:12px}
 
-/* hero entrance; section reveals and bar growth are handled by the base JS */
-@keyframes cy-rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
-.cover-year,.scan-roots,.hero h1,.lede,.hero-stats{animation:cy-rise .7s cubic-bezier(.22,1,.36,1) both}
-.scan-roots{animation-delay:.03s}
-.hero h1{animation-delay:.06s}
-.lede{animation-delay:.14s}
-.hero-stats{animation-delay:.2s}
+/* one quiet load fade; everything else stays still like print */
+@keyframes cy-fade{from{opacity:0}to{opacity:1}}
+main{animation:cy-fade .24s ease both}
+.rail-nav a,.next-link .name{transition:color .18s ease}
+.rv,.rv-line{opacity:1!important;transform:none!important;transition:none!important}
+.sec-line,.bar-track i,.hour-bar,.month-col i{transform:none!important;opacity:1!important}
 @media (prefers-reduced-motion: reduce){
-  .cover-year,.scan-roots,.hero h1,.lede,.hero-stats{animation:none}
+  main{animation:none}
 }
 #tip{border:1px solid var(--line);box-shadow:none;background:var(--paper);
   font-family:var(--sans);font-size:12px}
@@ -253,6 +252,7 @@ EN_MAP = {
     "仓库索引": "Repository index",
     "全部仓库索引": "Full repository index",
     "数字": "Numbers",
+    "数据分析": "Data analysis",
     "关于": "About",
     "2026 年，": "In 2026,",
     "次提交。": "commits.",
@@ -558,7 +558,7 @@ def decorate(source: str, stats: ReportStats) -> str:
       <a href="#records">年度之最</a>
       <a href="#archives">仓库档案</a>
       <a href="#index">仓库索引</a>
-      <a href="#numbers">数字</a>
+      <a href="#numbers">数据分析</a>
       <a href="#about">关于</a>
     </nav>
   </div>
@@ -573,7 +573,7 @@ def decorate(source: str, stats: ReportStats) -> str:
     nexts = [
         ("records", "archives", "仓库档案", "下一节", "&rarr;"),
         ("archives", "index", "仓库索引", "下一节", "&rarr;"),
-        ("index", "numbers", "数字", "下一节", "&rarr;"),
+        ("index", "numbers", "数据分析", "下一节", "&rarr;"),
         ("numbers", "about", "关于本报告", "下一节", "&rarr;"),
         ("about", "top", "回到顶部", "", "&uarr;"),
     ]

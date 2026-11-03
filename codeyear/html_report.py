@@ -1161,7 +1161,7 @@ def build_html(stats: ReportStats) -> str:
     <a class="logo" href="#top"><i></i>CODEYEAR</a>
     <div class="nav-links">
       <a href="#records">之最</a><a href="#archives">档案</a><a href="#index">索引</a>
-      <a href="#numbers">数字</a><a href="#about">关于</a>
+      <a href="#numbers">数据分析</a><a href="#about">关于</a>
     </div>
     <div class="nav-meta">
       <span id="clock">--:--:--</span>
@@ -1219,7 +1219,7 @@ def build_html(stats: ReportStats) -> str:
 
     <section id="numbers">
       <div class="sec-head rv">
-        <div><div class="sec-index">04 / BY THE NUMBERS</div><h2>数字</h2></div>
+        <div><div class="sec-index">04 / BY THE NUMBERS</div><h2>数据分析</h2></div>
         <span class="sec-sub">git 里能查到的，不靠形容词</span>
       </div>
       <div class="sec-line"></div>

@@ -58,6 +58,65 @@ class App:
             background=PAPER2, troughcolor=PAPER, bordercolor=LINE,
             arrowcolor=MUTED, relief="flat",
         )
+        style.configure(
+            "CY.TEntry",
+            fieldbackground="white", foreground=INK, bordercolor=LINE,
+            lightcolor=LINE, darkcolor=LINE, padding=(6, 4),
+            font=("Consolas", 10),
+        )
+        style.map("CY.TEntry", fieldbackground=[("disabled", PAPER2)],
+                  foreground=[("disabled", MUTED)])
+        style.configure(
+            "CY.TSpinbox",
+            fieldbackground="white", foreground=INK, background=PAPER2,
+            arrowcolor=MUTED, bordercolor=LINE, lightcolor=LINE,
+            darkcolor=LINE, padding=(6, 4), font=("Consolas", 10),
+        )
+        style.map("CY.TSpinbox", fieldbackground=[("disabled", PAPER2)],
+                  foreground=[("disabled", MUTED)])
+        style.configure(
+            "CY.TButton",
+            background=PAPER2, foreground=INK, bordercolor=LINE,
+            lightcolor=PAPER2, darkcolor=PAPER2, padding=(12, 6),
+            font=("Microsoft YaHei", 9),
+        )
+        style.map(
+            "CY.TButton",
+            background=[("active", "#ddd7c8"), ("disabled", PAPER2)],
+            foreground=[("disabled", MUTED)],
+        )
+        style.configure(
+            "Accent.TButton",
+            background=ACCENT, foreground="white", bordercolor=ACCENT,
+            lightcolor=ACCENT, darkcolor=ACCENT, padding=(18, 8),
+            font=("Microsoft YaHei", 10, "bold"),
+        )
+        style.map(
+            "Accent.TButton",
+            background=[("active", "#a8431f"), ("disabled", "#d8a08c")],
+            foreground=[("disabled", "#f5e6df")],
+        )
+        style.configure(
+            "CY.TCheckbutton",
+            background=PAPER, foreground=INK, indicatorbackground="white",
+            indicatorforeground=INK, indicatorrelief="flat",
+            padding=(0, 2), font=("Microsoft YaHei", 9),
+        )
+        style.map(
+            "CY.TCheckbutton",
+            background=[("active", PAPER)],
+            foreground=[("disabled", MUTED)],
+        )
+        style.configure(
+            "CY.TLabelframe",
+            background=PAPER, bordercolor=LINE, lightcolor=LINE,
+            darkcolor=LINE, relief="solid", borderwidth=1,
+        )
+        style.configure(
+            "CY.TLabelframe.Label",
+            background=PAPER, foreground=INK,
+            font=("Microsoft YaHei", 10, "bold"),
+        )
 
     def _build(self) -> None:
         pad = {"padx": 22}
@@ -77,10 +136,8 @@ class App:
         body.pack(fill="both", expand=True, **pad)
 
         # ---- folders -------------------------------------------------
-        folder_box = tk.LabelFrame(
-            body, text=" 扫描目录 ", bg=PAPER, fg=INK, bd=0, relief="flat",
-            highlightbackground=LINE, highlightcolor=LINE, highlightthickness=1,
-            font=("Microsoft YaHei", 10, "bold"), labelanchor="nw",
+        folder_box = ttk.LabelFrame(
+            body, text="扫描目录", style="CY.TLabelframe", padding=0,
         )
         folder_box.pack(fill="x", pady=(6, 12))
 
@@ -122,22 +179,16 @@ class App:
         tk.Label(options, text="年份", bg=PAPER, fg=MUTED,
                  font=("Microsoft YaHei", 9)).grid(row=0, column=0, sticky="w")
         self.year_var = tk.StringVar(value=str(date.today().year))
-        tk.Spinbox(
-            options, from_=2000, to=2100, width=8, textvariable=self.year_var,
-            relief="flat", bd=0, highlightthickness=1, highlightbackground=LINE,
-            bg="white", fg=INK, buttonbackground=PAPER2,
-            font=("Consolas", 10),
+        ttk.Entry(
+            options, width=8, textvariable=self.year_var, style="CY.TEntry",
         ).grid(row=1, column=0, sticky="w", pady=(2, 0))
 
         tk.Label(options, text="扫描层级", bg=PAPER, fg=MUTED,
                  font=("Microsoft YaHei", 9)).grid(
             row=0, column=1, sticky="w", padx=(22, 0))
         self.depth_var = tk.StringVar(value="6")
-        tk.Spinbox(
-            options, from_=1, to=20, width=6, textvariable=self.depth_var,
-            relief="flat", bd=0, highlightthickness=1, highlightbackground=LINE,
-            bg="white", fg=INK, buttonbackground=PAPER2,
-            font=("Consolas", 10),
+        ttk.Entry(
+            options, width=6, textvariable=self.depth_var, style="CY.TEntry",
         ).grid(row=1, column=1, sticky="w", padx=(22, 0), pady=(2, 0))
 
         if self.identity:
@@ -149,16 +200,25 @@ class App:
         else:
             identity_text = "未检测到 git 身份，将统计所有作者"
         self.identity_var = tk.BooleanVar(value=bool(self.identity))
-        self.identity_check = tk.Checkbutton(
-            options, text=identity_text, variable=self.identity_var,
-            bg=PAPER, fg=INK if self.identity else MUTED,
-            activebackground=PAPER, selectcolor="white",
-            font=("Microsoft YaHei", 9), anchor="w",
-        )
-        self.identity_check.grid(
+        self.identity_box = tk.Frame(options, bg=PAPER, cursor="hand2")
+        self.identity_box.grid(
             row=0, column=2, rowspan=2, sticky="w", padx=(26, 0))
-        if not self.identity:
-            self.identity_check.configure(state="disabled")
+        self.identity_canvas = tk.Canvas(
+            self.identity_box, width=16, height=16, bg=PAPER,
+            highlightthickness=0, bd=0, cursor="hand2",
+        )
+        self.identity_canvas.pack(side="left", padx=(0, 8))
+        self.identity_label = tk.Label(
+            self.identity_box, text=identity_text, bg=PAPER,
+            fg=INK if self.identity else MUTED,
+            font=("Microsoft YaHei", 9),
+            cursor="hand2" if self.identity else "",
+        )
+        self.identity_label.pack(side="left")
+        if self.identity:
+            self.identity_canvas.bind("<Button-1>", self._toggle_identity)
+            self.identity_label.bind("<Button-1>", self._toggle_identity)
+        self._draw_identity_check()
 
         tk.Label(
             body, text="扫描层级 = 向下查找仓库的文件夹层数，默认 6。",
@@ -170,10 +230,8 @@ class App:
         tk.Label(out_row, text="输出目录", bg=PAPER, fg=MUTED,
                  font=("Microsoft YaHei", 9)).pack(side="left", padx=(0, 8))
         self.out_var = tk.StringVar(value="codeyear-output")
-        tk.Entry(
-            out_row, textvariable=self.out_var, relief="flat",
-            highlightthickness=1, highlightbackground=LINE,
-            bg="white", fg=INK, font=("Consolas", 10),
+        ttk.Entry(
+            out_row, textvariable=self.out_var, style="CY.TEntry",
         ).pack(side="left", fill="x", expand=True)
         self._button(out_row, "选择…", self._choose_output).pack(
             side="left", padx=(8, 0))
@@ -181,11 +239,9 @@ class App:
         # ---- actions -------------------------------------------------
         actions = tk.Frame(body, bg=PAPER)
         actions.pack(fill="x", pady=(0, 10))
-        self.start_btn = tk.Button(
+        self.start_btn = ttk.Button(
             actions, text="开始生成", command=self._start,
-            bg=ACCENT, fg="white", activebackground="#a8431f",
-            activeforeground="white", relief="flat", bd=0,
-            padx=18, pady=8, font=("Microsoft YaHei", 10, "bold"),
+            style="Accent.TButton", cursor="hand2",
         )
         self.start_btn.pack(side="left")
         self.open_btn = self._button(actions, "打开报告", self._open_report)
@@ -207,10 +263,8 @@ class App:
         self.status.pack(fill="x")
 
         # ---- result --------------------------------------------------
-        result_box = tk.LabelFrame(
-            body, text=" 结果 ", bg=PAPER, fg=INK, bd=0, relief="flat",
-            highlightbackground=LINE, highlightcolor=LINE, highlightthickness=1,
-            font=("Microsoft YaHei", 10, "bold"), labelanchor="nw",
+        result_box = ttk.LabelFrame(
+            body, text="结果", style="CY.TLabelframe", padding=0,
         )
         result_box.pack(fill="both", expand=True, pady=(12, 0))
         text_wrap = tk.Frame(result_box, bg=PAPER)
@@ -229,11 +283,9 @@ class App:
         self.result.configure(yscrollcommand=rscroll.set, state="disabled")
 
     def _button(self, parent, text, command):
-        return tk.Button(
-            parent, text=text, command=command, bg=PAPER2, fg=INK,
-            activebackground="#ddd7c8", activeforeground=INK,
-            relief="flat", bd=0, padx=12, pady=6, cursor="hand2",
-            font=("Microsoft YaHei", 9),
+        return ttk.Button(
+            parent, text=text, command=command, style="CY.TButton",
+            cursor="hand2",
         )
 
     # ---- folder actions ----------------------------------------------
@@ -390,8 +442,27 @@ class App:
         self.busy = busy
         state = "disabled" if busy else "normal"
         self.start_btn.configure(state=state)
-        self.identity_check.configure(
-            state=state if self.identity else "disabled")
+
+    def _draw_identity_check(self) -> None:
+        canvas = self.identity_canvas
+        canvas.delete("all")
+        if not self.identity:
+            canvas.create_rectangle(1, 1, 15, 15, outline=LINE, fill=PAPER2)
+            return
+        if self.identity_var.get():
+            canvas.create_rectangle(1, 1, 15, 15, outline=ACCENT, fill=ACCENT)
+            canvas.create_line(
+                4, 8, 7, 11, 12, 4, fill="white", width=2,
+                capstyle="round", joinstyle="round",
+            )
+        else:
+            canvas.create_rectangle(1, 1, 15, 15, outline=LINE, fill="white")
+
+    def _toggle_identity(self, _event=None) -> None:
+        if not self.identity or self.busy:
+            return
+        self.identity_var.set(not self.identity_var.get())
+        self._draw_identity_check()
 
     def _set_result(self, text: str) -> None:
         self.result.configure(state="normal")

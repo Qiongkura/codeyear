@@ -544,15 +544,14 @@ section{padding:88px 0 0;scroll-margin-top:24px}
 footer{border-top:1px solid var(--line);margin-top:88px;padding:24px 0 44px}
 .foot-in{max-width:1040px;padding:0 56px;font-family:var(--sans);font-size:12px}
 
-/* hero entrance; section reveals and bar growth are handled by the base JS */
-@keyframes cy-rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
-.cover-year,.scan-roots,.hero h1,.lede,.hero-stats{animation:cy-rise .7s cubic-bezier(.22,1,.36,1) both}
-.scan-roots{animation-delay:.03s}
-.hero h1{animation-delay:.06s}
-.lede{animation-delay:.14s}
-.hero-stats{animation-delay:.2s}
+/* one quiet load fade; everything else stays still like print */
+@keyframes cy-fade{from{opacity:0}to{opacity:1}}
+main{animation:cy-fade .24s ease both}
+.rail-nav a,.next-link .name{transition:color .18s ease}
+.rv,.rv-line{opacity:1!important;transform:none!important;transition:none!important}
+.sec-line,.bar-track i,.hour-bar,.month-col i{transform:none!important;opacity:1!important}
 @media (prefers-reduced-motion: reduce){
-  .cover-year,.scan-roots,.hero h1,.lede,.hero-stats{animation:none}
+  main{animation:none}
 }
 #tip{border:1px solid var(--line);box-shadow:none;background:var(--paper);
   font-family:var(--sans);font-size:12px}
@@ -589,7 +588,7 @@ footer{border-top:1px solid var(--line);margin-top:88px;padding:24px 0 44px}
       <a href="#records">Yearly records</a>
       <a href="#archives">Repository profiles</a>
       <a href="#index">Repository index</a>
-      <a href="#numbers">Numbers</a>
+      <a href="#numbers">Data analysis</a>
       <a href="#about">About</a>
     </nav>
   </div>
@@ -739,11 +738,11 @@ footer{border-top:1px solid var(--line);margin-top:88px;padding:24px 0 44px}
     <p class="index-note"><span id="row-count">10 / 10</span>
       · 「一句话」直接取自每个仓库 README 的第一行——没写的就是没写。</p>
 
-    <a class="next-link" href="#numbers"><span class="next-kicker">Next</span><span class="name">Numbers <i>&rarr;</i></span></a></section>
+    <a class="next-link" href="#numbers"><span class="next-kicker">Next</span><span class="name">Data analysis <i>&rarr;</i></span></a></section>
 
     <section id="numbers">
       <div class="sec-head rv">
-        <div><div class="sec-index">04 / BY THE NUMBERS</div><h2>Numbers</h2></div>
+        <div><div class="sec-index">04 / BY THE NUMBERS</div><h2>Data analysis</h2></div>
         <span class="sec-sub">What git can prove, without adjectives</span>
       </div>
       <div class="sec-line"></div>
