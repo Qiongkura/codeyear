@@ -20,7 +20,7 @@ from pathlib import Path
 from .languages import language_for
 from .runner import render
 from .scanner import Commit, FileChange, RepoResult
-from .stats import build_stats, fmt_human, fmt_int
+from .stats import ReportStats, build_stats, fmt_human, fmt_int
 
 API = "https://api.github.com"
 
@@ -188,17 +188,15 @@ def _total_commits(api: GitHubAPI, full: str, username: str) -> int:
     return 0
 
 
-def run(
+def fetch_stats(
     username: str,
     year: int,
-    out_dir: str | Path,
     *,
     token: str | None = None,
     max_commits: int = 200,
     include_forks: bool = False,
-    open_report: bool = False,
     quiet: bool = False,
-) -> int:
+) -> tuple[ReportStats, list[str], str]:
     api = GitHubAPI(token)
     if not api.token and max_commits > 30:
         max_commits = 30
@@ -208,8 +206,7 @@ def run(
     try:
         user = api.get(f"/users/{urllib.parse.quote(username)}")
         if not user:
-            print(f"找不到 GitHub 用户: {username}", file=sys.stderr)
-            return 2
+            raise RuntimeError(f"找不到 GitHub 用户: {username}")
         login = user.get("login") or username
         display_name = user.get("name") or login
         since = datetime(year, 1, 1)
@@ -218,8 +215,8 @@ def run(
             print(f"CodeYear · github.com/{login} · {year}", file=sys.stderr)
         repos = _repos(api, login, since, include_forks)
     except RuntimeError as exc:
-        print(f"GitHub API 错误: {exc}", file=sys.stderr)
-        return 1
+        raise RuntimeError(f"GitHub API 错误: {exc}") from exc
+
     results: list[RepoResult] = []
     warnings: list[str] = []
     total = 0
@@ -256,8 +253,7 @@ def run(
         ))
 
     if not results:
-        print(f"{login} 在 {year} 年没有找到公开提交。", file=sys.stderr)
-        return 3
+        raise RuntimeError(f"{login} 在 {year} 年没有找到公开提交。")
 
     stats = build_stats(
         year=year,
@@ -267,19 +263,41 @@ def run(
         identity=(login, display_name),
     )
     if stats.commit_count == 0:
-        print(f"{login} 在 {year} 年没有找到公开提交。", file=sys.stderr)
-        return 3
+        raise RuntimeError(f"{login} 在 {year} 年没有找到公开提交。")
+    return stats, warnings, login
+
+
+def run(
+    username: str,
+    year: int,
+    out_dir: str | Path,
+    *,
+    token: str | None = None,
+    max_commits: int = 200,
+    include_forks: bool = False,
+    open_report: bool = False,
+    quiet: bool = False,
+) -> int:
+    try:
+        stats, warnings, login = fetch_stats(
+            username, year, token=token, max_commits=max_commits,
+            include_forks=include_forks, quiet=quiet,
+        )
+    except RuntimeError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
 
     out = Path(out_dir)
     written = render(stats, out)
-    embed = (
-        "<picture>\n"
+    embed = chr(10).join([
+        "<picture>",
         f'  <source media="(prefers-color-scheme: dark)" '
-        f'srcset="./codeyear-{year}-card-dark.svg">\n'
+        f'srcset="./codeyear-{year}-card-dark.svg">',
         f'  <img src="./codeyear-{year}-card.svg" width="640" '
-        f'alt="CodeYear {year}">\n'
-        "</picture>\n"
-    )
+        f'alt="CodeYear {year}">',
+        "</picture>",
+        "",
+    ])
     embed_path = out / f"codeyear-{year}-embed.md"
     embed_path.write_text(embed, encoding="utf-8")
     written.append(("EMBED", embed_path))

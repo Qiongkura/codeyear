@@ -60,10 +60,40 @@ codeyear github Qiongkura --year 2026 --out ./codeyear-github
 ```
 
 - 只读公开仓库，不会读取私有仓库。
-- 需要网络；默认最多拉 200 条提交，可用 `--max-commits` 调整。
+- 需要网络；默认最多拉 200 条提交详情，可用 `--max-commits` 调整。
 - 没有 token 时最多 30 条，且容易触发 GitHub API 限流；建议设置 `GITHUB_TOKEN` 或传 `--token`。
 - 输出包含完整报告、海报、长图、卡片，以及 `codeyear-2026-embed.md`，可以直接粘到 Profile README。
 - 本地 `scan` 仍是默认模式，代码不会上传。
+
+### 在线卡片服务
+
+```bash
+codeyear serve --port 8000
+```
+
+打开 `http://127.0.0.1:8000`，输入用户名即可生成卡片；服务端缓存 1 小时。
+
+部署到 Render / Railway / Fly / VPS：设置 `GITHUB_TOKEN`，启动命令：
+
+```bash
+codeyear serve --host 0.0.0.0 --port $PORT --max-commits 500
+```
+
+仓库里带 `Dockerfile` 和 `render.yaml`，Render 可以直接识别。
+
+```text
+https://your-host/card.svg?username=Qiongkura&year=2026
+https://your-host/card-dark.svg?username=Qiongkura&year=2026
+```
+
+`--max-commits` 是每次最多拉多少条提交详情，不是 GitHub 的总提交数；每条详情一次 API 请求。
+默认 200，无 token 会自动降为 30。要更完整就设置 token 并调大；完整本地历史仍用 `scan`。
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Qiongkura/codeyear)
+
+> Action 和在线服务都只使用公开 GitHub 数据；要自动更新包含私有项目的本地卡片，
+> 需要本机定时任务或自托管 runner。首次使用 Action 时，把 `codeyear-2026-embed.md`
+> 的内容粘到 Profile README 一次；之后它只更新卡片文件。
 
 GitHub Action 自动更新示例：[docs/codeyear-card.yml](docs/codeyear-card.yml)。
 
@@ -295,8 +325,16 @@ codeyear/
   keywords.py     提交关键词提取
   languages.py    扩展名 → 语言映射与过滤
   html_report.py  纸面档案 HTML 报告（内联 CSS/JS）
+  report_theme.py 新版报告主题 / 英文版 / 嵌入片段
+  card.py         GitHub 主页卡片
   poster.py       PNG 海报（Pillow）
   personas.py     代码人格
+  github_public.py 公开 GitHub 数据模式
+  runner.py       扫描 + 渲染流水线（GUI/向导共用）
+  gui.py          Tkinter 桌面界面
+  wizard.py       终端交互向导
+  server.py       公开卡片 HTTP 服务
+  profile.py      本地 / 推送 Profile 卡片同步
   cli.py          命令行
 ```
 

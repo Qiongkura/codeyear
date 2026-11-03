@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: codeyear-card
+    runtime: python
+    buildCommand: pip install -e .
+    startCommand: codeyear serve --host 0.0.0.0 --port $PORT --max-commits 500
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.0
+      - key: GITHUB_TOKEN
+        sync: false

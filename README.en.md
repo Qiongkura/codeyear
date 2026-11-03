@@ -60,10 +60,42 @@ codeyear github Qiongkura --year 2026 --out ./codeyear-github
 ```
 
 - Reads public repositories only; private repositories are never touched.
-- Requires network access; fetches up to 200 commits by default (`--max-commits`).
+- Requires network access; fetches up to 200 commit details by default (`--max-commits`).
 - Without a token it is capped at 30 commits and is easy to rate-limit; set `GITHUB_TOKEN` or pass `--token`.
 - Outputs the full report, poster, long image, cards, and `codeyear-2026-embed.md` for your profile README.
 - The local `scan` command remains the default; your code is not uploaded.
+
+### Online card service
+
+```bash
+codeyear serve --port 8000
+```
+
+Open `http://127.0.0.1:8000`, enter a username, and get a card; responses are cached for one hour.
+
+Deploy to Render / Railway / Fly / a VPS: set `GITHUB_TOKEN` and run:
+
+```bash
+codeyear serve --host 0.0.0.0 --port $PORT --max-commits 500
+```
+
+The repo includes `Dockerfile` and `render.yaml`; Render can detect it directly.
+
+```text
+https://your-host/card.svg?username=Qiongkura&year=2026
+https://your-host/card-dark.svg?username=Qiongkura&year=2026
+```
+
+`--max-commits` is the number of commit details fetched per request, not a GitHub total.
+Each detail is one API call; the default is 200, and without a token it drops to 30.
+Raise it with a token for fuller data; use local `scan` for complete history.
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Qiongkura/codeyear)
+
+> Both the Action and the hosted service use public GitHub data only. To auto-update
+> a local card that includes private repositories, use a local scheduled task or a
+> self-hosted runner. On first use, paste `codeyear-2026-embed.md` into the profile
+> README once; after that the Action only updates the card files.
 
 GitHub Action example: [docs/codeyear-card.yml](docs/codeyear-card.yml).
 
@@ -284,8 +316,16 @@ codeyear/
   keywords.py     commit keyword extraction
   languages.py    extension → language mapping and filters
   html_report.py  paper-archive HTML report (inline CSS/JS)
+  report_theme.py new report theme / English edition / embed snippet
+  card.py         GitHub profile card
   poster.py       PNG poster (Pillow)
   personas.py     coding persona
+  github_public.py public GitHub data mode
+  runner.py       shared scan + render pipeline (GUI/wizard)
+  gui.py          Tkinter desktop GUI
+  wizard.py       terminal wizard
+  server.py       public card HTTP service
+  profile.py      local / pushed profile card sync
   cli.py          command line
 ```
 

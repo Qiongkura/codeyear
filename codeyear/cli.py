@@ -41,6 +41,12 @@ def _build_parser() -> argparse.ArgumentParser:
     github.add_argument("--include-forks", action="store_true", help="包含 fork 仓库")
     github.add_argument("--open", action="store_true", help="生成后打开报告")
     github.add_argument("--quiet", action="store_true", help="不打印扫描进度")
+    server = sub.add_parser("serve", help="启动公开 GitHub 卡片 HTTP 服务")
+    server.add_argument("--host", default="127.0.0.1", help="监听地址，默认 127.0.0.1")
+    server.add_argument("--port", type=int, default=8000, help="监听端口，默认 8000")
+    server.add_argument("--token", default=None, help="GitHub token；也可用 GITHUB_TOKEN")
+    server.add_argument("--max-commits", type=int, default=200,
+                        help="每张卡片最多拉取多少条提交")
     scan = sub.add_parser("scan", help="扫描一个文件夹下的所有 git 仓库")
     scan.add_argument("path", nargs="?", default=".", help="要扫描的文件夹（默认当前目录）")
     scan.add_argument("--year", type=int, default=date.today().year, help="统计年份，默认今年")
@@ -119,6 +125,13 @@ def main(argv: list[str] | None = None) -> int:
             token=args.token, max_commits=args.max_commits,
             include_forks=args.include_forks,
             open_report=args.open, quiet=args.quiet,
+        )
+    if args.command == "serve":
+        from .server import serve
+
+        return serve(
+            args.host, args.port,
+            token=args.token, max_commits=args.max_commits,
         )
     if args.command != "scan":
         parser.print_help()
