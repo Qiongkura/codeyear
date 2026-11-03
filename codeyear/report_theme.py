@@ -71,6 +71,8 @@ body{padding-left:220px}
 .cover-kicker{font-size:12px;letter-spacing:.16em;color:var(--acc);margin-bottom:18px}
 .cover-year{font-family:var(--serif);font-size:clamp(120px,15vw,180px);line-height:.82;
   letter-spacing:-.05em;color:var(--ink);margin-left:-6px}
+.scan-roots{margin:14px 0 0;font-family:var(--sans);font-size:13px;
+  color:var(--muted);line-height:1.6;word-break:break-all}
 h1{font-family:var(--serif);font-weight:400;font-size:46px;line-height:1.15;
   letter-spacing:-.02em;color:var(--ink);margin:24px 0 0}
 h1 em{font-style:normal;color:var(--acc)}
@@ -194,9 +196,16 @@ section{padding:88px 0 0;scroll-margin-top:24px}
 footer{border-top:1px solid var(--line);margin-top:88px;padding:24px 0 44px}
 .foot-in{max-width:1040px;padding:0 56px;font-family:var(--sans);font-size:12px}
 
-/* no motion */
-.rv,.rv-line{opacity:1!important;transform:none!important;transition:none!important}
-.sec-line,.bar-track i,.hour-bar,.month-col i{transform:none!important;opacity:1!important}
+/* hero entrance; section reveals and bar growth are handled by the base JS */
+@keyframes cy-rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.cover-year,.scan-roots,.hero h1,.lede,.hero-stats{animation:cy-rise .7s cubic-bezier(.22,1,.36,1) both}
+.scan-roots{animation-delay:.03s}
+.hero h1{animation-delay:.06s}
+.lede{animation-delay:.14s}
+.hero-stats{animation-delay:.2s}
+@media (prefers-reduced-motion: reduce){
+  .cover-year,.scan-roots,.hero h1,.lede,.hero-stats{animation:none}
+}
 #tip{border:1px solid var(--line);box-shadow:none;background:var(--paper);
   font-family:var(--sans);font-size:12px}
 
@@ -356,6 +365,7 @@ EN_MAP = {
 }
 
 EN_PATTERNS = [
+    (r"扫描目录：(.*) · (\d+) 个仓库", r"Scan roots: \1 · \2 repositories"),
     (r"38\.2\s*万\s*行代码，53 个活跃日，10 个仓库。",
      r"382k lines of code, 53 active days, 10 repositories."),
     (r"(\d[\d,]*) 次提交", r"\1 commits"),
@@ -512,10 +522,15 @@ def decorate(source: str, stats: ReportStats) -> str:
     repos = stats.repo_count
     html = source
 
+    cover = (
+        f'<div class="cover-year">{year}</div>'
+        f'<p class="scan-roots">扫描目录：{htmlmod.escape(stats.root)}'
+        f' · {repos} 个仓库</p>'
+        f'<h1><em>{_comma(commits)}</em> 次提交。</h1>'
+    )
     html = re.sub(
         r'<h1 class="rv-line">.*?</h1>',
-        f'<div class="cover-year">{year}</div>'
-        f'<h1><em>{_comma(commits)}</em> 次提交。</h1>',
+        lambda _match: cover,
         html, count=1, flags=re.S,
     )
     html = re.sub(

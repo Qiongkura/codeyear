@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -16,6 +17,7 @@ from .stats import ReportStats, build_stats
 
 Progress = Callable[[int, int, str], None]
 ALL_FORMATS = {"json", "html", "png", "long", "card"}
+_NO_WINDOW = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
 
 
 def detect_identity() -> tuple[str, str] | None:
@@ -24,7 +26,7 @@ def detect_identity() -> tuple[str, str] | None:
             proc = subprocess.run(
                 ["git", "config", "--global", key],
                 capture_output=True, text=True, encoding="utf-8",
-                errors="replace", timeout=10,
+                errors="replace", timeout=10, creationflags=_NO_WINDOW,
             )
         except (OSError, subprocess.TimeoutExpired):
             return ""

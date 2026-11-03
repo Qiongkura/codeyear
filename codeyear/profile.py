@@ -7,10 +7,13 @@ on this machine.
 
 from __future__ import annotations
 
+import os
 import re
 import shutil
 import subprocess
 from pathlib import Path
+
+_NO_WINDOW = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
 
 
 def _git(repo: Path, *args: str) -> subprocess.CompletedProcess:
@@ -21,6 +24,7 @@ def _git(repo: Path, *args: str) -> subprocess.CompletedProcess:
         encoding="utf-8",
         errors="replace",
         check=False,
+        creationflags=_NO_WINDOW,
     )
 
 

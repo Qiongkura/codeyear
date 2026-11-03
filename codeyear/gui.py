@@ -51,7 +51,12 @@ class App:
         style.configure(
             "CY.Horizontal.TProgressbar",
             troughcolor=PAPER2, background=ACCENT, bordercolor=LINE,
-            lightcolor=ACCENT, darkcolor=ACCENT,
+            lightcolor=ACCENT, darkcolor=ACCENT, thickness=8,
+        )
+        style.configure(
+            "CY.Vertical.TScrollbar",
+            background=PAPER2, troughcolor=PAPER, bordercolor=LINE,
+            arrowcolor=MUTED, relief="flat",
         )
 
     def _build(self) -> None:
@@ -73,7 +78,8 @@ class App:
 
         # ---- folders -------------------------------------------------
         folder_box = tk.LabelFrame(
-            body, text=" 扫描目录 ", bg=PAPER, fg=INK, bd=1, relief="solid",
+            body, text=" 扫描目录 ", bg=PAPER, fg=INK, bd=0, relief="flat",
+            highlightbackground=LINE, highlightcolor=LINE, highlightthickness=1,
             font=("Microsoft YaHei", 10, "bold"), labelanchor="nw",
         )
         folder_box.pack(fill="x", pady=(6, 12))
@@ -84,11 +90,13 @@ class App:
             list_wrap, height=5, selectmode=tk.EXTENDED, exportselection=False,
             bg="white", fg=INK, relief="flat", highlightthickness=1,
             highlightbackground=LINE, highlightcolor=LINE,
+            selectbackground=ACCENT, selectforeground="white",
             font=("Consolas", 10),
         )
         self.folder_list.pack(side="left", fill="x", expand=True)
-        scroll = ttk.Scrollbar(list_wrap, orient="vertical",
-                               command=self.folder_list.yview)
+        scroll = ttk.Scrollbar(
+            list_wrap, orient="vertical", style="CY.Vertical.TScrollbar",
+            command=self.folder_list.yview)
         scroll.pack(side="right", fill="y")
         self.folder_list.configure(yscrollcommand=scroll.set)
 
@@ -116,8 +124,9 @@ class App:
         self.year_var = tk.StringVar(value=str(date.today().year))
         tk.Spinbox(
             options, from_=2000, to=2100, width=8, textvariable=self.year_var,
-            relief="flat", highlightthickness=1, highlightbackground=LINE,
-            bg="white", fg=INK, font=("Consolas", 10),
+            relief="flat", bd=0, highlightthickness=1, highlightbackground=LINE,
+            bg="white", fg=INK, buttonbackground=PAPER2,
+            font=("Consolas", 10),
         ).grid(row=1, column=0, sticky="w", pady=(2, 0))
 
         tk.Label(options, text="扫描层级", bg=PAPER, fg=MUTED,
@@ -126,8 +135,9 @@ class App:
         self.depth_var = tk.StringVar(value="6")
         tk.Spinbox(
             options, from_=1, to=20, width=6, textvariable=self.depth_var,
-            relief="flat", highlightthickness=1, highlightbackground=LINE,
-            bg="white", fg=INK, font=("Consolas", 10),
+            relief="flat", bd=0, highlightthickness=1, highlightbackground=LINE,
+            bg="white", fg=INK, buttonbackground=PAPER2,
+            font=("Consolas", 10),
         ).grid(row=1, column=1, sticky="w", padx=(22, 0), pady=(2, 0))
 
         if self.identity:
@@ -198,7 +208,8 @@ class App:
 
         # ---- result --------------------------------------------------
         result_box = tk.LabelFrame(
-            body, text=" 结果 ", bg=PAPER, fg=INK, bd=1, relief="solid",
+            body, text=" 结果 ", bg=PAPER, fg=INK, bd=0, relief="flat",
+            highlightbackground=LINE, highlightcolor=LINE, highlightthickness=1,
             font=("Microsoft YaHei", 10, "bold"), labelanchor="nw",
         )
         result_box.pack(fill="both", expand=True, pady=(12, 0))
@@ -207,11 +218,13 @@ class App:
         self.result = tk.Text(
             text_wrap, height=8, wrap="word", bg="white", fg=INK,
             relief="flat", highlightthickness=1, highlightbackground=LINE,
+            selectbackground=ACCENT, selectforeground="white",
             font=("Consolas", 9),
         )
         self.result.pack(side="left", fill="both", expand=True)
-        rscroll = ttk.Scrollbar(text_wrap, orient="vertical",
-                                command=self.result.yview)
+        rscroll = ttk.Scrollbar(
+            text_wrap, orient="vertical", style="CY.Vertical.TScrollbar",
+            command=self.result.yview)
         rscroll.pack(side="right", fill="y")
         self.result.configure(yscrollcommand=rscroll.set, state="disabled")
 
@@ -219,7 +232,7 @@ class App:
         return tk.Button(
             parent, text=text, command=command, bg=PAPER2, fg=INK,
             activebackground="#ddd7c8", activeforeground=INK,
-            relief="flat", bd=0, padx=12, pady=6,
+            relief="flat", bd=0, padx=12, pady=6, cursor="hand2",
             font=("Microsoft YaHei", 9),
         )
 

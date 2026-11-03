@@ -83,8 +83,10 @@ By default it counts only commits authored by you (matching git `user.name` / `u
 
 **Design**
 - Paper archive: warm paper, ink, vermilion accent, large serif headings + monospaced data, square corners, hairlines
-- Layout: a book-spine contents rail, an oversized year cover, a light four-cell stats table,
-  a "Next" link at the end of every section, scroll-spy navigation, and a back-to-top button
+- Layout: a book-spine contents rail, an oversized year cover (showing the scanned folders),
+  a light four-cell stats table, a "Next" link at the end of every section, scroll-spy navigation,
+  and a back-to-top button
+- Motion: a subtle cover entrance, section reveals, and bar growth; respects `prefers-reduced-motion`
 - Bilingual: generates both Chinese and English reports from the same data, switchable in-page
 - Vanilla JS only; respects `prefers-reduced-motion`
 - System fonts only (Georgia / Songti / SimSun + Consolas); no external font requests

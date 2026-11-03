@@ -18,6 +18,8 @@ from .poster import render as render_poster, render_long
 from .scanner import find_repos, scan_repo
 from .stats import build_stats, fmt_int
 
+_NO_WINDOW = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
+
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -71,7 +73,7 @@ def _detect_identity() -> tuple[str, str] | None:
             proc = subprocess.run(
                 ["git", "config", "--global", key],
                 capture_output=True, text=True, encoding="utf-8",
-                errors="replace", timeout=10,
+                errors="replace", timeout=10, creationflags=_NO_WINDOW,
             )
         except (OSError, subprocess.TimeoutExpired):
             return ""

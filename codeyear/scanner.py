@@ -28,6 +28,7 @@ SKIP_DIRS: set[str] = {
 # A single repo with an enormous history can make one ``git log`` very slow.
 # This caps output per repo; it is far above a normal personal year.
 MAX_COMMITS_PER_REPO = 50_000
+_NO_WINDOW = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
 
 
 @dataclass
@@ -175,7 +176,8 @@ def _git_remote(repo_path: Path) -> str | None:
         proc = subprocess.run(
             ["git", "-c", f"safe.directory={repo_path.as_posix()}",
              "-C", str(repo_path), "remote", "get-url", "origin"],
-            capture_output=True, text=True, encoding="utf-8",
+            capture_output=True, creationflags=_NO_WINDOW,
+            text=True, encoding="utf-8",
             errors="replace", timeout=10,
         )
     except (OSError, subprocess.TimeoutExpired):
@@ -190,7 +192,8 @@ def _git_root(repo_path: Path) -> str | None:
         proc = subprocess.run(
             ["git", "-c", f"safe.directory={repo_path.as_posix()}",
              "-C", str(repo_path), "rev-list", "--max-parents=0", "HEAD"],
-            capture_output=True, text=True, encoding="utf-8",
+            capture_output=True, creationflags=_NO_WINDOW,
+            text=True, encoding="utf-8",
             errors="replace", timeout=10,
         )
     except (OSError, subprocess.TimeoutExpired):
@@ -205,7 +208,8 @@ def _git_text(repo_path: Path, args: list[str], timeout: int = 30) -> str:
         proc = subprocess.run(
             ["git", "-c", f"safe.directory={repo_path.as_posix()}",
              "-C", str(repo_path), *args],
-            capture_output=True, text=True, encoding="utf-8",
+            capture_output=True, creationflags=_NO_WINDOW,
+            text=True, encoding="utf-8",
             errors="replace", timeout=timeout,
         )
     except (OSError, subprocess.TimeoutExpired):
@@ -257,6 +261,7 @@ def scan_repo(
             proc = subprocess.run(
                 cmd,
                 capture_output=True,
+                creationflags=_NO_WINDOW,
                 text=True,
                 encoding="utf-8",
                 errors="replace",
