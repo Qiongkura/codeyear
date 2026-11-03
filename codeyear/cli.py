@@ -99,6 +99,13 @@ def main(argv: list[str] | None = None) -> int:
     if not args.quiet:
         print(f"CodeYear {args.year} · 在 {root} 下找到 {len(repos)} 个仓库", file=sys.stderr)
 
+    identity = None
+    if not args.all_authors and not args.author:
+        identity = _detect_identity()
+        if identity is None and not args.quiet:
+            print("  ! 未检测到 git user.name / user.email，将统计所有作者的提交",
+                  file=sys.stderr)
+
     results = []
     warnings: list[str] = []
     for i, repo in enumerate(repos, 1):
@@ -113,13 +120,6 @@ def main(argv: list[str] | None = None) -> int:
             if not args.quiet:
                 print(f"       ! {result.warning}", file=sys.stderr)
         results.append(result)
-
-    identity = None
-    if not args.all_authors and not args.author:
-        identity = _detect_identity()
-        if identity is None and not args.quiet:
-            print("  ! 未检测到 git user.name / user.email，将统计所有作者的提交",
-                  file=sys.stderr)
 
     stats = build_stats(
         year=args.year, root=str(root.resolve()), repos=results,
@@ -158,8 +158,9 @@ def main(argv: list[str] | None = None) -> int:
             written.append(("LONG", long_path))
 
     if not args.no_card:
-        card_path = render_card(stats, out_dir / f"codeyear-{args.year}-card.svg")
-        written.append(("CARD", card_path))
+        card_paths = render_card(stats, out_dir / f"codeyear-{args.year}-card.svg")
+        written.append(("CARD", card_paths[0]))
+        written.append(("CARD-DARK", card_paths[1]))
 
     # Console summary
     active_pct = stats.active_days / (366 if _is_leap(args.year) else 365)
@@ -183,7 +184,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"最忙一天  {stats.busiest_day[0]} · {stats.busiest_count} 次提交")
     print("-" * 46)
     for label, path in written:
-        print(f"{label:<8}  {path.resolve()}")
+        print(f"{label:<9}  {path.resolve()}")
 
     if warnings:
         print()

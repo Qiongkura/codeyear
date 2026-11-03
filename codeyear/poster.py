@@ -211,6 +211,17 @@ def _label(draw: ImageDraw.ImageDraw, xy: tuple[int, int], text: str) -> None:
                cjk_font=_font(10, "sans"))
 
 
+def _scope_line(stats: ReportStats) -> str:
+    parts = []
+    if stats.earliest_dt:
+        parts.append(f"最早提交 {stats.earliest_dt:%Y.%m}")
+    if stats.new_repos:
+        parts.append(f"今年新开 {stats.new_repos} 个仓库")
+    if stats.tags_in_year:
+        parts.append(f"{stats.tags_in_year} 个版本 tag")
+    return "   ·   ".join(parts)
+
+
 def _header(draw: ImageDraw.ImageDraw, stats: ReportStats) -> None:
     _spaced(draw, (M, 50), "CODEYEAR", _font(20, "mono"), ACCENT, 6)
     draw.text((W - M, 56), "代码手账", font=_font(15, "sans"), fill=MUTED, anchor="ra")
@@ -224,6 +235,11 @@ def _header(draw: ImageDraw.ImageDraw, stats: ReportStats) -> None:
     _draw_text(draw, (M, 262),
                _ellipsize(draw, meta, _font(12, "mono"), W - 2 * M),
                _font(12, "mono"), MUTED, cjk_font=_font(12, "sans"))
+    scope = _scope_line(stats)
+    if scope:
+        _draw_text(draw, (M, 282),
+                   _ellipsize(draw, scope, _font(10, "mono"), W - 2 * M),
+                   _font(10, "mono"), MUTED, cjk_font=_font(10, "sans"))
     _rule(draw, 300)
 
 
@@ -240,20 +256,23 @@ def _persona(draw: ImageDraw.ImageDraw, stats: ReportStats) -> None:
 
 def _stats(draw: ImageDraw.ImageDraw, stats: ReportStats) -> None:
     _rule(draw, 476)
-    labels = ["COMMITS / 提交", "LINES / 行变更", "ACTIVE / 活跃天", "STREAK / 最长连续"]
+    labels = ["COMMITS / 提交", "LINES / 行变更", "ACTIVE / 活跃天",
+              "STREAK / 最长连续", "TOTAL / 累计"]
     values = [
         f"{stats.commit_count:,}",
         _big(stats.lines_changed),
         str(stats.active_days),
         str(stats.longest_streak),
+        f"{stats.total_commits:,}",
     ]
     subs = [
-        f"{stats.repo_count} 个仓库",
+        f"{stats.repo_count} 个有提交的仓库",
         fmt_signed_pair(stats.insertions, stats.deletions),
         f"占全年 {stats.active_days / (366 if _is_leap(stats.year) else 365):.0%}",
         f"当前 {stats.current_streak} 天",
+        "仓库全历史",
     ]
-    col_w = (W - 2 * M) / 4
+    col_w = (W - 2 * M) / 5
     for i, (label, value, sub) in enumerate(zip(labels, values, subs)):
         x = int(M + i * col_w)
         _draw_text(draw, (x, 494), label, _font(10, "mono"), MUTED,
@@ -333,7 +352,7 @@ def _clock(draw: ImageDraw.ImageDraw, stats: ReportStats) -> None:
 
 
 def _languages(draw: ImageDraw.ImageDraw, stats: ReportStats) -> None:
-    _label(draw, (M, 992), "LANGUAGES / 语言")
+    _label(draw, (M, 992), f"LANGUAGES / 语言 · {stats.language_count} 种")
     rows, total = language_breakdown(stats.languages, limit=4, min_share=0.01)
     if not rows:
         draw.text((M, 1024), "没有可统计的代码文件", font=_font(12, "sans"), fill=MUTED)
@@ -489,6 +508,10 @@ def _long_header(draw: ImageDraw.ImageDraw, stats: ReportStats, y: int) -> int:
     meta = f"{stats.root}   ·   {stats.repo_count} 个仓库   ·   {span}"
     _draw_text(draw, (M, y + 158), _ellipsize(draw, meta, _font(11, "mono"), W - 2 * M),
                _font(11, "mono"), MUTED, cjk_font=_font(11, "sans"))
+    scope = _scope_line(stats)
+    if scope:
+        _draw_text(draw, (M, y + 176), _ellipsize(draw, scope, _font(10, "mono"), W - 2 * M),
+                   _font(10, "mono"), MUTED, cjk_font=_font(10, "sans"))
 
     _draw_text(draw, (M, y + 196), stats.persona.title, _font(34, "serifcn"), INK,
                cjk_font=_font(34, "serifcn"))
@@ -497,14 +520,17 @@ def _long_header(draw: ImageDraw.ImageDraw, stats: ReportStats, y: int) -> int:
         draw.text((M, y + 242 + i * 22), line, font=_font(14, "sans"), fill=INK2)
 
     _rule(draw, y + 300)
-    labels = ["COMMITS / 提交", "LINES / 行变更", "ACTIVE / 活跃天", "STREAK / 最长连续"]
+    labels = ["COMMITS / 提交", "LINES / 行变更", "ACTIVE / 活跃天",
+              "STREAK / 最长连续", "TOTAL / 累计"]
     values = [f"{stats.commit_count:,}", _big(stats.lines_changed),
-              str(stats.active_days), str(stats.longest_streak)]
-    subs = [f"{stats.repo_count} 个仓库",
+              str(stats.active_days), str(stats.longest_streak),
+              f"{stats.total_commits:,}"]
+    subs = [f"{stats.repo_count} 个有提交的仓库",
             fmt_signed_pair(stats.insertions, stats.deletions),
             f"占全年 {stats.active_days / (366 if _is_leap(stats.year) else 365):.0%}",
-            f"当前 {stats.current_streak} 天"]
-    col_w = (W - 2 * M) / 4
+            f"当前 {stats.current_streak} 天",
+            "仓库全历史"]
+    col_w = (W - 2 * M) / 5
     for i, (label, value, sub) in enumerate(zip(labels, values, subs)):
         x = int(M + i * col_w)
         _draw_text(draw, (x, y + 318), label, _font(9, "mono"), MUTED,

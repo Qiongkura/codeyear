@@ -60,6 +60,9 @@ class RepoResult:
     remote: str | None = None
     readme_line: str | None = None
     root: str | None = None
+    root_dt: datetime | None = None
+    total_commits: int = 0
+    tags_in_year: int = 0
 
 
 def find_repos(root: Path, max_depth: int = 6) -> list[Path]:
@@ -196,6 +199,46 @@ def _git_root(repo_path: Path) -> str | None:
     return roots[0].strip() if roots else None
 
 
+def _git_text(repo_path: Path, args: list[str], timeout: int = 30) -> str:
+    """Run a small read-only git command; failures degrade to empty output."""
+    try:
+        proc = subprocess.run(
+            ["git", "-c", f"safe.directory={repo_path.as_posix()}",
+             "-C", str(repo_path), *args],
+            capture_output=True, text=True, encoding="utf-8",
+            errors="replace", timeout=timeout,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    return (proc.stdout or "").strip() if proc.returncode == 0 else ""
+
+
+def _git_root_date(repo_path: Path, root_hash: str) -> datetime | None:
+    value = _git_text(
+        repo_path,
+        ["show", "-s", "--format=%ad", "--date=format:%Y-%m-%dT%H:%M:%S", root_hash],
+    )
+    try:
+        return datetime.strptime(value, "%Y-%m-%dT%H:%M:%S")
+    except ValueError:
+        return None
+
+
+def _git_total_commits(repo_path: Path) -> int:
+    """All commits on HEAD — repository scope, not the filtered year scope."""
+    value = _git_text(repo_path, ["rev-list", "--count", "HEAD"])
+    try:
+        return int(value)
+    except ValueError:
+        return 0
+
+
+def _git_tags_in_year(repo_path: Path, year: int) -> int:
+    value = _git_text(repo_path, ["for-each-ref", "--format=%(creatordate:short)", "refs/tags"])
+    prefix = f"{year}-"
+    return sum(1 for line in value.splitlines() if line.strip().startswith(prefix))
+
+
 def scan_repo(
     repo_path: Path,
     root: Path,
@@ -253,6 +296,10 @@ def scan_repo(
     result.remote = _git_remote(repo_path)
     result.readme_line = _readme_line(repo_path)
     result.root = _git_root(repo_path)
+    if result.root:
+        result.root_dt = _git_root_date(repo_path, result.root)
+    result.total_commits = _git_total_commits(repo_path)
+    result.tags_in_year = _git_tags_in_year(repo_path, year)
 
     if not proc.stdout.strip():
         return result

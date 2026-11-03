@@ -39,12 +39,15 @@ CodeYear 是给开发者做的「年度报告」。官方的 Wrapped 通常只�
 - 增删比（含删除最多的仓库）、**编码会话**（间隔 ≤ 2 小时的提交算一次）
 - 仓库生命周期甘特图、**仓库墓园**（30 天没动）
 - 最常改的文件（完整路径）
+- 本地仓库考古：全历史提交总数、最早一次提交（码龄）、今年新开的仓库、版本 tag
+  （仓库口径，与只统计你本人的年度数字分开展示）
 
 **设计**
 - 纸面档案：暖纸底、墨色、朱红强调，衬线大标题 + 等宽数据，方角、hairline
 - 动效：滚动进度条、逐段浮现、数字滚动、真实 commit 跑马灯、纸面风格 tooltip
 - 纯 vanilla JS，不依赖任何第三方前端库；尊重 `prefers-reduced-motion`
 - 字体：系统衬线（Georgia / Songti / SimSun）+ 等宽（Consolas），不加载任何外部字体
+- GitHub 卡片：透明底、无整块底色，浅色/深色两版，只用细线、字号层级和一个陶土色强调区分信息
 
 ## 快速开始
 
@@ -67,11 +70,12 @@ codeyear scan I:\projects --year 2026 --open
 输出默认在 `./codeyear-output/`：
 
 ```text
-codeyear-2026.html       纸面档案风格报告，浏览器直接打开
-codeyear-2026.png        2400×3200 海报（2× 渲染），直接发图
-codeyear-2026-long.png   2400×5300 完整长图，适合发长图/存档
-codeyear-2026-card.svg   900×540 GitHub 主页卡片（浅色/深色主题都能放）
-codeyear-2026.json       原始统计数据，方便二次开发
+codeyear-2026.html          纸面档案风格报告，浏览器直接打开
+codeyear-2026.png           2400×3200 海报（2× 渲染），直接发图
+codeyear-2026-long.png      2400×5330 完整长图，适合发长图/存档
+codeyear-2026-card.svg      900×512 GitHub 主页卡片（透明底 · 浅色）
+codeyear-2026-card-dark.svg 900×512 同一张卡片的深色版（透明底）
+codeyear-2026.json          原始统计数据，方便二次开发
 ```
 
 海报示例（同一份数据）：
@@ -82,17 +86,28 @@ codeyear-2026.json       原始统计数据，方便二次开发
 
 ## 挂到 GitHub 主页
 
-扫描时会额外生成 `codeyear-2026-card.svg`。把它提交到你的 Profile 仓库
-（仓库名与用户名相同，例如 `Qiongkura/Qiongkura`），在 README 里加一行：
+扫描时会额外生成浅色和深色两张卡片，都没有背景色。把两个文件一起提交到你的
+Profile 仓库（仓库名与用户名相同，例如 `Qiongkura/Qiongkura`），在 README 里用
+`<picture>` 按主题切换：
 
 ```md
-[![CodeYear 2026](./codeyear-2026-card.svg)](https://github.com/Qiongkura/codeyear)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./codeyear-2026-card-dark.svg">
+  <img src="./codeyear-2026-card.svg" width="900" alt="CodeYear 2026">
+</picture>
 ```
 
-GitHub 会直接渲染这张 900×540 的 SVG 卡片，浅色/深色主题都能放。卡片是静态文件，
-重新运行扫描并提交即可更新。
+使用 `<picture>` 时，GitHub 在浅色/深色主题下会自动选对应版本；如果只写 `<img>`，
+深色主题下会显示浅色版。卡片是静态文件，重新运行扫描并提交即可更新。
 
-<img src="docs/sample-card.svg" width="720" alt="CodeYear GitHub 主页卡片示例">
+> 注意：GitHub 会通过图片代理缓存 README 里的图片，更新同名 SVG 后主页可能仍显示旧图。
+> 需要刷新时，把文件重命名为带版本号的名字（如 `codeyear-2026-card-v2.svg`）并同步改 README，
+> 或在图片地址后加查询参数（如 `?v=2`）。
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/sample-card-dark.svg">
+  <img src="docs/sample-card.svg" width="720" alt="CodeYear GitHub 主页卡片示例">
+</picture>
 
 ## 只统计你自己的提交
 
@@ -100,6 +115,8 @@ GitHub 会直接渲染这张 900×540 的 SVG 卡片，浅色/深色主题都能
 - 想统计所有人：加 `--all-authors`。
 - 想指定作者：加 `--author "you@example.com"`。
 - 同一项目的副本（相同 `remote` 或相同首个 commit）只保留提交最多的一份。
+- 「累计提交」与「最早提交」是仓库口径：按去重后的全部本地仓库统计，不按作者过滤；
+  年度提交数仍只统计你本人。
 - 提交用了别的邮箱/名字时可能被过滤，可用 `--author` 或 `--all-authors` 覆盖。
 
 ## 常用参数
@@ -134,7 +151,7 @@ codeyear scan D:\code --year 2026 --all-authors
 ## 隐私
 
 - 所有统计都在本地完成，**没有任何网络请求**。
-- 只读 `git log`、仓库根目录 README 的第一行和 `git remote`；不读取其它工作区文件。
+- 只读 `git log`、`git tag`、仓库根目录 README 的第一行和 `git remote`；不读取其它工作区文件。
 - 输出文件默认忽略在 `.gitignore` 里。
 - 报告顶部与页脚标注 `LOCAL ONLY · 数据未上传`。
 - 遇到 git 的 `dubious ownership`（常见于拷贝来的仓库），只对当前仓库做一次

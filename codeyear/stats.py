@@ -38,6 +38,10 @@ class ReportStats:
     root: str
     generated_at: str
     repo_count: int
+    new_repos: int
+    total_commits: int
+    tags_in_year: int
+    earliest_dt: datetime | None
     repo_names: list[str]
     commit_count: int
     insertions: int
@@ -91,6 +95,7 @@ class ReportStats:
         data = asdict(self)
         data["first_dt"] = self.first_dt.isoformat() if self.first_dt else None
         data["last_dt"] = self.last_dt.isoformat() if self.last_dt else None
+        data["earliest_dt"] = self.earliest_dt.isoformat() if self.earliest_dt else None
         return data
 
 
@@ -262,6 +267,18 @@ def build_stats(
             unique.append(commit)
         if unique:
             selected.append((repo, unique))
+
+    # Year-scoped counts stay on the active repos; lifetime numbers use every
+    # local repo after copy/backup dedupe, so an old project that was quiet
+    # this year still contributes its history.
+    new_repos = sum(
+        1 for repo, _ in selected
+        if repo.root_dt is not None and repo.root_dt.year == year
+    )
+    total_commits = sum(repo.total_commits for repo in chosen)
+    tags_in_year = sum(repo.tags_in_year for repo in chosen)
+    root_dates = [repo.root_dt for repo in chosen if repo.root_dt is not None]
+    earliest_dt = min(root_dates) if root_dates else None
 
     multi_repo = len(selected) > 1
     repo_line_counter: dict[str, int] = {}
@@ -565,6 +582,10 @@ def build_stats(
         root=root,
         generated_at=datetime.now().strftime("%Y-%m-%d %H:%M"),
         repo_count=len(repo_counter),
+        new_repos=new_repos,
+        total_commits=total_commits,
+        tags_in_year=tags_in_year,
+        earliest_dt=earliest_dt,
         repo_names=[name for name, _ in repo_commits],
         commit_count=commit_count,
         insertions=insertions,
