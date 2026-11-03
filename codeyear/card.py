@@ -22,6 +22,7 @@ COL2 = 278
 MONO = "Consolas, 'SFMono-Regular', Menlo, monospace"
 SANS = "-apple-system, 'Segoe UI', 'Microsoft YaHei', sans-serif"
 SERIF = "Georgia, 'Songti SC', SimSun, serif"
+NUM = "Cambria, 'Times New Roman', 'Songti SC', SimSun, serif"
 
 LIGHT = {
     "ink": "#141413",
@@ -92,7 +93,7 @@ def _metric(x: float, y: float, number: str, unit: str, c: dict,
     attrs = [
         f'x="{x}"',
         f'y="{y}"',
-        f'font-family="{SERIF}"',
+        f'font-family="{NUM}"',
         f'font-size="{size}"',
         f'fill="{c["ink"]}"',
     ]
@@ -194,8 +195,8 @@ def build_svg(stats: ReportStats, *, dark: bool = False) -> str:
         x = M + col * 194.6
         y = row * 88
         tile_svg.append(_text(x, 164 + y, label, 10, c["muted"], spacing=0.6))
-        tile_svg.append(_text(x - 1, 208 + y, value, 36, c["ink"], family=SERIF))
-        tile_svg.append(_text(x, 226 + y, sub, 9.5, c["muted"]))
+        tile_svg.append(_text(x - 1, 208 + y, value, 36, c["ink"], family=NUM))
+        tile_svg.append(_text(x, 226 + y, sub, 10, c["muted"]))
     tile_svg.append(_rule(332, c["line"]))
 
     # ---- monthly rhythm ----------------------------------------------
@@ -227,7 +228,7 @@ def build_svg(stats: ReportStats, *, dark: bool = False) -> str:
     for month in range(1, 13):
         col = (date(stats.year, month, 1) - grid_start).days // 7
         mx = grid_x + col * (cell + gap_h)
-        month_ticks.append(_text(mx, 588, f"{month:02d}", 9, c["muted"]))
+        month_ticks.append(_text(mx, 588, f"{month:02d}", 9.5, c["muted"]))
 
     charts = [
         _text(M, 350, "MONTHLY RHYTHM", 10, c["muted"], spacing=1),
@@ -248,13 +249,13 @@ def build_svg(stats: ReportStats, *, dark: bool = False) -> str:
     if top_repo and stats.commit_count:
         share = top_repo["commits"] / stats.commit_count
         focus_num, focus_unit = f"{share * 100:.0f}", "%"
-        focus_sub = f"{_truncate(top_repo['name'], 20)} · {fmt_int(top_repo['commits'])} 次"
+        focus_sub = f"大部分提交在 {_truncate(top_repo['name'], 16)}"
     else:
         focus_num, focus_unit, focus_sub = "—", "", "暂无数据"
 
     night, weekend = stats.night_share, stats.weekend_share
     rhythm_num, rhythm_unit = f"{peak_hour:02d}:00", ""
-    rhythm_sub = f"深夜 {night:.0%} · 周末 {weekend:.0%}"
+    rhythm_sub = f"深夜提交占 {night:.0%} · 周末 {weekend:.0%}"
 
     size_map = dict(stats.size_buckets)
     size_total = sum(size_map.values()) or 1
@@ -267,11 +268,12 @@ def build_svg(stats: ReportStats, *, dark: bool = False) -> str:
     else:
         style_kind = "中等粒度"
     style_num, style_unit = f"{small_share * 100:.0f}", "%"
-    style_sub = f"{style_kind} · 大提交 {large_share:.0%}"
+    style_sub = f"小改动为主 · 大改仅 {large_share:.0%}"
 
     sessions = stats.sessions or {}
     sess_count = int(sessions.get("count") or 0)
     avg_min = int(sessions.get("avg_minutes") or 0)
+    long_min = int(sessions.get("longest_minutes") or 0)
     if avg_min >= 90:
         pace_kind = "沉浸型"
     elif avg_min >= 45:
@@ -285,7 +287,8 @@ def build_svg(stats: ReportStats, *, dark: bool = False) -> str:
             pace_num, pace_unit = f"{avg_min / 60:.1f}", "小时"
         else:
             pace_num, pace_unit = str(avg_min), "分钟"
-        pace_sub = f"{pace_kind} · {sess_count} 次会话"
+        long_label = f"{long_min / 60:.0f} 小时" if long_min >= 90 else f"{long_min} 分钟"
+        pace_sub = f"{sess_count} 次连续写码 · 最长 {long_label}"
     else:
         pace_num, pace_unit, pace_sub = "—", "", "暂无会话"
 
@@ -300,19 +303,19 @@ def build_svg(stats: ReportStats, *, dark: bool = False) -> str:
         churn_kind = "扩张型"
     if ratio:
         churn_num, churn_unit = f"{ratio:.1f}", ":1"
-        churn_sub = f"{churn_kind} · 删除占 {deletion_share:.0%}"
+        churn_sub = f"每写 {ratio:.1f} 行才删 1 行" if ratio else "几乎只写不删"
     else:
         churn_num, churn_unit = "只增", ""
         churn_sub = f"{churn_kind} · 没有删除"
 
     peak_share = peak / max(stats.commit_count, 1)
     burst_num, burst_unit = f"{peak_share * 100:.0f}", "%"
-    burst_sub = f"{peak_month:02d} 月 · {peak} 次提交"
+    burst_sub = f"{peak_month} 月贡献了全年近一半提交"
 
     top2 = sum(repo["commits"] for repo in stats.repo_details[:2])
     top2_share = top2 / max(stats.commit_count, 1)
     breadth_num, breadth_unit = f"{top2_share * 100:.0f}", "%"
-    breadth_sub = f"前 2 个项目 · 共 {stats.repo_count} 个仓库"
+    breadth_sub = f"前 2 个项目拿走 {top2_share:.0%} 的提交"
 
     msg_map = dict(stats.message_buckets)
     msg_total = sum(msg_map.values()) or 1
@@ -325,17 +328,17 @@ def build_svg(stats: ReportStats, *, dark: bool = False) -> str:
     else:
         msg_kind = "适中"
     msg_num, msg_unit = str(avg_subject), "字"
-    msg_sub = f"{msg_kind} · {mid_share:.0%} 在 40–80 字"
+    msg_sub = f"说明较详细 · {mid_share:.0%} 在 40–80 字"
 
     insights = [
-        ("主力项目 / FOCUS", focus_num, focus_unit, focus_sub),
-        ("峰值时段 / RHYTHM", rhythm_num, rhythm_unit, rhythm_sub),
-        ("提交粒度 / GRAIN", style_num, style_unit, style_sub),
-        ("平均会话 / SESSIONS", pace_num, pace_unit, pace_sub),
-        ("增删比 / CHURN", churn_num, churn_unit, churn_sub),
-        ("峰值月份 / BURST", burst_num, burst_unit, burst_sub),
-        ("项目集中度 / SCOPE", breadth_num, breadth_unit, breadth_sub),
-        ("消息长度 / MESSAGES", msg_num, msg_unit, msg_sub),
+        ("主攻项目 / MAIN PROJECT", focus_num, focus_unit, focus_sub),
+        ("写码时段 / WHEN", rhythm_num, rhythm_unit, rhythm_sub),
+        ("改动大小 / COMMIT SIZE", style_num, style_unit, style_sub),
+        ("一次写多久 / SESSION", pace_num, pace_unit, pace_sub),
+        ("写删比例 / ADD VS DELETE", churn_num, churn_unit, churn_sub),
+        ("最忙月份 / BUSIEST MONTH", burst_num, burst_unit, burst_sub),
+        ("精力集中吗 / FOCUS SPREAD", breadth_num, breadth_unit, breadth_sub),
+        ("提交说明 / MESSAGE", msg_num, msg_unit, msg_sub),
     ]
     insight_svg = [
         _text(M, 618, "INSIGHTS / 观察", 10, c["muted"], spacing=1),
@@ -347,7 +350,7 @@ def build_svg(stats: ReportStats, *, dark: bool = False) -> str:
         top = 650 + row * 62
         insight_svg.append(_text(x, top, label, 10, c["muted"], spacing=0.4))
         insight_svg.append(_metric(x + COL2, top, number, unit, c, anchor="end"))
-        insight_svg.append(_text(x, top + 18, sub, 10, c["muted"]))
+        insight_svg.append(_text(x, top + 18, sub, 10.5, c["muted"]))
         insight_svg.append(
             f'<line x1="{x}" y1="{top + 36}" x2="{x + COL2}" y2="{top + 36}" '
             f'stroke="{c["line"]}"/>'
