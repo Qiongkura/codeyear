@@ -2,14 +2,33 @@
 
 **简体中文** | [English](README.en.md) · [中文简介](docs/intro.zh.md)
 
-> 扫描你本地的 git 仓库，生成一份**只属于你**的年度代码手账：纸面档案风格的
-> HTML 报告、一张 2400×3200 高清海报，以及一张 2400×5300 的完整长图。
-> 只读本地 git，不登录、不上传。
+> 扫描你本地的 git 仓库，生成一份**只属于你**的年度代码手账：中英双语 HTML 报告、
+> 2400×3200 海报、完整长图，以及 GitHub 主页卡片。只读本地 git，不登录、不上传。
 
 ![CodeYear 报告预览](docs/report-preview.png)
 
 **示例报告**：[中文](docs/sample-report.html) · [English](docs/sample-report-en.html)
-（用本机仓库生成，可直接浏览器打开）
+（脱敏演示数据，可直接浏览器打开）
+
+## 30 秒上手
+
+需要 Python 3.9+ 和 Git。把 `~/code` 换成你存放项目的文件夹（不是 CodeYear 仓库本身）：
+
+```bash
+git clone https://github.com/Qiongkura/codeyear.git
+cd codeyear
+pip install -r requirements.txt
+python -m codeyear scan ~/code --open
+```
+
+或者用 uv 一行运行（需要先装 [uv](https://docs.astral.sh/uv/)）：
+
+```bash
+uvx --from git+https://github.com/Qiongkura/codeyear.git codeyear scan ~/code --open
+```
+
+Windows 把 `~/code` 换成 `C:\code` 之类的路径。报告会生成到 `codeyear-output/`，
+`--open` 会自动打开 HTML。
 
 ## 它是什么
 
@@ -55,22 +74,13 @@ CodeYear 是给开发者做的「年度报告」。官方的 Wrapped 通常只�
 - GitHub 卡片：640×1254 海报式布局，透明底、无整块底色，浅色/深色两版，靠大字号、细线和一个陶土色强调区分层级
 - 卡片内含 8 条大白话分析：主攻项目、写码时段、改动大小、一次写多久、写删比例、最忙月份、精力集中度、提交说明
 
-## 快速开始
+## 安装与输出
 
-需要 Python 3.9+、Git，以及 Pillow：
-
-```bash
-pip install -r requirements.txt
-
-# 在项目根目录（和 codeyear/ 同级）运行
-python -m codeyear scan I:\projects --year 2026 --open
-```
-
-或安装成命令：
+上面的命令只会安装 Pillow。想把 CodeYear 安装成全局命令：
 
 ```bash
 pip install -e .
-codeyear scan I:\projects --year 2026 --open
+codeyear scan ~/code --year 2026 --open
 ```
 
 输出默认在 `./codeyear-output/`：

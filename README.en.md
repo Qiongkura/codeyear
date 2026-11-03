@@ -3,12 +3,31 @@
 **English** | [简体中文](README.md)
 
 > Scan the git repositories on your own machine and turn them into a yearbook that belongs to you:
-> a paper-archive HTML report, a 2400×3200 poster, a 2400×5330 long image, and a theme-aware
-> GitHub profile card. Local git only — no sign-in, no upload.
+> a bilingual paper-archive HTML report, a 2400×3200 poster, a 2400×5330 long image, and a
+> theme-aware GitHub profile card. Local git only — no sign-in, no upload.
 
 ![CodeYear report preview](docs/report-preview.png)
 
-**Sample reports**: [Chinese](docs/sample-report.html) · [English](docs/sample-report-en.html) — generated from a real machine; open either directly in a browser.
+**Sample reports**: [Chinese](docs/sample-report.html) · [English](docs/sample-report-en.html) — anonymized demo data; open either directly in a browser.
+
+## 30-second quick start
+
+Requires Python 3.9+ and Git. Replace `~/code` with the folder that contains your projects (not the CodeYear repo itself):
+
+```bash
+git clone https://github.com/Qiongkura/codeyear.git
+cd codeyear
+pip install -r requirements.txt
+python -m codeyear scan ~/code --open
+```
+
+Or run it in one line with uv (install [uv](https://docs.astral.sh/uv/) first):
+
+```bash
+uvx --from git+https://github.com/Qiongkura/codeyear.git codeyear scan ~/code --open
+```
+
+On Windows use a path such as `C:\code`. The report goes to `codeyear-output/`; `--open` opens the HTML.
 
 ## What it is
 
@@ -50,22 +69,13 @@ By default it counts only commits authored by you (matching git `user.name` / `u
 - GitHub card: 640×1254 poster layout, transparent background, light/dark variants, hierarchy from type, hairlines, and one terracotta accent
 - Eight plain-language insights: main project, coding hours, commit size, session length, add/delete ratio, busiest month, focus spread, commit-message style
 
-## Quick start
+## Install and outputs
 
-Requires Python 3.9+, Git, and Pillow:
-
-```bash
-pip install -r requirements.txt
-
-# Run from the project root (next to codeyear/)
-python -m codeyear scan I:\projects --year 2026 --open
-```
-
-Or install it as a command:
+The command above only installs Pillow. To install CodeYear as a global command:
 
 ```bash
 pip install -e .
-codeyear scan I:\projects --year 2026 --open
+codeyear scan ~/code --year 2026 --open
 ```
 
 Outputs go to `./codeyear-output/` by default:
