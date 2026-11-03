@@ -5,7 +5,7 @@ from codeyear.card import THEMES, build_svg
 from codeyear.html_report import build_html
 from codeyear.languages import language_for
 from codeyear.scanner import Commit, FileChange, RepoResult
-from codeyear.stats import build_stats
+from codeyear.stats import build_stats, compare_summary
 
 
 def _stats():
@@ -59,6 +59,20 @@ def test_report_contains_search_and_data_analysis():
     assert "数据分析" in html
     assert 'id="repo-search"' in html
     assert "repo-search" in html
+
+
+def test_compare_summary():
+    from dataclasses import replace
+
+    current = _stats()
+    previous = replace(
+        current, year=2025, commit_count=1, lines_changed=50,
+        active_days=1, repo_count=1, longest_streak=1,
+    )
+    summary = compare_summary(current, previous)
+    assert summary["year"] == 2025
+    assert summary["commits"] == 1
+    assert summary["lines"] > 0
 
 
 def test_language_mapping():

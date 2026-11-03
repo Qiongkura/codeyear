@@ -55,10 +55,13 @@ def _build_parser() -> argparse.ArgumentParser:
     scan.add_argument("--year", type=int, default=date.today().year, help="统计年份，默认今年")
     scan.add_argument("--out", default="codeyear-output", help="输出目录，默认 ./codeyear-output")
     scan.add_argument("--author", default=None, help="只统计匹配的 git author（--author 参数）")
+    scan.add_argument("--compare", action="store_true",
+                      help="同时扫描去年，在报告里生成同比数据")
     scan.add_argument("--all-authors", action="store_true",
                       help="统计所有作者的提交（默认只统计你本人，按 git user.name / user.email 识别）")
     scan.add_argument("--max-depth", type=int, default=6, help="向下查找仓库的最大文件夹层数，默认 6")
     scan.add_argument("--timeout", type=int, default=300, help="单个仓库的扫描超时秒数")
+    scan.add_argument("--jobs", type=int, default=1, help="并行扫描的仓库数，默认 1")
     scan.add_argument("--no-png", action="store_true", help="不生成 PNG 海报")
     scan.add_argument("--no-long", action="store_true", help="不生成完整版长图")
     scan.add_argument("--no-card", action="store_true", help="不生成 GitHub 主页卡片")
@@ -174,7 +177,9 @@ def main(argv: list[str] | None = None) -> int:
 
     stats, warnings = scan(
         repos, roots, args.year, identity,
-        author=args.author, timeout=args.timeout, progress=progress,
+        author=args.author, timeout=args.timeout,
+        jobs=max(1, args.jobs), progress=progress,
+        compare=args.compare,
     )
 
     if stats.commit_count == 0:

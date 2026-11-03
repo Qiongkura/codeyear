@@ -134,6 +134,7 @@ CodeYear 是给开发者做的「年度报告」。官方的 Wrapped 通常只�
 - 最常改的文件（完整路径）
 - 本地仓库考古：全历史提交总数、最早一次提交（码龄）、今年新开的仓库、版本 tag
   （仓库口径，与只统计你本人的年度数字分开展示）
+- 同比去年：`--compare` 会多扫一年，在封面统计条下面显示提交/行数/活跃天/仓库变化
 
 **设计**
 - 纸面档案：暖纸底、墨色、朱红强调，衬线大标题 + 等宽数据，方角、hairline
@@ -233,8 +234,10 @@ codeyear scan ~/code --year 2026 --profile-repo ~/Qiongkura --push-profile
 | `--out ./out` | 输出目录 |
 | `--author "you@example.com"` | 只统计匹配的 git author |
 | `--all-authors` | 统计所有作者的提交（默认只统计你本人） |
+| `--compare` | 同时扫描去年，生成同比数据（扫描时间翻倍） |
 | `--max-depth 6` | 每个根目录向下查找仓库的最大文件夹层数 |
 | `--timeout 300` | 单个仓库的扫描超时（秒） |
+| `--jobs 4` | 并行扫描的仓库数，项目多时明显加快 |
 | `--no-png` / `--no-html` | 只生成其中一种 |
 | `--no-long` | 不生成完整版长图（默认生成） |
 | `--no-card` | 不生成 GitHub 主页卡片 |
@@ -257,6 +260,9 @@ codeyear scan D:\code --year 2026 --all-authors
 
 # 多个根目录
 codeyear scan D:\work E:\oss --year 2026
+
+# 和去年对比
+codeyear scan D:\code --year 2026 --compare
 ```
 
 ## 隐私

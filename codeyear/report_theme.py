@@ -73,6 +73,8 @@ body{padding-left:220px}
   letter-spacing:-.05em;color:var(--ink);margin-left:-6px}
 .scan-roots{margin:14px 0 0;font-family:var(--sans);font-size:13px;
   color:var(--muted);line-height:1.6;word-break:break-all}
+.compare-line{margin:16px 0 0;font-family:var(--sans);font-size:13px;
+  color:var(--muted);line-height:1.6}
 h1{font-family:var(--serif);font-weight:400;font-size:46px;line-height:1.15;
   letter-spacing:-.02em;color:var(--ink);margin:24px 0 0}
 h1 em{font-style:normal;color:var(--acc)}
@@ -562,9 +564,26 @@ def decorate(source: str, stats: ReportStats) -> str:
   <div class="hs"><b>{active}</b><span>个活跃日</span></div>
   <div class="hs"><b>{repos}</b><span>个仓库</span></div>
 </div>"""
+    compare_html = ""
+    previous = stats.previous
+    if previous:
+        def _delta(value: int, pct: float | None) -> str:
+            text = f"{value:+,}" if value else "0"
+            if pct is not None:
+                text += f"（{pct:+.0%}）"
+            return text
+
+        compare_html = (
+            f'<p class="compare-line">同比 {previous["year"]}：'
+            f'提交 {_delta(previous["commits"], previous["commits_pct"])} · '
+            f'行数 {_delta(previous["lines"], previous["lines_pct"])} · '
+            f'活跃 {_delta(previous["active_days"], None)} 天 · '
+            f'仓库 {_delta(previous["repos"], None)}'
+            "</p>"
+        )
     html = re.sub(
         r'<div class="hero-stats">.*?<p class="scroll-hint[^>]*>.*?</p>',
-        hero_stats, html, count=1, flags=re.S,
+        hero_stats + compare_html, html, count=1, flags=re.S,
     )
     rail = f"""<aside class="rail">
   <div>

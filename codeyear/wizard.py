@@ -135,10 +135,17 @@ def run() -> int:
         out_raw = _ask("输出目录", "codeyear-output")
         out_dir = Path(out_raw).expanduser().resolve()
         out_dir.mkdir(parents=True, exist_ok=True)
+        compare = _yes("同时统计去年，生成同比?", False)
+        jobs_raw = _ask("并行扫描数", "1")
+        try:
+            jobs = max(1, int(jobs_raw))
+        except ValueError:
+            jobs = 1
         open_after = _yes("完成后打开报告?", True)
 
         stats, warnings = scan(
             repos, roots, year, identity, progress=_progress,
+            jobs=jobs, compare=compare,
         )
         if stats.commit_count == 0:
             print(f"\n{year} 年没有找到提交。")

@@ -90,6 +90,7 @@ class ReportStats:
     filtered_commits: int
     persona: Persona
     warnings: list[str]
+    previous: dict | None = None
 
     def as_dict(self) -> dict:
         data = asdict(self)
@@ -97,6 +98,22 @@ class ReportStats:
         data["last_dt"] = self.last_dt.isoformat() if self.last_dt else None
         data["earliest_dt"] = self.earliest_dt.isoformat() if self.earliest_dt else None
         return data
+
+
+def compare_summary(current: "ReportStats", previous: "ReportStats") -> dict:
+    def pct(now: int, before: int) -> float | None:
+        return (now - before) / before if before else None
+
+    return {
+        "year": previous.year,
+        "commits": current.commit_count - previous.commit_count,
+        "commits_pct": pct(current.commit_count, previous.commit_count),
+        "lines": current.lines_changed - previous.lines_changed,
+        "lines_pct": pct(current.lines_changed, previous.lines_changed),
+        "active_days": current.active_days - previous.active_days,
+        "repos": current.repo_count - previous.repo_count,
+        "streak": current.longest_streak - previous.longest_streak,
+    }
 
 
 def fmt_int(n: int) -> str:

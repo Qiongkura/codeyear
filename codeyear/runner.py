@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
@@ -13,7 +14,7 @@ from .card import render as render_card
 from .html_report import render as render_html, render_en as render_html_en
 from .poster import render as render_poster, render_long
 from .scanner import find_repos, scan_repo
-from .stats import ReportStats, build_stats
+from .stats import ReportStats, build_stats, compare_summary
 
 Progress = Callable[[int, int, str], None]
 ALL_FORMATS = {"json", "html", "png", "long", "card"}
@@ -73,15 +74,16 @@ def scan(
     *,
     author: str | None = None,
     timeout: int = 300,
+    jobs: int = 1,
     progress: Progress | None = None,
+    compare: bool = False,
 ) -> tuple[ReportStats, list[str]]:
     labels = _root_labels(roots)
-    results = []
+    results: list[RepoResult] = []
     warnings: list[str] = []
     total = len(repos)
-    for i, (repo, root) in enumerate(repos):
-        if progress:
-            progress(i, total, repo.name)
+
+    def prepare(repo: Path, root: Path) -> RepoResult:
         result = scan_repo(repo, root, year, author=author, timeout=timeout)
         if len(roots) > 1:
             label = labels[root]
@@ -90,11 +92,36 @@ def scan(
             result.name = new
             for commit in result.commits:
                 commit.repo = new
-        if result.warning:
-            warnings.append(f"{result.name}: {result.warning}")
-        results.append(result)
-        if progress:
-            progress(i + 1, total, repo.name)
+        return result
+
+    if jobs <= 1:
+        for i, (repo, root) in enumerate(repos):
+            if progress:
+                progress(i, total, repo.name)
+            result = prepare(repo, root)
+            if result.warning:
+                warnings.append(f"{result.name}: {result.warning}")
+            results.append(result)
+            if progress:
+                progress(i + 1, total, repo.name)
+    else:
+        with ThreadPoolExecutor(max_workers=jobs) as pool:
+            futures = {
+                pool.submit(prepare, repo, root): repo
+                for repo, root in repos
+            }
+            for done, future in enumerate(as_completed(futures), 1):
+                repo = futures[future]
+                try:
+                    result = future.result()
+                except Exception as exc:  # pragma: no cover - worker failure
+                    warnings.append(f"{repo}: {exc}")
+                    continue
+                if result.warning:
+                    warnings.append(f"{result.name}: {result.warning}")
+                results.append(result)
+                if progress:
+                    progress(done, total, result.name)
 
     stats = build_stats(
         year=year,
@@ -103,6 +130,13 @@ def scan(
         warnings=warnings,
         identity=identity,
     )
+    if compare:
+        previous, _ = scan(
+            repos, roots, year - 1, identity,
+            author=author, timeout=timeout, jobs=jobs,
+            progress=None, compare=False,
+        )
+        stats.previous = compare_summary(stats, previous)
     return stats, warnings
 
 
