@@ -9,10 +9,11 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
-from .stats import ReportStats, fmt_signed_pair, language_breakdown, parse_daily
+from .stats import ReportStats, fmt_int, fmt_signed_pair, language_breakdown, parse_daily
 
 W, H = 1200, 1600
 M = 64
+SCALE = 2
 
 PAPER = (244, 241, 232)
 PAPER2 = (236, 234, 223)
@@ -67,7 +68,7 @@ def _font(size: int, kind: str = "sans") -> ImageFont.FreeTypeFont:
     for path in _FONT_PATHS.get(kind, []):
         if os.path.exists(path):
             try:
-                font = ImageFont.truetype(path, size, index=0)
+                font = ImageFont.truetype(path, size * SCALE, index=0)
                 _FONT_CACHE[key] = font
                 return font
             except OSError:
@@ -75,6 +76,36 @@ def _font(size: int, kind: str = "sans") -> ImageFont.FreeTypeFont:
     font = ImageFont.load_default()
     _FONT_CACHE[key] = font
     return font
+
+
+class _ScaledDraw:
+    """Draw in 1200x1600 design coordinates while rendering at 2x."""
+
+    def __init__(self, draw: ImageDraw.ImageDraw, scale: int):
+        self._d = draw
+        self.s = scale
+
+    def text(self, xy, text, *args, **kwargs):
+        self._d.text((xy[0] * self.s, xy[1] * self.s), text, *args, **kwargs)
+
+    def line(self, xy, *args, **kwargs):
+        if len(xy) == 4 and all(isinstance(v, (int, float)) for v in xy):
+            coords = tuple(v * self.s for v in xy)
+        else:
+            coords = [(x * self.s, y * self.s) for x, y in xy]
+        kwargs["width"] = max(1, int(kwargs.get("width", 1) * self.s))
+        self._d.line(coords, *args, **kwargs)
+
+    def rectangle(self, xy, *args, **kwargs):
+        if len(xy) == 4 and all(isinstance(v, (int, float)) for v in xy):
+            coords = tuple(v * self.s for v in xy)
+        else:
+            coords = [(x * self.s, y * self.s) for x, y in xy]
+        kwargs["width"] = max(1, int(kwargs.get("width", 1) * self.s))
+        self._d.rectangle(coords, *args, **kwargs)
+
+    def textlength(self, text, *args, **kwargs):
+        return self._d.textlength(text, *args, **kwargs) / self.s
 
 
 def _ellipsize(draw: ImageDraw.ImageDraw, text: str, font, max_width: float) -> str:
@@ -137,7 +168,7 @@ def _is_cjk(ch: str) -> bool:
 
 def _draw_text(draw: ImageDraw.ImageDraw, xy: tuple[int, int], text: str, font, fill,
                anchor: str = "la", cjk_font=None) -> None:
-    """Draw mixed mono + CJK text without tofu glyphs."""
+    """Draw mixed mono + CJK text on one shared baseline (no tofu, no bobbing)."""
     if cjk_font is None or not any(_is_cjk(ch) for ch in text):
         draw.text(xy, text, font=font, fill=fill, anchor=anchor)
         return
@@ -151,9 +182,23 @@ def _draw_text(draw: ImageDraw.ImageDraw, xy: tuple[int, int], text: str, font, 
         x -= total
     elif anchor.startswith("m"):
         x -= total / 2
+
+    ascent, descent = font.getmetrics()
+    ascent /= SCALE
+    descent /= SCALE
+    vertical = anchor[1:2]
+    if vertical == "m":
+        baseline = y + (ascent - descent) / 2
+    elif vertical == "s":
+        baseline = y
+    elif vertical == "b":
+        baseline = y - descent
+    else:
+        baseline = y + ascent
+
     for ch, width in zip(text, widths):
         glyph_font = cjk_font if _is_cjk(ch) else font
-        draw.text((x, y), ch, font=glyph_font, fill=fill)
+        draw.text((x, baseline), ch, font=glyph_font, fill=fill, anchor="ls")
         x += width
 
 
@@ -308,10 +353,10 @@ def _languages(draw: ImageDraw.ImageDraw, stats: ReportStats) -> None:
     for i, (name, value) in enumerate(rows):
         y = 1048 + i * 25
         draw.rectangle((M, y + 2, M + 8, y + 10), fill=palette[i % len(palette)])
-        draw.text((M + 18, y), _ellipsize(draw, name, _font(11, "sans"), 300),
-                  font=_font(11, "sans"), fill=INK2)
-        draw.text((M + 500, y), f"{value / total * 100:.0f}%", font=_font(10, "mono"),
-                  fill=MUTED, anchor="ra")
+        _draw_text(draw, (M + 18, y + 6), _ellipsize(draw, name, _font(11, "sans"), 300),
+                   _font(11, "sans"), INK2, anchor="lm", cjk_font=_font(11, "sans"))
+        draw.text((M + 500, y + 6), f"{value / total * 100:.0f}%", font=_font(10, "mono"),
+                  fill=MUTED, anchor="rm")
 
 
 def _files(draw: ImageDraw.ImageDraw, stats: ReportStats) -> None:
@@ -324,14 +369,15 @@ def _files(draw: ImageDraw.ImageDraw, stats: ReportStats) -> None:
     max_v = max(v for _, v in rows) or 1
     for i, (path, lines) in enumerate(rows):
         y = 1020 + i * 38
-        draw.text((x, y), f"{i + 1:02d}", font=_font(9, "mono"), fill=ACCENT)
-        _draw_text(draw, (x + 24, y - 1),
+        _draw_text(draw, (x, y + 5), f"{i + 1:02d}", _font(9, "mono"), ACCENT,
+                   anchor="lm")
+        _draw_text(draw, (x + 24, y + 5),
                    _ellipsize(draw, path, _font(10, "mono"), 400),
-                   _font(10, "mono"), INK2, cjk_font=_font(10, "sans"))
+                   _font(10, "mono"), INK2, anchor="lm", cjk_font=_font(10, "sans"))
         draw.line((x + 24, y + 15, x + 24 + int(400 * lines / max_v), y + 15),
                   fill=INK, width=3)
-        _draw_text(draw, (W - M, y), _big(lines), _font(9, "mono"), MUTED,
-                   anchor="ra", cjk_font=_font(9, "sans"))
+        _draw_text(draw, (W - M, y + 5), _big(lines), _font(9, "mono"), MUTED,
+                   anchor="rm", cjk_font=_font(9, "sans"))
 
 
 def _heatmap(draw: ImageDraw.ImageDraw, stats: ReportStats) -> None:
@@ -390,8 +436,8 @@ def _closing(draw: ImageDraw.ImageDraw, stats: ReportStats) -> None:
 
 
 def render(stats: ReportStats, out_path: str | Path) -> Path:
-    img = Image.new("RGB", (W, H), PAPER)
-    draw = ImageDraw.Draw(img)
+    img = Image.new("RGB", (W * SCALE, H * SCALE), PAPER)
+    draw = _ScaledDraw(ImageDraw.Draw(img), SCALE)
 
     # Very light ledger grid.
     for x in range(0, W, 48):
@@ -409,6 +455,372 @@ def render(stats: ReportStats, out_path: str | Path) -> Path:
     _heatmap(draw, stats)
     _closing(draw, stats)
 
+    path = Path(out_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    img.save(path, "PNG", optimize=True)
+    return path
+
+
+# --------------------------------------------------------------------------
+# Full-length "long image" version
+# --------------------------------------------------------------------------
+
+LONG_W = 1200
+LONG_H = 4000
+
+
+def _long_title(draw: ImageDraw.ImageDraw, y: int, no: str, cn: str, en: str) -> int:
+    _rule(draw, y - 18)
+    draw.text((M, y), f"{no} / {en}", font=_font(9, "mono"), fill=ACCENT)
+    _draw_text(draw, (M, y + 16), cn, _font(26, "serifcn"), INK,
+               cjk_font=_font(26, "serifcn"))
+    return y + 54
+
+
+def _long_header(draw: ImageDraw.ImageDraw, stats: ReportStats, y: int) -> int:
+    _spaced(draw, (M, y), "CODEYEAR", _font(18, "mono"), ACCENT, 5)
+    _draw_text(draw, (W - M, y + 3), f"代码手账 · {stats.year}",
+               _font(13, "sans"), MUTED, anchor="ra", cjk_font=_font(13, "sans"))
+
+    draw.text((M - 4, y + 20), str(stats.year), font=_font(110, "serif"), fill=INK)
+    span = "—"
+    if stats.first_dt and stats.last_dt:
+        span = f"{stats.first_dt:%Y.%m.%d} — {stats.last_dt:%Y.%m.%d}"
+    meta = f"{stats.root}   ·   {stats.repo_count} 个仓库   ·   {span}"
+    _draw_text(draw, (M, y + 158), _ellipsize(draw, meta, _font(11, "mono"), W - 2 * M),
+               _font(11, "mono"), MUTED, cjk_font=_font(11, "sans"))
+
+    _draw_text(draw, (M, y + 196), stats.persona.title, _font(34, "serifcn"), INK,
+               cjk_font=_font(34, "serifcn"))
+    lines = _wrap(draw, stats.persona.subtitle, _font(14, "sans"), W - 2 * M, 2)
+    for i, line in enumerate(lines):
+        draw.text((M, y + 242 + i * 22), line, font=_font(14, "sans"), fill=INK2)
+
+    _rule(draw, y + 300)
+    labels = ["COMMITS / 提交", "LINES / 行变更", "ACTIVE / 活跃天", "STREAK / 最长连续"]
+    values = [f"{stats.commit_count:,}", _big(stats.lines_changed),
+              str(stats.active_days), str(stats.longest_streak)]
+    subs = [f"{stats.repo_count} 个仓库",
+            fmt_signed_pair(stats.insertions, stats.deletions),
+            f"占全年 {stats.active_days / (366 if _is_leap(stats.year) else 365):.0%}",
+            f"当前 {stats.current_streak} 天"]
+    col_w = (W - 2 * M) / 4
+    for i, (label, value, sub) in enumerate(zip(labels, values, subs)):
+        x = int(M + i * col_w)
+        _draw_text(draw, (x, y + 318), label, _font(9, "mono"), MUTED,
+                   cjk_font=_font(9, "sans"))
+        _draw_text(draw, (x, y + 332), value, _font(30, "mono"), INK,
+                   cjk_font=_font(25, "sans"))
+        _draw_text(draw, (x, y + 370), _ellipsize(draw, sub, _font(9, "mono"), col_w - 18),
+                   _font(9, "mono"), MUTED, cjk_font=_font(9, "sans"))
+    _rule(draw, y + 392)
+    return y + 416
+
+
+def _long_records(draw: ImageDraw.ImageDraw, stats: ReportStats, y: int) -> int:
+    y0 = _long_title(draw, y, "01", "年度之最", "YEAR IN REVIEW")
+    records: list[tuple[str, str, str]] = []
+    if stats.busiest_day:
+        day, count = stats.busiest_day
+        records.append(("最忙的一天", f"{count} 次提交", day.replace("-", ".")))
+    if stats.busiest_week:
+        week, count = stats.busiest_week
+        records.append(("最忙的一周", f"{count} 次提交",
+                        f"{week} · 起于 {stats.busiest_week_start or '—'}"))
+    records.append(("最长连续", f"{stats.longest_streak} 天",
+                    f"当前连续 {stats.current_streak} 天"))
+    if stats.longest_gap:
+        days, start, end = stats.longest_gap
+        records.append(("最长空窗", f"{days} 天", f"{start} – {end}"))
+    if stats.largest_commit:
+        lc = stats.largest_commit
+        records.append(("最大单次提交", f"{fmt_int(lc['lines'])} 行",
+                        f"{lc['repo']} · {lc['date']}"))
+    records.append(("最长的 commit", f"{len(stats.longest_subject)} 字符",
+                    stats.longest_subject[:46]))
+
+    card_w, card_h = 344, 100
+    for i, (label, value, sub) in enumerate(records[:6]):
+        col, row = i % 3, i // 3
+        bx = M + col * (card_w + 20)
+        by = y0 + row * (card_h + 12)
+        draw.rectangle((bx, by, bx + card_w, by + card_h), outline=LINE)
+        _draw_text(draw, (bx + 14, by + 12), label, _font(9, "mono"), MUTED,
+                   cjk_font=_font(9, "sans"))
+        _draw_text(draw, (bx + 14, by + 30), value, _font(21, "serifcn"), INK,
+                   cjk_font=_font(21, "serifcn"))
+        _draw_text(draw, (bx + 14, by + 68), _ellipsize(draw, sub, _font(9, "mono"), card_w - 28),
+                   _font(9, "mono"), MUTED, cjk_font=_font(9, "sans"))
+    return y0 + 2 * card_h + 12 + 8
+
+
+def _long_monthly(draw: ImageDraw.ImageDraw, stats: ReportStats, y: int) -> int:
+    y0 = _long_title(draw, y, "02", "月度节奏", "MONTHLY RHYTHM")
+    max_v = max(stats.monthly) or 1
+    peak = stats.monthly.index(max_v) + 1
+    _draw_text(draw, (W - M, y0), f"峰值 {peak:02d} 月 · {max_v} 次",
+               _font(10, "mono"), ACCENT, anchor="ra", cjk_font=_font(10, "sans"))
+    baseline = y0 + 128
+    max_h = 92
+    gap = 8
+    bar_w = int((W - 2 * M - gap * 11) / 12)
+    for i, value in enumerate(stats.monthly):
+        x = M + i * (bar_w + gap)
+        h = max(int(value / max_v * max_h), 2)
+        draw.rectangle((x, baseline - h, x + bar_w, baseline),
+                       fill=ACCENT if value == max_v and value > 0 else INK)
+    draw.line((M, baseline, W - M, baseline), fill=INK, width=1)
+    for i in range(12):
+        cx = M + i * (bar_w + gap) + bar_w / 2
+        draw.text((cx, baseline + 7), f"{i + 1:02d}", font=_font(9, "mono"),
+                  fill=MUTED, anchor="ma")
+    return baseline + 30
+
+
+def _long_clock(draw: ImageDraw.ImageDraw, stats: ReportStats, y: int) -> int:
+    y0 = _long_title(draw, y, "03", "7×24 提交时钟", "7 × 24 CLOCK")
+    flat = [v for row in stats.hour_weekday for v in row]
+    max_v = max(flat) or 1
+
+    def color(v: int) -> tuple[int, int, int]:
+        if v == 0:
+            return PAPER2
+        if v <= max_v * 0.15:
+            return (221, 214, 196)
+        if v <= max_v * 0.35:
+            return (168, 159, 136)
+        if v <= max_v * 0.6:
+            return (92, 85, 74)
+        return INK
+
+    days = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]
+    label_w = 38
+    gap = 3
+    cell_w = 40
+    cell_h = 12
+    x0 = M + label_w
+    for h in range(24):
+        if h % 3 == 0:
+            draw.text((x0 + h * (cell_w + gap) + cell_w / 2, y0 - 2),
+                      f"{h:02d}", font=_font(8, "mono"), fill=MUTED, anchor="ma")
+    for wd, row in enumerate(stats.hour_weekday):
+        yy = y0 + 12 + wd * (cell_h + 3)
+        draw.text((M, yy + 1), days[wd], font=_font(8, "mono"), fill=MUTED)
+        for h, value in enumerate(row):
+            x = x0 + h * (cell_w + gap)
+            draw.rectangle((x, yy, x + cell_w, yy + cell_h), fill=color(value))
+    _draw_text(draw, (W - M, y0 + 8),
+               f"周末占 {stats.weekend_share:.0%} · 深夜占 {stats.night_share:.0%}",
+               _font(9, "mono"), MUTED, anchor="ra", cjk_font=_font(9, "sans"))
+    return y0 + 12 + 7 * (cell_h + 3) + 14
+
+
+def _long_bars(draw: ImageDraw.ImageDraw, x: int, y: int, w: int,
+               rows: list[tuple[str, int]], max_v: int, color=INK) -> int:
+    for i, (label, value) in enumerate(rows):
+        yy = y + i * 24
+        _draw_text(draw, (x, yy), _ellipsize(draw, label, _font(9, "mono"), 130),
+                   _font(9, "mono"), INK2, cjk_font=_font(9, "sans"))
+        bx = x + 138
+        bw = w - 138 - 54
+        draw.rectangle((bx, yy - 7, bx + bw, yy - 1), outline=LINE)
+        if value > 0:
+            draw.rectangle((bx, yy - 7, bx + max(int(bw * value / max_v), 2), yy - 1),
+                           fill=color)
+        draw.text((x + w, yy), f"{value:,}", font=_font(8, "mono"), fill=MUTED,
+                  anchor="rm")
+    return y + len(rows) * 24
+
+
+def _long_lang_files(draw: ImageDraw.ImageDraw, stats: ReportStats, y: int) -> int:
+    y0 = _long_title(draw, y, "04", "语言与文件", "LANGUAGES & FILES")
+    draw.text((M, y0), "LANGUAGES", font=_font(9, "mono"), fill=MUTED)
+    rows, total = language_breakdown(stats.languages, limit=4, min_share=0.01)
+    palette = [INK, ACCENT, (143, 134, 114), (179, 171, 151), (200, 193, 172)]
+    bar_w = 500
+    x = M
+    for i, (_name, value) in enumerate(rows):
+        w = int(bar_w * value / total)
+        draw.rectangle((x, y0 + 20, x + w, y0 + 34), fill=palette[i % len(palette)])
+        x += w
+    if x < M + bar_w:
+        draw.rectangle((x, y0 + 20, M + bar_w, y0 + 34),
+                       fill=palette[len(rows) % len(palette)])
+    for i, (name, value) in enumerate(rows):
+        yy = y0 + 46 + i * 21
+        draw.rectangle((M, yy + 2, M + 8, yy + 10), fill=palette[i % len(palette)])
+        _draw_text(draw, (M + 16, yy + 6), name, _font(10, "sans"), INK2,
+                   anchor="lm", cjk_font=_font(10, "sans"))
+        draw.text((M + 500, yy + 6), f"{value / total * 100:.0f}%",
+                  font=_font(9, "mono"), fill=MUTED, anchor="rm")
+
+    xr = 620
+    draw.text((xr, y0), "MOST EDITED FILES", font=_font(9, "mono"), fill=MUTED)
+    files = stats.top_files[:5]
+    max_v = max((v for _, v in files), default=1)
+    for i, (path, lines) in enumerate(files):
+        yy = y0 + 22 + i * 28
+        _draw_text(draw, (xr, yy), f"{i + 1:02d}", _font(8, "mono"), ACCENT)
+        _draw_text(draw, (xr + 22, yy),
+                   _ellipsize(draw, path, _font(9, "mono"), 420),
+                   _font(9, "mono"), INK2, cjk_font=_font(9, "sans"))
+        draw.line((xr + 22, yy + 14, xr + 22 + int(420 * lines / max_v), yy + 14),
+                  fill=INK, width=3)
+        _draw_text(draw, (W - M, yy), _big(lines), _font(8, "mono"), MUTED,
+                   anchor="ra", cjk_font=_font(8, "sans"))
+    return y0 + 172
+
+
+def _long_sizes_types(draw: ImageDraw.ImageDraw, stats: ReportStats, y: int) -> int:
+    y0 = _long_title(draw, y, "05", "规模与类型", "SIZE & TYPES")
+    draw.text((M, y0), "COMMIT SIZE", font=_font(9, "mono"), fill=MUTED)
+    max_s = max((v for _, v in stats.size_buckets), default=1)
+    _long_bars(draw, M, y0 + 24, 500,
+               [(f"{label} 行", v) for label, v in stats.size_buckets], max_s)
+
+    xr = 620
+    draw.text((xr, y0), "COMMIT TYPES", font=_font(9, "mono"), fill=MUTED)
+    types = stats.commit_types[:6]
+    max_t = max((v for _, v in types), default=1)
+    _long_bars(draw, xr, y0 + 24, 516, types, max_t)
+    _draw_text(draw, (W - M, y0 + 8),
+               f"约定式 {stats.conventional_share:.0%}", _font(9, "mono"),
+               ACCENT, anchor="ra", cjk_font=_font(9, "sans"))
+    return y0 + 176
+
+
+def _long_msgs_sessions(draw: ImageDraw.ImageDraw, stats: ReportStats, y: int) -> int:
+    y0 = _long_title(draw, y, "06", "消息与节奏", "MESSAGES & SESSIONS")
+    draw.text((M, y0), "MESSAGE LENGTH", font=_font(9, "mono"), fill=MUTED)
+    max_m = max((v for _, v in stats.message_buckets), default=1)
+    _long_bars(draw, M, y0 + 24, 500,
+               [(f"{label} 字符", v) for label, v in stats.message_buckets], max_m)
+
+    xr = 620
+    draw.text((xr, y0), "CODING SESSIONS", font=_font(9, "mono"), fill=MUTED)
+    s = stats.sessions
+    hours, mins = divmod(int(s.get("longest_minutes", 0)), 60)
+    items = [
+        ("会话次数", f"{s.get('count', 0)}"),
+        ("最长会话", f"{hours}h {mins:02d}m"),
+        ("最长会话提交", f"{s.get('longest_commits', 0)}"),
+        ("平均会话", f"{s.get('avg_minutes', 0)}m"),
+    ]
+    for i, (label, value) in enumerate(items):
+        col, row = i % 2, i // 2
+        bx = xr + col * 258
+        by = y0 + 26 + row * 46
+        _draw_text(draw, (bx, by), label, _font(9, "mono"), MUTED,
+                   cjk_font=_font(9, "sans"))
+        _draw_text(draw, (bx, by + 14), value, _font(20, "mono"), INK,
+                   cjk_font=_font(16, "sans"))
+    _draw_text(draw, (xr, y0 + 140),
+               f"间隔 ≤ 2 小时算同一会话 · 平均每条 {stats.avg_subject_len} 字符",
+               _font(9, "mono"), MUTED, cjk_font=_font(9, "sans"))
+    return y0 + 176
+
+
+def _long_churn_dormant(draw: ImageDraw.ImageDraw, stats: ReportStats, y: int) -> int:
+    y0 = _long_title(draw, y, "07", "增删与墓园", "CHURN & DORMANT")
+    draw.text((M, y0), "ADD / DELETE", font=_font(9, "mono"), fill=MUTED)
+    total = max(stats.insertions + stats.deletions, 1)
+    draw.rectangle((M, y0 + 24, M + 500, y0 + 38), outline=INK)
+    draw.rectangle((M, y0 + 24, M + int(500 * stats.insertions / total), y0 + 38),
+                   fill=INK)
+    draw.rectangle((M + int(500 * stats.insertions / total), y0 + 24,
+                    M + 500, y0 + 38), fill=ACCENT)
+    _draw_text(draw, (M, y0 + 48),
+               f"新增 {fmt_signed_pair(stats.insertions, stats.deletions)}",
+               _font(9, "mono"), MUTED, cjk_font=_font(9, "sans"))
+    top_del = sorted(stats.repo_details, key=lambda d: -d["deleted"])[:3]
+    max_del = max((d["deleted"] for d in top_del), default=1)
+    _long_bars(draw, M, y0 + 80, 500,
+               [(d["name"], d["deleted"]) for d in top_del], max_del, color=ACCENT)
+
+    xr = 620
+    draw.text((xr, y0), "DORMANT REPOS", font=_font(9, "mono"), fill=MUTED)
+    if not stats.dormant:
+        draw.text((xr, y0 + 26), "没有休眠超过 30 天的仓库", font=_font(11, "sans"),
+                  fill=MUTED)
+    for i, repo in enumerate(stats.dormant[:5]):
+        yy = y0 + 24 + i * 26
+        _draw_text(draw, (xr, yy + 6), repo["name"], _font(9, "mono"), INK2,
+                   anchor="lm", cjk_font=_font(9, "sans"))
+        draw.text((W - M, yy + 6), f"{repo['days']} 天", font=_font(9, "mono"),
+                  fill=ACCENT, anchor="rm")
+    return y0 + 186
+
+
+def _long_heatmap(draw: ImageDraw.ImageDraw, stats: ReportStats, y: int) -> int:
+    y0 = _long_title(draw, y, "08", "全年热力图", "CONTRIBUTION")
+    daily = parse_daily(stats.daily)
+    start = date(stats.year, 1, 1)
+    end = date(stats.year, 12, 31)
+    grid_start = start - timedelta(days=start.weekday())
+    grid_end = end + timedelta(days=6 - end.weekday())
+    cols = (grid_end - grid_start).days // 7 + 1
+    cell, gap = 14, 4
+    x0 = (W - (cols * cell + (cols - 1) * gap)) // 2
+    y0 += 18
+    for month in range(1, 13):
+        col = (date(stats.year, month, 1) - grid_start).days // 7
+        draw.text((x0 + col * (cell + gap), y0 - 16), f"{month:02d}",
+                  font=_font(8, "mono"), fill=MUTED)
+    for col in range(cols):
+        for row in range(7):
+            day = grid_start + timedelta(days=col * 7 + row)
+            if day < start or day > end:
+                continue
+            count = daily.get(day, 0)
+            if count == 0:
+                fill = PAPER2
+            elif count == 1:
+                fill = (221, 214, 196)
+            elif count <= 3:
+                fill = (168, 159, 136)
+            elif count <= 6:
+                fill = (92, 85, 74)
+            else:
+                fill = INK
+            x = x0 + col * (cell + gap)
+            yy = y0 + row * (cell + gap)
+            draw.rectangle((x, yy, x + cell, yy + cell), fill=fill)
+    _draw_text(draw, (W - M, y0 - 18), f"{stats.active_days} 个活跃日",
+               _font(9, "mono"), MUTED, anchor="ra", cjk_font=_font(9, "sans"))
+    return y0 + 7 * (cell + gap) + 18
+
+
+def render_long(stats: ReportStats, out_path: str | Path) -> Path:
+    img = Image.new("RGB", (LONG_W * SCALE, LONG_H * SCALE), PAPER)
+    draw = _ScaledDraw(ImageDraw.Draw(img), SCALE)
+    for x in range(0, LONG_W, 48):
+        draw.line((x, 0, x, LONG_H), fill=(239, 236, 226), width=1)
+    for yy in range(0, LONG_H, 48):
+        draw.line((0, yy, LONG_W, yy), fill=(239, 236, 226), width=1)
+
+    y = _long_header(draw, stats, 56)
+    y = _long_records(draw, stats, y + 20)
+    y = _long_monthly(draw, stats, y + 30)
+    y = _long_clock(draw, stats, y + 30)
+    y = _long_lang_files(draw, stats, y + 30)
+    y = _long_sizes_types(draw, stats, y + 30)
+    y = _long_msgs_sessions(draw, stats, y + 30)
+    y = _long_churn_dormant(draw, stats, y + 30)
+    y = _long_heatmap(draw, stats, y + 30)
+
+    draw.text((M, y + 24), "「代码不会说谎，git 尤其不会。」",
+              font=_font(22, "serifcn"), fill=INK)
+    _draw_text(draw, (M, y + 62),
+               f"LOCAL ONLY · 生成于 {stats.generated_at} · 代码从未离开这台电脑",
+               _font(9, "mono"), MUTED, cjk_font=_font(9, "sans"))
+    _rule(draw, y + 100)
+    draw.text((M, y + 112), "LOCAL-FIRST · NO DATA UPLOADED",
+              font=_font(9, "mono"), fill=MUTED)
+    draw.text((W - M, y + 112), f"CODEYEAR · {stats.year}",
+              font=_font(9, "mono"), fill=MUTED, anchor="ra")
+
+    final_h = min(y + 150, LONG_H)
+    img = img.crop((0, 0, LONG_W * SCALE, final_h * SCALE))
     path = Path(out_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     img.save(path, "PNG", optimize=True)

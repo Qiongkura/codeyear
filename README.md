@@ -1,7 +1,8 @@
 # CodeYear · 代码手账
 
 > 扫描你本地的 git 仓库，生成一份**只属于你**的年度代码手账：纸面档案风格的
-> HTML 报告 + 一张 1200×1600 的 PNG 海报。只读本地 git，不登录、不上传。
+> HTML 报告、一张 2400×3200 高清海报，以及一张 2400×5300 的完整长图。
+> 只读本地 git，不登录、不上传。
 
 ![CodeYear 报告预览](docs/report-preview.png)
 
@@ -66,14 +67,17 @@ codeyear scan I:\projects --year 2026 --open
 输出默认在 `./codeyear-output/`：
 
 ```text
-codeyear-2026.html   纸面档案风格报告，浏览器直接打开
-codeyear-2026.png    1200×1600 海报，直接发图
-codeyear-2026.json   原始统计数据，方便二次开发
+codeyear-2026.html       纸面档案风格报告，浏览器直接打开
+codeyear-2026.png        2400×3200 海报（2× 渲染），直接发图
+codeyear-2026-long.png   2400×5300 完整长图，适合发长图/存档
+codeyear-2026.json       原始统计数据，方便二次开发
 ```
 
 海报示例（同一份数据）：
 
 <img src="docs/sample.png" width="420" alt="CodeYear PNG 海报示例">
+
+完整长图示例：[docs/sample-long.png](docs/sample-long.png)
 
 ## 只统计你自己的提交
 
@@ -94,6 +98,7 @@ codeyear-2026.json   原始统计数据，方便二次开发
 | `--max-depth 6` | 向下扫描仓库的最大深度 |
 | `--timeout 300` | 单个仓库的扫描超时（秒） |
 | `--no-png` / `--no-html` | 只生成其中一种 |
+| `--no-long` | 不生成完整版长图（默认生成） |
 | `--open` | 生成后自动打开报告 |
 | `--quiet` | 不打印扫描进度 |
 
