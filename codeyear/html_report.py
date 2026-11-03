@@ -30,9 +30,9 @@ CSS = r"""
   --paper:#f4f1e8; --paper2:#eceadf; --ink:#171512; --ink2:#403c33;
   --muted:#6f6a5e; --line:#d9d3c2; --line2:#c8c1ac;
   --acc:#d4491f; --acc2:#b23a15;
-  --serif:"Fraunces","Noto Serif SC","Songti SC",Georgia,serif;
+  --serif:Georgia,"Times New Roman","Songti SC","SimSun","Noto Serif CJK SC",serif;
   --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
-  --mono:"IBM Plex Mono",Consolas,"SFMono-Regular",Menlo,monospace;
+  --mono:"Cascadia Mono",Consolas,"SFMono-Regular",Menlo,monospace;
   --ease:cubic-bezier(.22,1,.36,1);
 }
 *{box-sizing:border-box}
@@ -534,6 +534,19 @@ def build_ticker(stats: ReportStats) -> str:
     """
 
 
+def _web_url(remote: str) -> str | None:
+    """Normalize a git remote (https or ssh) to a clickable web URL."""
+    remote = (remote or "").strip()
+    if not remote:
+        return None
+    if remote.startswith("git@") and ":" in remote:
+        host, path = remote[4:].split(":", 1)
+        return f"https://{host}/{path.removesuffix('.git')}"
+    if remote.startswith(("http://", "https://")):
+        return remote.removesuffix(".git")
+    return None
+
+
 def build_archives(stats: ReportStats) -> str:
     blocks = []
     for i, repo in enumerate(stats.repo_details[:3]):
@@ -557,8 +570,8 @@ def build_archives(stats: ReportStats) -> str:
         facts.append("提交 " + fmt_int(repo["commits"]) + " 次（已按 hash 去重）")
         how = "".join(f"<li>{escape(f)}</li>" for f in facts)
         link = ""
-        if repo.get("remote") and "github.com" in repo["remote"]:
-            url = repo["remote"].replace(".git", "")
+        url = _web_url(repo.get("remote") or "")
+        if url:
             link = f'<a class="u case-link" href="{escape(url)}" target="_blank" rel="noopener">GITHUB ↗</a>'
         name_html = escape(repo["name"])
         blocks.append(f"""
@@ -617,8 +630,8 @@ def build_table(stats: ReportStats) -> str:
     for i, repo in enumerate(stats.repo_details, 1):
         stamp, active = _stamp_for(repo["last"], stats.generated_at)
         name = escape(repo["name"])
-        if repo.get("remote") and "github.com" in repo["remote"]:
-            url = repo["remote"].replace(".git", "")
+        url = _web_url(repo.get("remote") or "")
+        if url:
             name = f'<a href="{escape(url)}" target="_blank" rel="noopener">{name} ↗</a>'
         readme = escape(repo["readme"]) if repo.get("readme") else "（README 没写简介）"
         none_cls = "" if repo.get("readme") else ' class="t-desc none"'
@@ -1137,9 +1150,6 @@ def build_html(stats: ReportStats) -> str:
 <title>CodeYear {stats.year} · {escape(stats.persona.title)}</title>
 <meta name="description" content="CodeYear 年度代码手账：{escape(stats.persona.subtitle)}">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23d4491f'/%3E%3Ctext x='16' y='23' font-family='monospace' font-size='19' fill='%23f4f1e8' text-anchor='middle'%3EC%3C/text%3E%3C/svg%3E">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Mono:wght@400;500&family=Noto+Serif+SC:wght@600&display=swap" rel="stylesheet">
 <style>{CSS}</style>
 <noscript><style>.rv,.rv-line{{opacity:1!important;transform:none!important}}
 .sec-line{{transform:none!important}}</style></noscript>

@@ -161,6 +161,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"身份      {stats.identity_label}")
         if stats.filtered_commits:
             print(f"已过滤    {stats.filtered_commits} 次他人提交")
+    elif args.author:
+        print(f"身份      --author={args.author}")
     else:
         print("身份      全部作者")
     print(f"提交      {fmt_int(stats.commit_count)}")

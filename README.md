@@ -43,7 +43,7 @@ CodeYear 是给开发者做的「年度报告」。官方的 Wrapped 通常只�
 - 纸面档案：暖纸底、墨色、朱红强调，衬线大标题 + 等宽数据，方角、hairline
 - 动效：滚动进度条、逐段浮现、数字滚动、真实 commit 跑马灯、纸面风格 tooltip
 - 纯 vanilla JS，不依赖任何第三方前端库；尊重 `prefers-reduced-motion`
-- 字体 Fraunces / IBM Plex Mono / Noto Serif SC；离线时回退系统字体
+- 字体：系统衬线（Georgia / Songti / SimSun）+ 等宽（Consolas），不加载任何外部字体
 
 ## 快速开始
 
@@ -70,6 +70,10 @@ codeyear-2026.html   纸面档案风格报告，浏览器直接打开
 codeyear-2026.png    1200×1600 海报，直接发图
 codeyear-2026.json   原始统计数据，方便二次开发
 ```
+
+海报示例（同一份数据）：
+
+<img src="docs/sample.png" width="420" alt="CodeYear PNG 海报示例">
 
 ## 只统计你自己的提交
 
@@ -123,7 +127,6 @@ codeyear scan D:\code --year 2026 --all-authors
 - 同一个 commit 出现在多个仓库时只计一次。
 - “自有代码”按非空行统计，已排除第三方库、生成工程与模型目录；不同项目的口径
   在报告「关于本报告」里也会写明。
-- PNG 海报目前仍是深色主题；纸面版在路线图中。
 
 ## 工作原理
 
@@ -151,7 +154,7 @@ git log --since=2026-01-01 --until=2027-01-01 \
 - [x] 只统计本人提交（`--all-authors` 可关闭）
 - [x] 项目副本按血统合并
 - [x] 年度之最 / 7×24 / 编码会话 / 季度语言 / 仓库墓园
-- [ ] PNG 海报重绘为纸面主题
+- [x] PNG 海报重绘为纸面主题
 - [ ] 同比去年（2025 vs 2026）
 - [ ] 文件级删除量（被删最多的文件）
 - [ ] PyInstaller 打包 exe / 桌面壳
