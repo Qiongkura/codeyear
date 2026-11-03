@@ -180,7 +180,7 @@ codeyear scan ~/code --year 2026 --profile-repo ~/Qiongkura --push-profile
 | `--out ./out` | 输出目录 |
 | `--author "you@example.com"` | 只统计匹配的 git author |
 | `--all-authors` | 统计所有作者的提交（默认只统计你本人） |
-| `--max-depth 6` | 向下扫描仓库的最大深度 |
+| `--max-depth 6` | 向下查找仓库的最大文件夹层数 |
 | `--timeout 300` | 单个仓库的扫描超时（秒） |
 | `--no-png` / `--no-html` | 只生成其中一种 |
 | `--no-long` | 不生成完整版长图（默认生成） |

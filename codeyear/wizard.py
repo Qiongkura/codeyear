@@ -104,7 +104,7 @@ def _open(path: Path) -> None:
 def run() -> int:
     try:
         roots = _choose_roots()
-        depth_raw = _ask("向下扫描深度", "6")
+        depth_raw = _ask("向下扫描层级（文件夹层数）", "6")
         try:
             depth = max(1, int(depth_raw))
         except ValueError:

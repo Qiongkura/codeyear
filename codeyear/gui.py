@@ -120,7 +120,7 @@ class App:
             bg="white", fg=INK, font=("Consolas", 10),
         ).grid(row=1, column=0, sticky="w", pady=(2, 0))
 
-        tk.Label(options, text="扫描深度", bg=PAPER, fg=MUTED,
+        tk.Label(options, text="扫描层级", bg=PAPER, fg=MUTED,
                  font=("Microsoft YaHei", 9)).grid(
             row=0, column=1, sticky="w", padx=(22, 0))
         self.depth_var = tk.StringVar(value="6")
@@ -149,6 +149,11 @@ class App:
             row=0, column=2, rowspan=2, sticky="w", padx=(26, 0))
         if not self.identity:
             self.identity_check.configure(state="disabled")
+
+        tk.Label(
+            body, text="扫描层级 = 向下查找仓库的文件夹层数，默认 6。",
+            bg=PAPER, fg=MUTED, font=("Microsoft YaHei", 8), anchor="w",
+        ).pack(fill="x", pady=(0, 10))
 
         out_row = tk.Frame(body, bg=PAPER)
         out_row.pack(fill="x", pady=(0, 14))

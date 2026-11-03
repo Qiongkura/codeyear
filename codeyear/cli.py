@@ -36,7 +36,7 @@ def _build_parser() -> argparse.ArgumentParser:
     scan.add_argument("--author", default=None, help="只统计匹配的 git author（--author 参数）")
     scan.add_argument("--all-authors", action="store_true",
                       help="统计所有作者的提交（默认只统计你本人，按 git user.name / user.email 识别）")
-    scan.add_argument("--max-depth", type=int, default=6, help="最大扫描深度，默认 6")
+    scan.add_argument("--max-depth", type=int, default=6, help="向下查找仓库的最大文件夹层数，默认 6")
     scan.add_argument("--timeout", type=int, default=300, help="单个仓库的扫描超时秒数")
     scan.add_argument("--no-png", action="store_true", help="不生成 PNG 海报")
     scan.add_argument("--no-long", action="store_true", help="不生成完整版长图")
