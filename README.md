@@ -92,6 +92,9 @@ https://your-host/card-dark.svg?username=Qiongkura&year=2026
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Qiongkura/codeyear)
 
+如果只有 Cloudflare，可以用 Tunnel 把本机服务暴露出去：
+[Cloudflare Tunnel 部署步骤](docs/cloudflare.md)。
+
 > Action 和在线服务都只使用公开 GitHub 数据；要自动更新包含私有项目的本地卡片，
 > 需要本机定时任务或自托管 runner。首次使用 Action 时，把 `codeyear-2026-embed.md`
 > 的内容粘到 Profile README 一次；之后它只更新卡片文件。

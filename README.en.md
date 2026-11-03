@@ -93,6 +93,9 @@ Raise it with a token for fuller data; use local `scan` for complete history.
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Qiongkura/codeyear)
 
+If you only have Cloudflare, expose the local service with a tunnel:
+[Cloudflare Tunnel setup](docs/cloudflare.md).
+
 > Both the Action and the hosted service use public GitHub data only. To auto-update
 > a local card that includes private repositories, use a local scheduled task or a
 > self-hosted runner. On first use, paste `codeyear-2026-embed.md` into the profile
