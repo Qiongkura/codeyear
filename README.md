@@ -10,6 +10,27 @@
 **示例报告**：[中文](docs/sample-report.html) · [English](docs/sample-report-en.html)
 （脱敏演示数据，可直接浏览器打开）
 
+## 下载 / 安装
+
+**Windows（不需要 Python）**：从 [Releases](https://github.com/Qiongkura/codeyear/releases/latest)
+下载 `CodeYear.exe`，双击打开，选择项目目录即可。
+
+**开发者**：
+
+```bash
+pip install git+https://github.com/Qiongkura/codeyear.git
+codeyear
+```
+
+也可以从 Release 下载 wheel：
+
+```bash
+pip install https://github.com/Qiongkura/codeyear/releases/download/v0.1.0/codeyear-0.1.0-py3-none-any.whl
+```
+
+> exe 未做代码签名，Windows SmartScreen 可能提示；点「更多信息 → 仍要运行」。
+> macOS / Linux 用 wheel 或源码运行。
+
 ## 30 秒上手
 
 需要 Python 3.9+ 和 Git。把 `~/code` 换成你存放项目的文件夹（不是 CodeYear 仓库本身）：

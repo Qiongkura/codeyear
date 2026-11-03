@@ -10,6 +10,28 @@
 
 **Sample reports**: [Chinese](docs/sample-report.html) · [English](docs/sample-report-en.html) — anonymized demo data; open either directly in a browser.
 
+## Download / install
+
+**Windows (no Python required)**: download `CodeYear.exe` from
+[Releases](https://github.com/Qiongkura/codeyear/releases/latest), double-click it,
+and choose your projects folder.
+
+**Developers**:
+
+```bash
+pip install git+https://github.com/Qiongkura/codeyear.git
+codeyear
+```
+
+Or install the wheel from the release:
+
+```bash
+pip install https://github.com/Qiongkura/codeyear/releases/download/v0.1.0/codeyear-0.1.0-py3-none-any.whl
+```
+
+> The exe is unsigned; Windows SmartScreen may warn. Click “More info → Run anyway”.
+> On macOS / Linux use the wheel or run from source.
+
 ## 30-second quick start
 
 Requires Python 3.9+ and Git. Replace `~/code` with the folder that contains your projects (not the CodeYear repo itself):
