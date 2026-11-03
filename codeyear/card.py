@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import html
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from .stats import (
@@ -15,10 +15,10 @@ from .stats import (
     parse_daily,
 )
 
-W, H = 640, 1070
+W, H = 640, 1254
 M = 28
 RIGHT = W - M
-COL4 = 146
+COL2 = 278
 MONO = "Consolas, 'SFMono-Regular', Menlo, monospace"
 SANS = "-apple-system, 'Segoe UI', 'Microsoft YaHei', sans-serif"
 SERIF = "Georgia, 'Songti SC', SimSun, serif"
@@ -30,6 +30,7 @@ LIGHT = {
     "line": "#d9d7cd",
     "accent": "#d97757",
     "bar": "#cfcbbe",
+    "empty_opacity": "0.12",
     "palette": ["#141413", "#d97757", "#8f8d84", "#b8b5aa", "#ddd9cc"],
     "levels": ["#e7e4da", "#ddd8ca", "#b8b2a0", "#6f6a5e", "#d97757"],
 }
@@ -41,6 +42,7 @@ DARK = {
     "line": "#3a3936",
     "accent": "#e08a68",
     "bar": "#4a4843",
+    "empty_opacity": "0.2",
     "palette": ["#f0eee6", "#e08a68", "#9a978e", "#7a7770", "#55534d"],
     "levels": ["#262623", "#3a3936", "#5c5952", "#9a978e", "#e08a68"],
 }
@@ -85,20 +87,29 @@ def _rule(y: float, color: str) -> str:
 
 
 def _metric(x: float, y: float, number: str, unit: str, c: dict,
-            size: float = 28) -> str:
+            size: float = 28, anchor: str | None = None) -> str:
     """One hero number per insight, with a small muted unit."""
+    attrs = [
+        f'x="{x}"',
+        f'y="{y}"',
+        f'font-family="{SERIF}"',
+        f'font-size="{size}"',
+        f'fill="{c["ink"]}"',
+    ]
+    if anchor:
+        attrs.append(f'text-anchor="{anchor}"')
+    head = f'<text {" ".join(attrs)}>{_e(number)}'
     if not unit:
-        return _text(x - 1, y, number, size, c["ink"], family=SERIF)
+        return head + "</text>"
     dx = 1 if unit in {"%", ":1"} else 4
     return (
-        f'<text x="{x - 1}" y="{y}" font-family="{SERIF}" font-size="{size}" '
-        f'fill="{c["ink"]}">{_e(number)}'
-        f'<tspan font-size="12.5" fill="{c["muted"]}" dx="{dx}">{_e(unit)}</tspan></text>'
+        head
+        + f'<tspan font-size="12.5" fill="{c["muted"]}" dx="{dx}">{_e(unit)}</tspan></text>'
     )
 
 
 def _heatmap(stats: ReportStats, c: dict, x0: float, y0: float,
-             cell: float = 8, gap: float = 2) -> str:
+             cell: float = 9, gap: float = 2) -> str:
     daily = parse_daily(stats.daily)
     start = date(stats.year, 1, 1)
     end = date(stats.year, 12, 31)
@@ -112,7 +123,10 @@ def _heatmap(stats: ReportStats, c: dict, x0: float, y0: float,
             col = (cursor - grid_start).days // 7
             row = cursor.weekday()
             count = daily.get(cursor, 0)
-            if count:
+            if count == 0:
+                level = 0
+                opacity = f' fill-opacity="{c["empty_opacity"]}"'
+            else:
                 if count == 1:
                     level = 1
                 elif count <= 3:
@@ -121,12 +135,13 @@ def _heatmap(stats: ReportStats, c: dict, x0: float, y0: float,
                     level = 3
                 else:
                     level = 4
-                x = x0 + col * (cell + gap)
-                y = y0 + row * (cell + gap)
-                rects.append(
-                    f'<rect x="{x}" y="{y}" width="{cell}" height="{cell}" '
-                    f'fill="{c["levels"][level]}"/>'
-                )
+                opacity = ""
+            x = x0 + col * (cell + gap)
+            y = y0 + row * (cell + gap)
+            rects.append(
+                f'<rect x="{x}" y="{y}" width="{cell}" height="{cell}" '
+                f'fill="{c["levels"][level]}"{opacity}/>'
+            )
         cursor += timedelta(days=1)
     return "".join(rects)
 
@@ -141,8 +156,7 @@ def build_svg(stats: ReportStats, *, dark: bool = False) -> str:
 
     # ---- header -------------------------------------------------------
     title = _truncate(stats.persona.title, 24)
-    subtitle = stats.persona.subtitle
-    subtitle_parts = subtitle.split("。", 1)
+    subtitle_parts = stats.persona.subtitle.split("。", 1)
     sub_lines = [subtitle_parts[0] + ("。" if len(subtitle_parts) > 1 else "")]
     if len(subtitle_parts) > 1:
         sub_lines.append(subtitle_parts[1])
@@ -162,7 +176,7 @@ def build_svg(stats: ReportStats, *, dark: bool = False) -> str:
         header.append(_text(M, 108 + i * 20, line, 11.5, c["ink2"], family=SANS))
     header.append(_rule(142, c["line"]))
 
-    # ---- six summary tiles -------------------------------------------
+    # ---- six summary tiles (3 x 2) ------------------------------------
     tiles = [
         ("COMMITS / 提交", fmt_int(stats.commit_count), "年度提交"),
         ("LINES / 行变更", fmt_human(stats.lines_changed),
@@ -199,8 +213,8 @@ def build_svg(stats: ReportStats, *, dark: bool = False) -> str:
         bars.append(_text(x + bar_w / 2, baseline + 14, f"{i + 1:02d}", 9.5,
                           c["muted"], anchor="middle"))
 
-    # ---- full-width contribution heatmap -----------------------------
-    cell, gap_h = 8, 2
+    # ---- contribution calendar ---------------------------------------
+    cell, gap_h = 9, 2
     grid_start = date(stats.year, 1, 1)
     grid_start -= timedelta(days=grid_start.weekday())
     grid_end = date(stats.year, 12, 31)
@@ -208,6 +222,12 @@ def build_svg(stats: ReportStats, *, dark: bool = False) -> str:
     grid_cols = (grid_end - grid_start).days // 7 + 1
     grid_w = grid_cols * (cell + gap_h) - gap_h
     grid_x = (W - grid_w) / 2
+
+    month_ticks = []
+    for month in range(1, 13):
+        col = (date(stats.year, month, 1) - grid_start).days // 7
+        mx = grid_x + col * (cell + gap_h)
+        month_ticks.append(_text(mx, 588, f"{month:02d}", 9, c["muted"]))
 
     charts = [
         _text(M, 350, "MONTHLY RHYTHM", 10, c["muted"], spacing=1),
@@ -218,7 +238,8 @@ def build_svg(stats: ReportStats, *, dark: bool = False) -> str:
         _text(M, 480, "CONTRIBUTION", 10, c["muted"], spacing=1),
         _text(RIGHT, 480, f"{stats.active_days} 个活跃日", 10, c["muted"], anchor="end"),
         _heatmap(stats, c, grid_x, 498, cell, gap_h),
-        _rule(582, c["line"]),
+        *month_ticks,
+        _rule(602, c["line"]),
     ]
 
     # ---- derived insights ---------------------------------------------
@@ -317,76 +338,77 @@ def build_svg(stats: ReportStats, *, dark: bool = False) -> str:
         ("消息长度 / MESSAGES", msg_num, msg_unit, msg_sub),
     ]
     insight_svg = [
-        _text(M, 600, "INSIGHTS / 观察", 10, c["muted"], spacing=1),
-        f'<line x1="321" y1="600" x2="321" y2="862" stroke="{c["line"]}"/>',
+        _text(M, 618, "INSIGHTS / 观察", 10, c["muted"], spacing=1),
+        f'<line x1="321" y1="618" x2="321" y2="894" stroke="{c["line"]}"/>',
     ]
     for i, (label, number, unit, sub) in enumerate(insights):
         row, col = divmod(i, 2)
         x = cols2[col]
-        top = 628 + row * 58
+        top = 650 + row * 62
         insight_svg.append(_text(x, top, label, 10, c["muted"], spacing=0.4))
-        insight_svg.append(_metric(x, top + 26, number, unit, c))
-        insight_svg.append(_text(x, top + 44, sub, 10, c["muted"]))
-    insight_svg.append(_rule(862, c["line"]))
+        insight_svg.append(_metric(x + COL2, top, number, unit, c, anchor="end"))
+        insight_svg.append(_text(x, top + 18, sub, 10, c["muted"]))
+        insight_svg.append(
+            f'<line x1="{x}" y1="{top + 36}" x2="{x + COL2}" y2="{top + 36}" '
+            f'stroke="{c["line"]}"/>'
+        )
+    insight_svg.append(_rule(894, c["line"]))
 
-    # ---- four detail columns ------------------------------------------
-    cols4 = [M + i * COL4 for i in range(4)]
-    row_y = [904 + i * 24 for i in range(5)]
+    # ---- four detail blocks (2 x 2, wide) -----------------------------
+    left_x, right_x = M, M + 306
     sections = []
 
-    # Four named languages + the "其他" bucket keeps the column at five rows.
     lang_rows, lang_total = language_breakdown(stats.languages, limit=4, min_share=0.01)
     lang_total = lang_total or 1
-    sections.append(_text(cols4[0], 880, f"LANGUAGES · {stats.language_count} 种", 10,
+    sections.append(_text(left_x, 912, f"LANGUAGES · {stats.language_count} 种", 10,
                           c["muted"], spacing=0.6))
     for i, (name, value) in enumerate(lang_rows[:5]):
-        y = row_y[i]
-        sections.append(_text(cols4[0], y, _truncate(name, 18), 11, c["ink2"]))
-        sections.append(_text(cols4[0] + COL4 - 12, y, f"{value / lang_total * 100:.0f}%",
+        y = 936 + i * 24
+        sections.append(_text(left_x, y, _truncate(name, 22), 11, c["ink2"]))
+        sections.append(_text(left_x + COL2 - 12, y, f"{value / lang_total * 100:.0f}%",
                               10.5, c["muted"], anchor="end"))
-        track_w = COL4 - 12
+        track_w = COL2 - 12
         width = int(track_w * value / lang_total)
         sections.append(
-            f'<rect x="{cols4[0]}" y="{y + 9}" width="{track_w}" height="2" '
+            f'<rect x="{left_x}" y="{y + 8}" width="{track_w}" height="2" '
             f'fill="{c["line"]}"/>'
         )
         sections.append(
-            f'<rect x="{cols4[0]}" y="{y + 9}" width="{width}" height="2" '
+            f'<rect x="{left_x}" y="{y + 8}" width="{width}" height="2" '
             f'fill="{c["palette"][i % len(c["palette"])]}"/>'
         )
 
     type_rows = stats.commit_types[:5]
     type_total = sum(value for _, value in stats.commit_types) or 1
-    sections.append(_text(cols4[1], 880, "COMMIT TYPES", 10, c["muted"], spacing=0.6))
+    sections.append(_text(right_x, 912, "COMMIT TYPES", 10, c["muted"], spacing=0.6))
     for i, (name, value) in enumerate(type_rows[:5]):
-        y = row_y[i]
-        sections.append(_text(cols4[1], y, _truncate(name, 14), 11, c["ink2"]))
-        sections.append(_text(cols4[1] + COL4 - 12, y, fmt_int(value), 10.5,
+        y = 936 + i * 24
+        sections.append(_text(right_x, y, _truncate(name, 14), 11, c["ink2"]))
+        sections.append(_text(right_x + COL2 - 12, y, fmt_int(value), 10.5,
                               c["muted"], anchor="end"))
-        track_w = COL4 - 12
+        track_w = COL2 - 12
         width = int(track_w * value / type_total)
         sections.append(
-            f'<rect x="{cols4[1]}" y="{y + 9}" width="{track_w}" height="2" '
+            f'<rect x="{right_x}" y="{y + 8}" width="{track_w}" height="2" '
             f'fill="{c["line"]}"/>'
         )
         sections.append(
-            f'<rect x="{cols4[1]}" y="{y + 9}" width="{width}" height="2" '
+            f'<rect x="{right_x}" y="{y + 8}" width="{width}" height="2" '
             f'fill="{c["ink2"]}"/>'
         )
 
     repos = stats.repo_details[:4]
     max_commits = max((r["commits"] for r in repos), default=1)
-    sections.append(_text(cols4[2], 880, f"TOP REPOS · {stats.repo_count} 个", 10,
+    sections.append(_text(left_x, 1058, f"TOP REPOS · {stats.repo_count} 个", 10,
                           c["muted"], spacing=0.6))
     for i, repo in enumerate(repos):
-        y = row_y[i]
-        sections.append(_text(cols4[2], y, _truncate(repo["name"], 18), 11,
-                              c["ink2"]))
-        sections.append(_text(cols4[2] + COL4 - 12, y, fmt_int(repo["commits"]), 10.5,
+        y = 1082 + i * 24
+        sections.append(_text(left_x, y, _truncate(repo["name"], 26), 11, c["ink2"]))
+        sections.append(_text(left_x + COL2 - 12, y, fmt_int(repo["commits"]), 10.5,
                               c["muted"], anchor="end"))
-        width = int((COL4 - 12) * repo["commits"] / max_commits)
+        width = int((COL2 - 12) * repo["commits"] / max_commits)
         sections.append(
-            f'<rect x="{cols4[2]}" y="{y + 8}" width="{width}" height="2" '
+            f'<rect x="{left_x}" y="{y + 8}" width="{width}" height="2" '
             f'fill="{c["ink2"]}"/>'
         )
 
@@ -396,23 +418,29 @@ def build_svg(stats: ReportStats, *, dark: bool = False) -> str:
         record_items.append(("最忙一天", f"{count} 次 · {day[5:].replace('-', '.')}"))
     if stats.busiest_week:
         _week, count = stats.busiest_week
-        when = (stats.busiest_week_start or "")[5:].replace("-", ".")
-        record_items.append(("最忙一周", f"{count} 次 · {when}" if when else f"{count} 次"))
+        start_s = stats.busiest_week_start
+        if start_s:
+            start_d = datetime.strptime(start_s, "%Y.%m.%d").date()
+            end_d = start_d + timedelta(days=6)
+            span = f"{start_d:%m.%d}–{end_d:%m.%d}"
+            record_items.append(("最忙一周", f"{count} 次 · {span}"))
+        else:
+            record_items.append(("最忙一周", f"{count} 次"))
     if stats.longest_gap:
         days, start, end = stats.longest_gap
-        span = start[5:].replace("-", ".")
+        span = f"{start[5:]}–{end[5:]}".replace("-", ".")
         record_items.append(("最长空窗", f"{days} 天 · {span}"))
     if stats.largest_commit:
         record_items.append(("最大提交", f"{fmt_int(stats.largest_commit['lines'])} 行"))
     if stats.top_files:
         path, _lines = stats.top_files[0]
-        record_items.append(("最常改文件", _truncate(path.split("/")[-1], 24)))
-    sections.append(_text(cols4[3], 880, "RECORDS / 年度之最", 10, c["muted"],
+        record_items.append(("最常改文件", _truncate(path.split("/")[-1], 28)))
+    sections.append(_text(right_x, 1058, "RECORDS / 年度之最", 10, c["muted"],
                           spacing=0.6))
     for i, (label, value) in enumerate(record_items[:5]):
-        y = row_y[i]
-        sections.append(_text(cols4[3], y, label, 10.5, c["muted"]))
-        sections.append(_text(cols4[3] + COL4 - 12, y, value, 10.5, c["ink2"],
+        y = 1082 + i * 24
+        sections.append(_text(right_x, y, label, 10.5, c["muted"]))
+        sections.append(_text(right_x + COL2 - 12, y, value, 10.5, c["ink2"],
                               anchor="end"))
 
     # ---- footer -------------------------------------------------------
@@ -424,12 +452,12 @@ def build_svg(stats: ReportStats, *, dark: bool = False) -> str:
     meta_line = " · ".join(meta_parts)
     right_footer = f"生成于 {stats.generated_at.replace('-', '.')}"
     footer = [
-        _rule(1018, c["line"]),
-        _text(M, 1036, meta_line, 9, c["muted"]),
-        _text(RIGHT, 1036, right_footer, 9, c["muted"], anchor="end"),
-        _text(M, 1054, f"CODEYEAR · {stats.year} · generated locally · no data uploaded",
-              8.5, c["muted"]),
-        _text(RIGHT, 1054, "LOCAL ONLY", 8.5, c["accent"], anchor="end", spacing=1),
+        _rule(1202, c["line"]),
+        _text(M, 1218, meta_line, 10, c["muted"]),
+        _text(RIGHT, 1218, right_footer, 10, c["muted"], anchor="end"),
+        _text(M, 1236, f"CODEYEAR · {stats.year} · generated locally · no data uploaded",
+              9.5, c["muted"]),
+        _text(RIGHT, 1236, "LOCAL ONLY", 9.5, c["accent"], anchor="end", spacing=1),
     ]
 
     label = f"{owner} · CodeYear {stats.year} · {title}" if owner else (

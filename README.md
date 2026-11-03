@@ -47,7 +47,7 @@ CodeYear 是给开发者做的「年度报告」。官方的 Wrapped 通常只�
 - 动效：滚动进度条、逐段浮现、数字滚动、真实 commit 跑马灯、纸面风格 tooltip
 - 纯 vanilla JS，不依赖任何第三方前端库；尊重 `prefers-reduced-motion`
 - 字体：系统衬线（Georgia / Songti / SimSun）+ 等宽（Consolas），不加载任何外部字体
-- GitHub 卡片：640×1070 海报式布局，透明底、无整块底色，浅色/深色两版，靠大字号、细线和一个陶土色强调区分层级
+- GitHub 卡片：640×1254 海报式布局，透明底、无整块底色，浅色/深色两版，靠大字号、细线和一个陶土色强调区分层级
 - 卡片内含 8 条画像分析：主力项目、作息、提交粒度、工作方式、增删倾向、月度爆发、项目组合、消息风格
 
 ## 快速开始
@@ -74,8 +74,8 @@ codeyear scan I:\projects --year 2026 --open
 codeyear-2026.html          纸面档案风格报告，浏览器直接打开
 codeyear-2026.png           2400×3200 海报（2× 渲染），直接发图
 codeyear-2026-long.png      2400×5330 完整长图，适合发长图/存档
-codeyear-2026-card.svg      640×1070 海报式 GitHub 卡片（透明底 · 浅色）
-codeyear-2026-card-dark.svg 640×1070 同一张卡片的深色版（透明底）
+codeyear-2026-card.svg      640×1254 海报式 GitHub 卡片（透明底 · 浅色）
+codeyear-2026-card-dark.svg 640×1254 同一张卡片的深色版（透明底）
 codeyear-2026.json          原始统计数据，方便二次开发
 ```
 
