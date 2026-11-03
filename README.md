@@ -70,6 +70,7 @@ codeyear scan I:\projects --year 2026 --open
 codeyear-2026.html       纸面档案风格报告，浏览器直接打开
 codeyear-2026.png        2400×3200 海报（2× 渲染），直接发图
 codeyear-2026-long.png   2400×5300 完整长图，适合发长图/存档
+codeyear-2026-card.svg   900×400 GitHub 主页卡片（浅色/深色主题都能放）
 codeyear-2026.json       原始统计数据，方便二次开发
 ```
 
@@ -78,6 +79,20 @@ codeyear-2026.json       原始统计数据，方便二次开发
 <img src="docs/sample.png" width="420" alt="CodeYear PNG 海报示例">
 
 完整长图示例：[docs/sample-long.png](docs/sample-long.png)
+
+## 挂到 GitHub 主页
+
+扫描时会额外生成 `codeyear-2026-card.svg`。把它提交到你的 Profile 仓库
+（仓库名与用户名相同，例如 `Qiongkura/Qiongkura`），在 README 里加一行：
+
+```md
+[![CodeYear 2026](./codeyear-2026-card.svg)](https://github.com/Qiongkura/codeyear)
+```
+
+GitHub 会直接渲染这张 900×400 的 SVG 卡片，浅色/深色主题都能放。卡片是静态文件，
+重新运行扫描并提交即可更新。
+
+<img src="docs/sample-card.svg" width="720" alt="CodeYear GitHub 主页卡片示例">
 
 ## 只统计你自己的提交
 
@@ -99,6 +114,7 @@ codeyear-2026.json       原始统计数据，方便二次开发
 | `--timeout 300` | 单个仓库的扫描超时（秒） |
 | `--no-png` / `--no-html` | 只生成其中一种 |
 | `--no-long` | 不生成完整版长图（默认生成） |
+| `--no-card` | 不生成 GitHub 主页卡片 |
 | `--open` | 生成后自动打开报告 |
 | `--quiet` | 不打印扫描进度 |
 

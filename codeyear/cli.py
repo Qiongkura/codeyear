@@ -12,6 +12,7 @@ from datetime import date
 from pathlib import Path
 
 from . import __version__
+from .card import render as render_card
 from .html_report import render as render_html
 from .poster import render as render_poster, render_long
 from .scanner import find_repos, scan_repo
@@ -37,6 +38,7 @@ def _build_parser() -> argparse.ArgumentParser:
     scan.add_argument("--timeout", type=int, default=300, help="单个仓库的扫描超时秒数")
     scan.add_argument("--no-png", action="store_true", help="不生成 PNG 海报")
     scan.add_argument("--no-long", action="store_true", help="不生成完整版长图")
+    scan.add_argument("--no-card", action="store_true", help="不生成 GitHub 主页卡片")
     scan.add_argument("--no-html", action="store_true", help="不生成 HTML 报告")
     scan.add_argument("--open", action="store_true", help="生成后自动打开报告")
     scan.add_argument("--quiet", action="store_true", help="不打印扫描进度")
@@ -154,6 +156,10 @@ def main(argv: list[str] | None = None) -> int:
         if not args.no_long:
             long_path = render_long(stats, out_dir / f"codeyear-{args.year}-long.png")
             written.append(("LONG", long_path))
+
+    if not args.no_card:
+        card_path = render_card(stats, out_dir / f"codeyear-{args.year}-card.svg")
+        written.append(("CARD", card_path))
 
     # Console summary
     active_pct = stats.active_days / (366 if _is_leap(args.year) else 365)
