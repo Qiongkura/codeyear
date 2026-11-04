@@ -1319,6 +1319,24 @@ def build_about(stats: ReportStats) -> str:
     """
 
 
+def build_persona_block(stats: ReportStats) -> str:
+    persona = stats.persona
+    badges = "".join(
+        f"<span>{escape(badge)}</span>" for badge in persona.badges
+    )
+    summary = getattr(persona, "summary", persona.subtitle)
+    return f"""
+    <div class="persona-block">
+      <div>
+        <div class="persona-kicker">PERSONA · {stats.year}</div>
+        <h2 class="persona-name" data-persona-name>{escape(persona.title)}</h2>
+        <p class="persona-summary" data-persona-summary>{escape(summary)}</p>
+      </div>
+      <div class="persona-badges" data-persona-badges>{badges}</div>
+    </div>
+    """
+
+
 def build_html(stats: ReportStats) -> str:
     public = stats.public_source
     total_k = stats.lines_changed / 10000
@@ -1382,6 +1400,7 @@ def build_html(stats: ReportStats) -> str:
         <p class="scroll-hint rv" style="--d:420ms">SCROLL — 全部来自你的仓库</p>
       </div>
     </section>
+    {build_persona_block(stats)}
   </div>
 
   {build_ticker(stats)}

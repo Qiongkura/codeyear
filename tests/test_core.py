@@ -1052,3 +1052,36 @@ def test_report_accessibility_labels():
     assert "Skip to main content" in en
     assert 'aria-label="Monthly commit counts"' in en
     assert 'aria-label="Report contents"' in en
+
+
+def test_persona_variety():
+    from codeyear.personas import build_persona
+
+    persona = build_persona(
+        year=2026, commits=1200, repos=12, lines=90000,
+        insertions=30000, deletions=60000, active_days=100,
+        longest_streak=60, current_streak=3, night_commits=700,
+        early_commits=50, weekend_commits=500, peak_hour=23,
+        fix_commits=60, feat_commits=20, typed_commits=100,
+        lang_count=9, busiest_count=40,
+    )
+    assert "深夜" in persona.title
+    assert "考古学家" in persona.title
+    assert "夜猫子" in persona.badges
+    assert "删繁就简" in persona.badges
+    assert persona.title_en
+    assert "Longest streak" in persona.summary_en
+
+
+def test_persona_block_translated():
+    from codeyear.report_theme import decorate, to_english
+
+    stats = _stats()
+    html = build_html(stats)
+    assert 'class="persona-block"' in html
+    assert 'class="persona-badges"' in html
+
+    en = to_english(decorate(html, stats), stats)
+    assert stats.persona.title_en in en
+    assert stats.persona.summary_en in en
+    assert stats.persona.title not in en

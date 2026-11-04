@@ -74,6 +74,24 @@ body{padding-left:220px}
 
 .wrap{max-width:1040px;padding:0 56px}
 .hero{display:block;padding:100px 0 0}
+.persona-block{display:grid;grid-template-columns:1fr auto;gap:36px;
+  align-items:start;border-top:1px solid var(--line);margin-top:42px;
+  padding:26px 0 2px}
+.persona-kicker{font-family:var(--mono);font-size:10px;letter-spacing:.16em;
+  color:var(--acc)}
+.persona-name{font-family:var(--serif);font-weight:400;font-size:42px;
+  line-height:1.1;letter-spacing:-.02em;margin:10px 0 0}
+.persona-summary{font-family:var(--sans);font-size:14.5px;color:var(--ink2);
+  max-width:720px;margin:12px 0 0;line-height:1.8}
+.persona-badges{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;
+  max-width:360px}
+.persona-badges span{border:1px solid var(--line);padding:5px 10px;
+  font-family:var(--sans);font-size:12px;color:var(--ink2);white-space:nowrap}
+@media(max-width:640px){
+  .persona-block{grid-template-columns:1fr;gap:18px}
+  .persona-badges{justify-content:flex-start}
+  .persona-name{font-size:34px}
+}
 .cover-kicker{font-size:12px;letter-spacing:.16em;color:var(--acc);margin-bottom:18px}
 .cover-year{font-family:var(--serif);font-size:clamp(120px,15vw,180px);line-height:.82;
   letter-spacing:-.05em;color:var(--ink);margin-left:-6px}
@@ -818,6 +836,28 @@ def to_english(source: str, stats: ReportStats) -> str:
                   '<meta name="description" content="CodeYear annual code report '
                   '- a local-first year in review.">', html)
     html = translate_html(html)
+    persona = stats.persona
+    title_en = getattr(persona, "title_en", persona.title)
+    summary_en = getattr(persona, "summary_en", persona.subtitle)
+    badges_en = getattr(persona, "badges_en", persona.badges)
+    html = re.sub(
+        r'(<h2 class="persona-name"[^>]*>).*?(</h2>)',
+        lambda m: m.group(1) + htmlmod.escape(title_en) + m.group(2),
+        html, count=1, flags=re.S,
+    )
+    badges = "".join(
+        f"<span>{htmlmod.escape(badge)}</span>" for badge in badges_en
+    )
+    html = re.sub(
+        r'(<div class="persona-badges"[^>]*>).*?(</div>)',
+        lambda m: m.group(1) + badges + m.group(2),
+        html, count=1, flags=re.S,
+    )
+    html = re.sub(
+        r'(<p class="persona-summary"[^>]*>).*?(</p>)',
+        lambda m: m.group(1) + htmlmod.escape(summary_en) + m.group(2),
+        html, count=1, flags=re.S,
+    )
     html = re.sub(r'<title>.*?</title>',
                   f'<title>CodeYear {year} · Annual Code Report</title>',
                   html, count=1, flags=re.S)

@@ -34,7 +34,7 @@ codeyear
 Or install the wheel from the release:
 
 ```bash
-pip install https://github.com/Qiongkura/codeyear/releases/download/v0.2.7/codeyear-0.2.7-py3-none-any.whl
+pip install https://github.com/Qiongkura/codeyear/releases/download/v0.2.8/codeyear-0.2.8-py3-none-any.whl
 ```
 
 > The exe is unsigned; Windows SmartScreen may warn. Click “More info → Run anyway”.
@@ -156,7 +156,7 @@ If you only have Cloudflare, expose the local service with a tunnel:
 > daily at 04:00 UTC by default; change the workflow `cron` to weekly (`0 4 * * 1`)
 > or monthly (`0 4 1 * *`). `--fallback-previous` keeps last year's card until the
 > new year has commits. The template installs the release wheel; bump
-> `CODEYEAR_VERSION` (currently `0.2.7`) when upgrading.
+> `CODEYEAR_VERSION` (currently `0.2.8`) when upgrading.
 
 GitHub Action template: [docs/codeyear-card.yml](docs/codeyear-card.yml).
 
@@ -176,6 +176,10 @@ CodeYear is a year-in-review for developers. Official Wrapped-style reports usua
 By default it counts only commits authored by you (matching git `user.name` / `user.email`) and merges copies of the same project (`work/`, `backup/`, forks) so nothing is double-counted.
 
 ## What's in the report
+
+**Yearly persona**
+- A headline drawn from commit hours, fix/feature mix, language count and streak
+- Up to six badges (night owl, tinkerer, polyglot, long-distance runner, …) plus a numeric summary
 
 **Yearly records**
 - Busiest day/week, longest streak, longest gap, largest single commit, longest commit message
