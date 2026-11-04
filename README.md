@@ -113,7 +113,8 @@ codeyear serve --port 8000
 codeyear serve --host 0.0.0.0 --port $PORT --max-commits 500
 ```
 
-仓库里带 `Dockerfile` 和 `render.yaml`，Render 可以直接识别。镜像也会发布到 GHCR：
+仓库里带 `Dockerfile` 和 `render.yaml`，Render 可以直接识别。镜像也会发布到 GHCR
+（包默认私有，需要在 GitHub 的 Package settings 里设为 Public 后匿名拉取）：
 
 ```bash
 docker run -p 8000:8000 -e GITHUB_TOKEN=your_token ghcr.io/qiongkura/codeyear:latest

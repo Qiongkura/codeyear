@@ -114,7 +114,8 @@ Deploy to Render / Railway / Fly / a VPS: set `GITHUB_TOKEN` and run:
 codeyear serve --host 0.0.0.0 --port $PORT --max-commits 500
 ```
 
-The repo includes `Dockerfile` and `render.yaml`; Render can detect it directly. The image is also published to GHCR:
+The repo includes `Dockerfile` and `render.yaml`; Render can detect it directly. The image is also published to GHCR
+(the package is private by default — set it to Public in GitHub Package settings for anonymous pulls):
 
 ```bash
 docker run -p 8000:8000 -e GITHUB_TOKEN=your_token ghcr.io/qiongkura/codeyear:latest
