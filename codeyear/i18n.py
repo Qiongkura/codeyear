@@ -182,6 +182,61 @@ EN = {
     "完成后打开报告?": "Open the report when done?",
     "{year} 年没有找到提交。": "No commits found in {year}.",
     "已取消。": "Cancelled.",
+    # GUI
+    "CodeYear · 代码手账": "CodeYear",
+    "代码手账": "CodeYear",
+    "选择目录，生成一份本地年度代码报告。":
+        "Choose folders and generate a local annual code report.",
+    "扫描目录": "Scan folders",
+    "添加目录": "Add folder",
+    "删除选中": "Remove selected",
+    "清空": "Clear",
+    "检查仓库": "Check repos",
+    "可添加多个目录": "Multiple folders allowed",
+    "年份": "Year",
+    "扫描层级": "Depth",
+    "只统计我本人（{who}）": "Count only me ({who})",
+    "未检测到 git 身份，将统计所有作者":
+        "No git identity detected; counting all authors",
+    "扫描层级 = 向下查找仓库的文件夹层数，默认 6。":
+        "Depth = folder levels to search for repositories, default 6.",
+    "并行数": "Jobs",
+    "同比去年": "Compare last year",
+    "所有分支": "All branches",
+    "旧邮箱/名字": "Old emails/names",
+    "选择…": "Choose…",
+    "开始生成": "Generate",
+    "打开报告": "Open report",
+    "打开输出目录": "Open output folder",
+    "选择目录后点击「开始生成」。":
+        "Choose folders, then click Generate.",
+    "结果": "Result",
+    "选择要扫描的目录": "Choose folders to scan",
+    "已添加，开始生成时会统计仓库数量":
+        "Added; repository count is checked when generating",
+    "没有目录": "No folders",
+    "请先添加至少一个目录。": "Add at least one folder first.",
+    "正在检查…": "Checking…",
+    "选择输出目录": "Choose output folder",
+    "请先添加至少一个要扫描的目录。":
+        "Add at least one folder to scan first.",
+    "参数不对": "Invalid values",
+    "年份、扫描层级和并行数必须是数字。":
+        "Year, depth and jobs must be numbers.",
+    "没有找到 git 仓库。": "No git repositories found.",
+    "找到 {count} 个 git 仓库": "Found {count} git repositories",
+    "找到 {count} 个仓库，开始扫描…":
+        "Found {count} repositories; scanning…",
+    "仓库 {repos} · 提交 {commits} · 活跃 {days} 天 · 涉及 {files} 个文件":
+        "Repos {repos} · Commits {commits} · Active {days} days · "
+        "{files} files",
+    "输出目录：{path}": "Output folder: {path}",
+    "警告：": "Warnings:",
+    "完成。": "Done.",
+    "失败：{message}": "Failed: {message}",
+    "生成失败": "Generation failed",
+    "无法打开": "Cannot open",
+    "无法启动图形界面: {exc}": "Could not start the GUI: {exc}",
 }
 
 

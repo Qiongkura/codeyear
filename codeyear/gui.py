@@ -14,6 +14,7 @@ from datetime import date
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
+from . import i18n
 from .runner import detect_identity, discover, render, scan
 from .stats import fmt_int
 
@@ -35,7 +36,7 @@ class App:
         self.html_path: Path | None = None
         self.busy = False
 
-        root.title("CodeYear · 代码手账")
+        root.title(i18n.tr("CodeYear · 代码手账"))
         root.geometry("860x960")
         root.minsize(760, 720)
         root.configure(bg=PAPER)
@@ -123,11 +124,11 @@ class App:
         header = tk.Frame(self.root, bg=PAPER)
         header.pack(fill="x", **pad, pady=(22, 10))
         tk.Label(
-            header, text="代码手账", bg=PAPER, fg=INK,
+            header, text=i18n.tr("代码手账"), bg=PAPER, fg=INK,
             font=("Georgia", 26), anchor="w",
         ).pack(anchor="w")
         tk.Label(
-            header, text="选择目录，生成一份本地年度代码报告。",
+            header, text=i18n.tr("选择目录，生成一份本地年度代码报告。"),
             bg=PAPER, fg=MUTED, font=("Microsoft YaHei", 10), anchor="w",
         ).pack(anchor="w", pady=(4, 0))
 
@@ -136,7 +137,7 @@ class App:
 
         # ---- folders -------------------------------------------------
         folder_box = ttk.LabelFrame(
-            body, text="扫描目录", style="CY.TLabelframe", padding=0,
+            body, text=i18n.tr("扫描目录"), style="CY.TLabelframe", padding=0,
         )
         folder_box.pack(fill="x", pady=(6, 12))
 
@@ -158,15 +159,15 @@ class App:
 
         buttons = tk.Frame(folder_box, bg=PAPER)
         buttons.pack(fill="x", padx=12, pady=(0, 10))
-        self._button(buttons, "添加目录", self._add_folder).pack(side="left")
-        self._button(buttons, "删除选中", self._remove_folder).pack(
+        self._button(buttons, i18n.tr("添加目录"), self._add_folder).pack(side="left")
+        self._button(buttons, i18n.tr("删除选中"), self._remove_folder).pack(
             side="left", padx=(8, 0))
-        self._button(buttons, "清空", self._clear_folders).pack(
+        self._button(buttons, i18n.tr("清空"), self._clear_folders).pack(
             side="left", padx=(8, 0))
-        self._button(buttons, "检查仓库", self._check_repos).pack(
+        self._button(buttons, i18n.tr("检查仓库"), self._check_repos).pack(
             side="left", padx=(8, 0))
         self.count_label = tk.Label(
-            buttons, text="可添加多个目录", bg=PAPER, fg=MUTED,
+            buttons, text=i18n.tr("可添加多个目录"), bg=PAPER, fg=MUTED,
             font=("Microsoft YaHei", 9),
         )
         self.count_label.pack(side="right")
@@ -175,14 +176,14 @@ class App:
         options = tk.Frame(body, bg=PAPER)
         options.pack(fill="x", pady=(0, 12))
 
-        tk.Label(options, text="年份", bg=PAPER, fg=MUTED,
+        tk.Label(options, text=i18n.tr("年份"), bg=PAPER, fg=MUTED,
                  font=("Microsoft YaHei", 9)).grid(row=0, column=0, sticky="w")
         self.year_var = tk.StringVar(value=str(date.today().year))
         ttk.Entry(
             options, width=8, textvariable=self.year_var, style="CY.TEntry",
         ).grid(row=1, column=0, sticky="w", pady=(2, 0))
 
-        tk.Label(options, text="扫描层级", bg=PAPER, fg=MUTED,
+        tk.Label(options, text=i18n.tr("扫描层级"), bg=PAPER, fg=MUTED,
                  font=("Microsoft YaHei", 9)).grid(
             row=0, column=1, sticky="w", padx=(22, 0))
         self.depth_var = tk.StringVar(value="6")
@@ -192,12 +193,10 @@ class App:
 
         if self.identity:
             email, name = self.identity
-            identity_text = (
-                f"只统计我本人（{name} <{email}>）" if name and email
-                else f"只统计我本人（{email or name}）"
-            )
+            who = f"{name} <{email}>" if name and email else (email or name)
+            identity_text = i18n.tr("只统计我本人（{who}）", who=who)
         else:
-            identity_text = "未检测到 git 身份，将统计所有作者"
+            identity_text = i18n.tr("未检测到 git 身份，将统计所有作者")
         self.identity_var = tk.BooleanVar(value=bool(self.identity))
         self.identity_box, self._identity_draw = self._check(
             options, identity_text, self.identity_var,
@@ -207,13 +206,15 @@ class App:
             row=0, column=2, rowspan=2, sticky="w", padx=(26, 0))
 
         tk.Label(
-            body, text="扫描层级 = 向下查找仓库的文件夹层数，默认 6。",
+            body, text=i18n.tr(
+                "扫描层级 = 向下查找仓库的文件夹层数，默认 6。"
+            ),
             bg=PAPER, fg=MUTED, font=("Microsoft YaHei", 8), anchor="w",
         ).pack(fill="x", pady=(0, 10))
 
         advanced = tk.Frame(body, bg=PAPER)
         advanced.pack(fill="x", pady=(0, 10))
-        tk.Label(advanced, text="并行数", bg=PAPER, fg=MUTED,
+        tk.Label(advanced, text=i18n.tr("并行数"), bg=PAPER, fg=MUTED,
                  font=("Microsoft YaHei", 9)).pack(side="left")
         self.jobs_var = tk.StringVar(value="1")
         ttk.Entry(
@@ -221,15 +222,15 @@ class App:
         ).pack(side="left", padx=(6, 20))
         self.compare_var = tk.BooleanVar(value=False)
         compare_box, self._compare_draw = self._check(
-            advanced, "同比去年", self.compare_var,
+            advanced, i18n.tr("同比去年"), self.compare_var,
         )
         compare_box.pack(side="left")
         self.all_branches_var = tk.BooleanVar(value=False)
         branches_box, self._branches_draw = self._check(
-            advanced, "所有分支", self.all_branches_var,
+            advanced, i18n.tr("所有分支"), self.all_branches_var,
         )
         branches_box.pack(side="left", padx=(16, 0))
-        tk.Label(advanced, text="旧邮箱/名字", bg=PAPER, fg=MUTED,
+        tk.Label(advanced, text=i18n.tr("旧邮箱/名字"), bg=PAPER, fg=MUTED,
                  font=("Microsoft YaHei", 9)).pack(side="left", padx=(22, 6))
         self.alias_var = tk.StringVar(value="")
         ttk.Entry(
@@ -238,28 +239,31 @@ class App:
 
         out_row = tk.Frame(body, bg=PAPER)
         out_row.pack(fill="x", pady=(0, 14))
-        tk.Label(out_row, text="输出目录", bg=PAPER, fg=MUTED,
+        tk.Label(out_row, text=i18n.tr("输出目录"), bg=PAPER, fg=MUTED,
                  font=("Microsoft YaHei", 9)).pack(side="left", padx=(0, 8))
         self.out_var = tk.StringVar(value="codeyear-output")
         ttk.Entry(
             out_row, textvariable=self.out_var, style="CY.TEntry",
         ).pack(side="left", fill="x", expand=True)
-        self._button(out_row, "选择…", self._choose_output).pack(
+        self._button(out_row, i18n.tr("选择…"), self._choose_output).pack(
             side="left", padx=(8, 0))
 
         # ---- actions -------------------------------------------------
         actions = tk.Frame(body, bg=PAPER)
         actions.pack(fill="x", pady=(0, 10))
         self.start_btn = ttk.Button(
-            actions, text="开始生成", command=self._start,
+            actions, text=i18n.tr("开始生成"), command=self._start,
             style="Accent.TButton", cursor="hand2",
         )
         self.start_btn.pack(side="left")
-        self.open_btn = self._button(actions, "打开报告", self._open_report)
+        self.open_btn = self._button(
+            actions, i18n.tr("打开报告"), self._open_report,
+        )
         self.open_btn.configure(state="disabled")
         self.open_btn.pack(side="left", padx=(10, 0))
-        self.folder_btn = self._button(actions, "打开输出目录",
-                                       self._open_output)
+        self.folder_btn = self._button(
+            actions, i18n.tr("打开输出目录"), self._open_output,
+        )
         self.folder_btn.configure(state="disabled")
         self.folder_btn.pack(side="left", padx=(10, 0))
 
@@ -268,14 +272,14 @@ class App:
         )
         self.progress.pack(fill="x", pady=(4, 6))
         self.status = tk.Label(
-            body, text="选择目录后点击「开始生成」。", bg=PAPER, fg=MUTED,
-            font=("Microsoft YaHei", 9), anchor="w",
+            body, text=i18n.tr("选择目录后点击「开始生成」。"),
+            bg=PAPER, fg=MUTED, font=("Microsoft YaHei", 9), anchor="w",
         )
         self.status.pack(fill="x")
 
         # ---- result --------------------------------------------------
         result_box = ttk.LabelFrame(
-            body, text="结果", style="CY.TLabelframe", padding=0,
+            body, text=i18n.tr("结果"), style="CY.TLabelframe", padding=0,
         )
         result_box.pack(fill="both", expand=True, pady=(12, 0))
         text_wrap = tk.Frame(result_box, bg=PAPER)
@@ -302,7 +306,7 @@ class App:
     # ---- folder actions ----------------------------------------------
     def _add_folder(self) -> None:
         path = filedialog.askdirectory(
-            parent=self.root, title="选择要扫描的目录", mustexist=True,
+            parent=self.root, title=i18n.tr("选择要扫描的目录"), mustexist=True,
         )
         if not path:
             return
@@ -311,7 +315,9 @@ class App:
             return
         self.roots.append(resolved)
         self.folder_list.insert("end", str(resolved))
-        self.count_label.configure(text="已添加，开始生成时会统计仓库数量")
+        self.count_label.configure(
+            text=i18n.tr("已添加，开始生成时会统计仓库数量")
+        )
 
     def _remove_folder(self) -> None:
         selected = list(self.folder_list.curselection())
@@ -325,13 +331,15 @@ class App:
 
     def _check_repos(self) -> None:
         if not self.roots:
-            messagebox.showwarning("没有目录", "请先添加至少一个目录。")
+            messagebox.showwarning(
+                i18n.tr("没有目录"), i18n.tr("请先添加至少一个目录。"),
+            )
             return
         try:
             depth = int(self.depth_var.get())
         except ValueError:
             depth = 6
-        self.count_label.configure(text="正在检查…")
+        self.count_label.configure(text=i18n.tr("正在检查…"))
         threading.Thread(
             target=self._count_work, args=(list(self.roots), depth),
             daemon=True,
@@ -345,7 +353,7 @@ class App:
 
     def _choose_output(self) -> None:
         path = filedialog.askdirectory(
-            parent=self.root, title="选择输出目录", mustexist=False,
+            parent=self.root, title=i18n.tr("选择输出目录"), mustexist=False,
         )
         if path:
             self.out_var.set(path)
@@ -355,14 +363,20 @@ class App:
         if self.busy:
             return
         if not self.roots:
-            messagebox.showwarning("没有目录", "请先添加至少一个要扫描的目录。")
+            messagebox.showwarning(
+                i18n.tr("没有目录"),
+                i18n.tr("请先添加至少一个要扫描的目录。"),
+            )
             return
         try:
             year = int(self.year_var.get())
             depth = int(self.depth_var.get())
             jobs = max(1, int(self.jobs_var.get()))
         except ValueError:
-            messagebox.showwarning("参数不对", "年份、扫描层级和并行数必须是数字。")
+            messagebox.showwarning(
+                i18n.tr("参数不对"),
+                i18n.tr("年份、扫描层级和并行数必须是数字。"),
+            )
             return
         out_dir = Path(self.out_var.get()).expanduser().resolve()
         identity = self.identity if self.identity_var.get() else None
@@ -375,7 +389,7 @@ class App:
         self.written = []
         self.html_path = None
         self.progress.configure(value=0, maximum=1)
-        self.status.configure(text="正在查找 git 仓库…")
+        self.status.configure(text=i18n.tr("正在查找 git 仓库…"))
         self._set_result("")
         threading.Thread(
             target=self._work,
@@ -389,7 +403,7 @@ class App:
         try:
             repos = discover(roots, depth)
             if not repos:
-                raise RuntimeError("没有找到 git 仓库。")
+                raise RuntimeError(i18n.tr("没有找到 git 仓库。"))
             self.queue.put(("count", len(repos)))
 
             def progress(done, total, name):
@@ -401,7 +415,9 @@ class App:
                 all_branches=all_branches,
             )
             if stats.commit_count == 0:
-                raise RuntimeError(f"{year} 年没有找到提交。")
+                raise RuntimeError(i18n.tr(
+                    "{year} 年没有找到提交。", year=year,
+                ))
             written = render(stats, out_dir)
             self.queue.put(("done", stats, written, warnings, out_dir))
         except Exception as exc:  # pragma: no cover - UI path
@@ -414,11 +430,13 @@ class App:
                 kind = event[0]
                 if kind == "count":
                     count = event[1]
-                    self.status.configure(
-                        text=f"找到 {count} 个仓库，开始扫描…")
+                    self.status.configure(text=i18n.tr(
+                        "找到 {count} 个仓库，开始扫描…", count=count,
+                    ))
                 elif kind == "checked":
-                    self.count_label.configure(
-                        text=f"找到 {event[1]} 个 git 仓库")
+                    self.count_label.configure(text=i18n.tr(
+                        "找到 {count} 个 git 仓库", count=event[1],
+                    ))
                 elif kind == "progress":
                     _, done, total, name = event
                     self.progress.configure(maximum=max(total, 1), value=done)
@@ -437,16 +455,19 @@ class App:
         self.html_path = next(
             (path for label, path in written if label == "HTML"), None)
         lines = [
-            f"仓库 {stats.repo_count} · 提交 {fmt_int(stats.commit_count)} · "
-            f"活跃 {stats.active_days} 天 · 涉及 {stats.file_count} 个文件",
-            f"输出目录：{out_dir}",
+            i18n.tr(
+                "仓库 {repos} · 提交 {commits} · 活跃 {days} 天 · 涉及 {files} 个文件",
+                repos=stats.repo_count, commits=fmt_int(stats.commit_count),
+                days=stats.active_days, files=stats.file_count,
+            ),
+            i18n.tr("输出目录：{path}", path=out_dir),
             "",
         ]
         lines += [f"{label:<9} {path.name}" for label, path in written]
         if warnings:
-            lines += ["", "警告："] + [f"- {item}" for item in warnings]
+            lines += ["", i18n.tr("警告：")] + [f"- {item}" for item in warnings]
         self._set_result("\n".join(lines))
-        self.status.configure(text="完成。")
+        self.status.configure(text=i18n.tr("完成。"))
         self.progress.configure(value=self.progress["maximum"])
         self._set_busy(False)
         self.open_btn.configure(
@@ -455,8 +476,10 @@ class App:
 
     def _fail(self, message: str) -> None:
         self._set_busy(False)
-        self.status.configure(text=f"失败：{message}")
-        messagebox.showerror("生成失败", message)
+        self.status.configure(text=i18n.tr(
+            "失败：{message}", message=message,
+        ))
+        messagebox.showerror(i18n.tr("生成失败"), message)
 
     def _set_busy(self, busy: bool) -> None:
         self.busy = busy
@@ -529,7 +552,7 @@ class App:
             else:
                 webbrowser.open(path.as_uri())
         except Exception as exc:  # pragma: no cover - platform dependent
-            messagebox.showerror("无法打开", str(exc))
+            messagebox.showerror(i18n.tr("无法打开"), str(exc))
 
 
 def _enable_dpi() -> None:
@@ -538,12 +561,14 @@ def _enable_dpi() -> None:
 
 
 def run() -> int:
+    i18n.set_lang(i18n.detect(sys.argv[1:]))
     _enable_dpi()
     try:
         root = tk.Tk()
     except tk.TclError as exc:
-        print(f"无法启动图形界面: {exc}", file=sys.stderr)
-        print("请改用 codeyear tui 或 codeyear scan。", file=sys.stderr)
+        print(i18n.tr("无法启动图形界面: {exc}", exc=exc), file=sys.stderr)
+        print(i18n.tr("请改用 codeyear tui 或 codeyear scan。"),
+              file=sys.stderr)
         return 1
     App(root)
     root.mainloop()

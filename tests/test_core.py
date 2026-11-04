@@ -1009,3 +1009,46 @@ def test_english_scan_summary(tmp_path):
     assert "Repos" in result.stdout
     assert "Commits" in result.stdout
     assert "仓库" not in result.stdout
+
+
+def test_gui_strings_have_english_translations():
+    import ast
+    import re
+
+    from codeyear.i18n import EN, set_lang, tr
+
+    source = Path(__file__).resolve().parents[1] / "codeyear" / "gui.py"
+    tree = ast.parse(source.read_text(encoding="utf-8"))
+    missing = []
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.Constant)
+            and isinstance(node.value, str)
+            and re.search(r"[\u4e00-\u9fff]", node.value)
+            and node.value not in EN
+        ):
+            missing.append(node.value)
+    assert not missing
+
+    set_lang("en")
+    try:
+        assert tr("开始生成") == "Generate"
+        assert tr("扫描目录") == "Scan folders"
+    finally:
+        set_lang("zh")
+
+
+def test_report_accessibility_labels():
+    from codeyear.report_theme import decorate, to_english
+
+    stats = _stats()
+    html = build_html(stats)
+    assert 'class="skip"' in html
+    assert 'aria-label="月度提交次数"' in html
+    assert 'aria-label="全年提交热力图"' in html
+    assert 'aria-label="语言栈季度变化"' in html
+
+    en = to_english(decorate(html, stats), stats)
+    assert "Skip to main content" in en
+    assert 'aria-label="Monthly commit counts"' in en
+    assert 'aria-label="Report contents"' in en

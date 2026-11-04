@@ -35,6 +35,12 @@ CSS = r"""
   --mono:"Cascadia Mono",Consolas,"SFMono-Regular",Menlo,monospace;
 }
 body{background:var(--paper);font-size:15.5px;line-height:1.8}
+.skip{position:absolute;left:-9999px;top:0;background:var(--ink);color:var(--paper);
+  padding:10px 16px;z-index:100;font-family:var(--sans);font-size:13px;
+  text-decoration:none}
+.skip:focus{left:16px;top:16px}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{
+  outline:2px solid var(--acc);outline-offset:3px}
 body::before,body::after{display:none!important}
 #progress,.ticker,.nav-meta,.scroll-hint,.sec-index,.sec-sub,.sec-line,.kicker{display:none!important}
 ::selection{background:var(--acc);color:var(--paper)}
@@ -302,6 +308,13 @@ EN_MAP = {
     "年度代码报告": "Annual Code Report",
     "2026 年度代码报告": "2026 Annual Code Report",
     "回到顶部": "Back to top",
+    "跳到主要内容": "Skip to main content",
+    "主导航": "Main navigation",
+    "报告目录": "Report contents",
+    "月度提交次数": "Monthly commit counts",
+    "全年提交热力图": "Full-year commit heatmap",
+    "语言栈季度变化": "Quarterly language mix",
+    "月度同比柱状图": "Monthly year-over-year bars",
     "下一节": "Next",
     "顶部": "Top",
     "「git 不会说谎——": '"Git never lies —',
@@ -584,6 +597,9 @@ MONTH = {i: m for i, m in enumerate(
 
 def _translate_tip(value: str) -> str:
     v = _wan_convert(htmlmod.unescape(value))
+    core = v.strip()
+    if core in EN_MAP:
+        return EN_MAP[core]
     v = re.sub(r"(周[一二三四五六日])\s*(\d{2}:\d{2}) · (\d+) 次提交",
                lambda m: f"{WEEK[m.group(1)]} {m.group(2)} · {m.group(3)} commits", v)
     v = re.sub(r"(\d+) 月 · (\d+) 次提交",
@@ -716,7 +732,7 @@ def decorate(source: str, stats: ReportStats) -> str:
         r'<div class="hero-stats">.*?<p class="scroll-hint[^>]*>.*?</p>',
         hero_stats + compare_html, html, count=1, flags=re.S,
     )
-    rail = f"""<aside class="rail">
+    rail = f"""<aside class="rail" aria-label="报告目录">
   <div>
     <div class="rail-brand"><i></i>代码手账</div>
     <div class="rail-year">{year} 年度代码报告</div>

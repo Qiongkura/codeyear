@@ -34,7 +34,7 @@ codeyear
 Or install the wheel from the release:
 
 ```bash
-pip install https://github.com/Qiongkura/codeyear/releases/download/v0.2.6/codeyear-0.2.6-py3-none-any.whl
+pip install https://github.com/Qiongkura/codeyear/releases/download/v0.2.7/codeyear-0.2.7-py3-none-any.whl
 ```
 
 > The exe is unsigned; Windows SmartScreen may warn. Click “More info → Run anyway”.
@@ -82,7 +82,7 @@ codeyear --lang en scan ~/code --open
 CODEYEAR_LANG=en codeyear scan ~/code --open
 ```
 
-`--lang` goes before the subcommand. The GUI is still Chinese; reports are always bilingual.
+`--lang` goes before the subcommand. The GUI follows the same language setting; reports are always bilingual.
 
 Prefer the terminal?
 
@@ -156,7 +156,7 @@ If you only have Cloudflare, expose the local service with a tunnel:
 > daily at 04:00 UTC by default; change the workflow `cron` to weekly (`0 4 * * 1`)
 > or monthly (`0 4 1 * *`). `--fallback-previous` keeps last year's card until the
 > new year has commits. The template installs the release wheel; bump
-> `CODEYEAR_VERSION` (currently `0.2.6`) when upgrading.
+> `CODEYEAR_VERSION` (currently `0.2.7`) when upgrading.
 
 GitHub Action template: [docs/codeyear-card.yml](docs/codeyear-card.yml).
 
@@ -213,6 +213,7 @@ By default it counts only commits authored by you (matching git `user.name` / `u
 - Eight plain-language insights: main project, coding hours, commit size, session length, add/delete ratio, busiest month, focus spread, commit-message style
 - Card themes: paper / mono / forest / ocean; the public card service accepts a `theme` parameter
 - The report can be printed or saved as PDF directly from the browser
+- Accessibility: skip link, keyboard focus styles, chart aria-labels
 
 ## Install and outputs
 

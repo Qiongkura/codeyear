@@ -33,7 +33,7 @@ codeyear
 也可以从 Release 下载 wheel：
 
 ```bash
-pip install https://github.com/Qiongkura/codeyear/releases/download/v0.2.6/codeyear-0.2.6-py3-none-any.whl
+pip install https://github.com/Qiongkura/codeyear/releases/download/v0.2.7/codeyear-0.2.7-py3-none-any.whl
 ```
 
 > exe 未做代码签名，Windows SmartScreen 可能提示；点「更多信息 → 仍要运行」。
@@ -81,7 +81,7 @@ codeyear --lang en scan ~/code --open
 CODEYEAR_LANG=en codeyear scan ~/code --open
 ```
 
-`--lang` 要放在子命令前面。GUI 目前仍是中文；报告本身一直是中英双语。
+`--lang` 要放在子命令前面。GUI 也跟随同一语言设置；报告本身一直是中英双语。
 
 喜欢终端就用：
 
@@ -152,7 +152,7 @@ https://your-host/card-dark.svg?username=Qiongkura&year=2026
 > 文件名绕过 GitHub 的图片缓存；无需手动粘贴 embed 片段。模板默认每天 04:00 UTC
 > 更新；改 workflow 里的 `cron` 可切成每周一 `0 4 * * 1` 或每月 1 日 `0 4 1 * *`。
 > 跨年时如果新的一年还没有提交，`--fallback-previous` 会继续显示上一年的卡片。
-> 模板直接安装 Release 里的 wheel；升级时改 `CODEYEAR_VERSION`（当前 `0.2.6`）。
+> 模板直接安装 Release 里的 wheel；升级时改 `CODEYEAR_VERSION`（当前 `0.2.7`）。
 
 GitHub Action 自动更新模板：[docs/codeyear-card.yml](docs/codeyear-card.yml)。
 
@@ -211,6 +211,7 @@ CodeYear 是给开发者做的「年度报告」。官方的 Wrapped 通常只�
 - 卡片内有 8 条大白话分析：主攻项目、写码时段、改动大小、一次写多久、写删比例、最忙月份、精力集中度、提交说明
 - 卡片主题：paper / mono / forest / ocean；公开卡片服务支持 `theme` 参数
 - 报告可直接通过浏览器打印/导出 PDF
+- 可访问性：跳过导航链接、键盘焦点样式、图表 aria-label
 
 ## 安装与输出
 

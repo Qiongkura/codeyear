@@ -719,7 +719,7 @@ def build_heatmap(stats: ReportStats) -> str:
       <h3>{stats.year} 活跃热力图 <b>· {stats.active_days} 个活跃日</b></h3>
       <div class="heat-wrap">
         <div class="months">{months}</div>
-        <div class="heat">{''.join(cells)}</div>
+        <div class="heat" role="img" aria-label="全年提交热力图">{''.join(cells)}</div>
       </div>
       <div class="heat-legend">{legend}<span style="margin-left:6px">少 → 多 · 框出今天</span></div>
     </div>
@@ -792,7 +792,8 @@ def build_monthly(stats: ReportStats) -> str:
     labels = "".join(f"<span>{m:02d}</span>" for m in range(1, 13))
     return _panel(
         f"月度节奏 <b>· 峰值 {peak:02d} 月 · {max_v} 次</b>",
-        f'<div class="month-chart">{cols}</div><div class="month-labels">{labels}</div>',
+        f'<div class="month-chart" role="img" aria-label="月度提交次数">{cols}</div>'
+        f'<div class="month-labels">{labels}</div>',
         span=True,
     )
 
@@ -829,7 +830,8 @@ def build_clock(stats: ReportStats) -> str:
     peak = totals.index(max(totals))
     return _panel(
         f"7×24 提交时钟 <b>· 峰值 {peak:02d}:00</b>",
-        f'<div class="clock-wrap"><div class="clock">{head}{"".join(rows)}</div></div>'
+        f'<div class="clock-wrap"><div class="clock" role="img" '
+        f'aria-label="7×24 提交时钟">{head}{"".join(rows)}</div></div>'
         f'<p class="num-note">周末占 {stats.weekend_share:.0%}，'
         f'深夜（22:00–05:00）占 {stats.night_share:.0%}。</p>',
         span=True,
@@ -972,7 +974,8 @@ def build_language_quarters(stats: ReportStats) -> str:
     )
     return _panel(
         "语言栈变化 <b>· 按季度占比</b>",
-        f'<div class="q-chart">{"".join(cols)}</div>'
+        f'<div class="q-chart" role="img" aria-label="语言栈季度变化">'
+        f'{"".join(cols)}</div>'
         f'<div class="q-legend">{legend}</div>',
         span=True,
     )
@@ -1180,7 +1183,8 @@ def build_compare(stats: ReportStats) -> str:
         )
 
     chart = (
-        f'<div class="cmp-chart"><div class="cmp-cols">{"".join(cols)}</div>'
+        f'<div class="cmp-chart" role="img" aria-label="月度同比柱状图">'
+        f'<div class="cmp-cols">{"".join(cols)}</div>'
         f'<div class="cmp-legend"><span><i class="prev"></i>{prev_year}</span>'
         f'<span><i class="cur"></i>{stats.year}</span></div></div>'
     )
@@ -1347,11 +1351,12 @@ def build_html(stats: ReportStats) -> str:
 .sec-line{{transform:none!important}}</style></noscript>
 </head>
 <body>
+<a class="skip" href="#records">跳到主要内容</a>
 <div id="progress"></div>
 <header>
   <div class="nav">
     <a class="logo" href="#top"><i></i>CODEYEAR</a>
-    <div class="nav-links">
+    <div class="nav-links" aria-label="主导航">
       <a href="#records">之最</a><a href="#archives">档案</a><a href="#index">索引</a>
       <a href="#numbers">数据分析</a><a href="#about">关于</a>
     </div>
