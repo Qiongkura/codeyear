@@ -1,5 +1,10 @@
 # CodeYear · A Local-First Coding Yearbook
 
+[![CI](https://github.com/Qiongkura/codeyear/actions/workflows/ci.yml/badge.svg)](https://github.com/Qiongkura/codeyear/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/Qiongkura/codeyear)](https://github.com/Qiongkura/codeyear/releases/latest)
+[![Python](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/)
+[![Demo](https://img.shields.io/badge/demo-online-brightgreen)](https://qiongkura.github.io/codeyear/)
+
 **English** | [简体中文](README.md)
 
 > Scan the git repositories on your own machine and turn them into a yearbook that belongs to you:
@@ -8,6 +13,8 @@
 > GitHub mode is an opt-in network feature.
 
 ![CodeYear report preview](docs/report-preview.png)
+
+**Live demo**: [https://qiongkura.github.io/codeyear/](https://qiongkura.github.io/codeyear/)
 
 **Sample reports**: [Chinese](docs/sample-report.html) · [English](docs/sample-report-en.html) — anonymized demo data; open either directly in a browser.
 
@@ -107,7 +114,11 @@ Deploy to Render / Railway / Fly / a VPS: set `GITHUB_TOKEN` and run:
 codeyear serve --host 0.0.0.0 --port $PORT --max-commits 500
 ```
 
-The repo includes `Dockerfile` and `render.yaml`; Render can detect it directly.
+The repo includes `Dockerfile` and `render.yaml`; Render can detect it directly. The image is also published to GHCR:
+
+```bash
+docker run -p 8000:8000 -e GITHUB_TOKEN=your_token ghcr.io/qiongkura/codeyear:latest
+```
 
 ```text
 https://your-host/card.svg?username=Qiongkura&year=2026
@@ -131,7 +142,8 @@ If you only have Cloudflare, expose the local service with a tunnel:
 > the first run) and uses versioned filenames to bypass GitHub's image cache. It runs
 > daily at 04:00 UTC by default; change the workflow `cron` to weekly (`0 4 * * 1`)
 > or monthly (`0 4 1 * *`). `--fallback-previous` keeps last year's card until the
-> new year has commits. `CODEYEAR_REF` is pinned to `v0.2.1`; bump it when upgrading.
+> new year has commits. The template installs the release wheel; bump
+> `CODEYEAR_VERSION` (currently `0.2.1`) when upgrading.
 
 GitHub Action template: [docs/codeyear-card.yml](docs/codeyear-card.yml).
 

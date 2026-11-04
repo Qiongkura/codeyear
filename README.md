@@ -1,5 +1,10 @@
 # CodeYear · 代码手账
 
+[![CI](https://github.com/Qiongkura/codeyear/actions/workflows/ci.yml/badge.svg)](https://github.com/Qiongkura/codeyear/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/Qiongkura/codeyear)](https://github.com/Qiongkura/codeyear/releases/latest)
+[![Python](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/)
+[![Demo](https://img.shields.io/badge/demo-online-brightgreen)](https://qiongkura.github.io/codeyear/)
+
 **简体中文** | [English](README.en.md) · [中文简介](docs/intro.zh.md)
 
 > 扫描你本地的 git 仓库，生成一份**只属于你**的年度代码手账：中英双语 HTML 报告、
@@ -7,6 +12,8 @@
 > 公开 GitHub 模式是可选联网功能。
 
 ![CodeYear 报告预览](docs/report-preview.png)
+
+**在线示例**：[https://qiongkura.github.io/codeyear/](https://qiongkura.github.io/codeyear/)
 
 **示例报告**：[中文](docs/sample-report.html) · [English](docs/sample-report-en.html)
 （脱敏演示数据，可直接浏览器打开）
@@ -106,7 +113,11 @@ codeyear serve --port 8000
 codeyear serve --host 0.0.0.0 --port $PORT --max-commits 500
 ```
 
-仓库里带 `Dockerfile` 和 `render.yaml`，Render 可以直接识别。
+仓库里带 `Dockerfile` 和 `render.yaml`，Render 可以直接识别。镜像也会发布到 GHCR：
+
+```bash
+docker run -p 8000:8000 -e GITHUB_TOKEN=your_token ghcr.io/qiongkura/codeyear:latest
+```
 
 ```text
 https://your-host/card.svg?username=Qiongkura&year=2026
@@ -128,7 +139,7 @@ https://your-host/card-dark.svg?username=Qiongkura&year=2026
 > 文件名绕过 GitHub 的图片缓存；无需手动粘贴 embed 片段。模板默认每天 04:00 UTC
 > 更新；改 workflow 里的 `cron` 可切成每周一 `0 4 * * 1` 或每月 1 日 `0 4 1 * *`。
 > 跨年时如果新的一年还没有提交，`--fallback-previous` 会继续显示上一年的卡片。
-> 模板里的 `CODEYEAR_REF` 已固定到 `v0.2.1`；升级时改这个变量即可。
+> 模板直接安装 Release 里的 wheel；升级时改 `CODEYEAR_VERSION`（当前 `0.2.1`）。
 
 GitHub Action 自动更新模板：[docs/codeyear-card.yml](docs/codeyear-card.yml)。
 

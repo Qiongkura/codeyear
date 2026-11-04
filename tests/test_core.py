@@ -582,3 +582,16 @@ def test_public_mode_report_labels():
     assert "Source: https://github.com/me" in en
     assert "Generated from public GitHub data" in en
     assert "no local code was read or uploaded" in en
+
+
+def test_english_report_has_no_untranslated_ui():
+    import re
+
+    from codeyear.report_theme import decorate, to_english
+
+    stats = _stats()
+    en = to_english(decorate(build_html(stats), stats), stats)
+    en = re.sub(r"<(style|script)\b.*?</\1>", "", en, flags=re.S | re.I)
+    chinese = set(re.findall(r"[\u4e00-\u9fff]+", en))
+    # "中文" is the intentional link back to the Chinese edition.
+    assert chinese <= {"中文"}
