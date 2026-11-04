@@ -147,7 +147,7 @@ def build_persona(
         f"每个活跃日平均 {avg_per_active:.1f} 次提交。"
     )
     summary_en = subtitle_en + (
-        style_text_en
+        " " + style_text_en
         + f"; longest streak {longest_streak} days, "
         f"{avg_per_active:.1f} commits per active day."
     )

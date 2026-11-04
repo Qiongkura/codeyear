@@ -12,7 +12,7 @@
 > theme-aware GitHub profile card. Local-first by default — no sign-in, no upload. The public
 > GitHub mode is an opt-in network feature.
 
-![CodeYear report preview](docs/report-preview.png)
+![CodeYear report preview](docs/report-preview-en.png)
 
 **Live demo**: [https://qiongkura.github.io/codeyear/index.en.html](https://qiongkura.github.io/codeyear/index.en.html)
 

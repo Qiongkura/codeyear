@@ -1167,6 +1167,8 @@ def test_persona_variety():
     assert "夜猫子" not in persona.badges
     assert "深夜 58%" not in persona.badges
     assert "longest streak" in persona.summary_en.lower()
+    assert "window.Fixes" not in persona.summary_en
+    assert "window. Fixes" in persona.summary_en
 
 
 def test_persona_block_translated():
