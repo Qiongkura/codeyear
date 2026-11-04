@@ -34,7 +34,7 @@ codeyear
 Or install the wheel from the release:
 
 ```bash
-pip install https://github.com/Qiongkura/codeyear/releases/download/v0.2.8/codeyear-0.2.8-py3-none-any.whl
+pip install https://github.com/Qiongkura/codeyear/releases/download/v0.2.9/codeyear-0.2.9-py3-none-any.whl
 ```
 
 > The exe is unsigned; Windows SmartScreen may warn. Click “More info → Run anyway”.
@@ -156,7 +156,7 @@ If you only have Cloudflare, expose the local service with a tunnel:
 > daily at 04:00 UTC by default; change the workflow `cron` to weekly (`0 4 * * 1`)
 > or monthly (`0 4 1 * *`). `--fallback-previous` keeps last year's card until the
 > new year has commits. The template installs the release wheel; bump
-> `CODEYEAR_VERSION` (currently `0.2.8`) when upgrading.
+> `CODEYEAR_VERSION` (currently `0.2.9`) when upgrading.
 
 GitHub Action template: [docs/codeyear-card.yml](docs/codeyear-card.yml).
 

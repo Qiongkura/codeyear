@@ -147,8 +147,16 @@ def build_persona(
         add("高频提交", "High frequency")
     if commits >= 1000:
         add("千次提交", "1k commits")
+    if active_days >= 100:
+        add("长期主义", "Consistent")
+    if busiest_count >= 20:
+        add("爆发日", "Burst day")
     if repos >= 10:
         add("多线并行", "Multi-project")
+    elif repos >= 5:
+        add("多项目", "Multi-project")
+    if current_streak >= 7:
+        add("正在连续", "On a streak")
     if not badges:
         add(f"{time_adj}型", time_en)
 

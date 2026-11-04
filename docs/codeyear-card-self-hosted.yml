@@ -33,7 +33,7 @@ jobs:
       - name: Install CodeYear
         run: >
           pip install
-          "https://github.com/Qiongkura/codeyear/releases/download/v0.2.8/codeyear-0.2.8-py3-none-any.whl"
+          "https://github.com/Qiongkura/codeyear/releases/download/v0.2.9/codeyear-0.2.9-py3-none-any.whl"
 
       - name: Generate from local private code
         env:
