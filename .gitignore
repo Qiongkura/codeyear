@@ -11,3 +11,7 @@ out-*/
 .testrepo/
 .DS_Store
 Thumbs.db
+.coverage
+.coverage.*
+htmlcov/
+.ruff_cache/
