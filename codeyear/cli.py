@@ -19,7 +19,7 @@ from .html_report import render as render_html
 from .html_report import render_en as render_html_en
 from .poster import render as render_poster
 from .poster import render_long
-from .runner import discover, scan
+from .runner import discover, report_path, scan
 from .stats import fmt_int
 
 _NO_WINDOW = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
@@ -381,7 +381,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  - {warning}")
 
     if args.open and written:
-        target = next((p for label, p in written if label == "HTML"), written[0][1])
+        target = report_path(written, lang=i18n.get_lang()) or written[0][1]
         _open_path(target)
 
     return exit_code

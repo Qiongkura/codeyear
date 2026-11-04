@@ -33,7 +33,7 @@ codeyear
 也可以从 Release 下载 wheel：
 
 ```bash
-pip install https://github.com/Qiongkura/codeyear/releases/download/v0.2.12/codeyear-0.2.12-py3-none-any.whl
+pip install https://github.com/Qiongkura/codeyear/releases/download/v0.2.13/codeyear-0.2.13-py3-none-any.whl
 ```
 
 > exe 未做代码签名，Windows SmartScreen 可能提示；点「更多信息 → 仍要运行」。
@@ -82,6 +82,8 @@ CODEYEAR_LANG=en codeyear scan ~/code --open
 ```
 
 `--lang` 要放在子命令前面。GUI 也跟随同一语言设置；报告本身一直是中英双语。
+英文界面可以用 `codeyear --lang en gui`（或 `codeyear-gui --lang en`）启动，
+GUI 的「打开报告」会直接打开英文 HTML；中英文两份报告始终都会生成。
 `--profile-repo` 会按这个语言选择写入主页的卡片：默认中文，`--lang en` 时写英文卡片。
 
 喜欢终端就用：
@@ -154,7 +156,7 @@ https://your-host/card.svg?username=Qiongkura&year=2026&lang=en
 > 文件名绕过 GitHub 的图片缓存；无需手动粘贴 embed 片段。模板默认每天 04:00 UTC
 > 更新；改 workflow 里的 `cron` 可切成每周一 `0 4 * * 1` 或每月 1 日 `0 4 1 * *`。
 > 跨年时如果新的一年还没有提交，`--fallback-previous` 会继续显示上一年的卡片。
-> 模板直接安装 Release 里的 wheel；升级时改 `CODEYEAR_VERSION`（当前 `0.2.12`）。
+> 模板直接安装 Release 里的 wheel；升级时改 `CODEYEAR_VERSION`（当前 `0.2.13`）。
 
 GitHub Action 自动更新模板：[docs/codeyear-card.yml](docs/codeyear-card.yml)。
 

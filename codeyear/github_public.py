@@ -21,7 +21,7 @@ from pathlib import Path
 
 from . import i18n
 from .languages import language_for
-from .runner import render
+from .runner import render, report_path
 from .scanner import Commit, FileChange, RepoResult
 from .stats import ReportStats, build_stats, fmt_human, fmt_int
 
@@ -483,7 +483,7 @@ def run(
         for warning in warnings:
             print(f"  - {warning}")
     if open_report:
-        html = next((path for label, path in written if label == "HTML"), None)
+        html = report_path(written, lang=lang)
         if html:
             try:
                 if hasattr(os, "startfile"):

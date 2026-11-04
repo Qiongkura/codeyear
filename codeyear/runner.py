@@ -22,6 +22,16 @@ ALL_FORMATS = {"json", "html", "png", "long", "card"}
 _NO_WINDOW = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
 
 
+def report_path(written: list[tuple[str, Path]], *, lang: str = "zh") -> Path | None:
+    """Pick the report to open: English first when the UI is English."""
+    labels = ("HTML-EN", "HTML") if lang == "en" else ("HTML",)
+    by_label = dict(written)
+    for label in labels:
+        if label in by_label:
+            return by_label[label]
+    return None
+
+
 def detect_identity() -> tuple[str, str] | None:
     def config(key: str) -> str:
         try:

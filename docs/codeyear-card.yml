@@ -41,7 +41,7 @@ jobs:
           pip install
           "https://github.com/Qiongkura/codeyear/releases/download/v${CODEYEAR_VERSION}/codeyear-${CODEYEAR_VERSION}-py3-none-any.whl"
         env:
-          CODEYEAR_VERSION: 0.2.12
+          CODEYEAR_VERSION: 0.2.13
 
       - name: Generate card and update README
         run: >

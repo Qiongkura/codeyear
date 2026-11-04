@@ -15,7 +15,7 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
 from . import i18n
-from .runner import detect_identity, discover, render, scan
+from .runner import detect_identity, discover, render, report_path, scan
 from .stats import fmt_int
 
 PAPER = "#f5f2e9"
@@ -452,8 +452,7 @@ class App:
 
     def _finish(self, stats, written, warnings, out_dir) -> None:
         self.written = written
-        self.html_path = next(
-            (path for label, path in written if label == "HTML"), None)
+        self.html_path = report_path(written, lang=i18n.get_lang())
         lines = [
             i18n.tr(
                 "仓库 {repos} · 提交 {commits} · 活跃 {days} 天 · 涉及 {files} 个文件",

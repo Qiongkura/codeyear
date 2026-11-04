@@ -773,6 +773,16 @@ def test_runner_scan_and_render(tmp_path):
     assert all(path.exists() for _label, path in written)
 
 
+def test_report_path_follows_ui_language():
+    from codeyear.runner import report_path
+
+    written = [("HTML", Path("codeyear-2026.html")),
+               ("HTML-EN", Path("codeyear-2026-en.html"))]
+    assert report_path(written) == Path("codeyear-2026.html")
+    assert report_path(written, lang="en") == Path("codeyear-2026-en.html")
+    assert report_path([("CARD", Path("card.svg"))]) is None
+
+
 def test_server_http_endpoints(tmp_path, monkeypatch):
     import re
     import threading
