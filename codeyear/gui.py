@@ -224,6 +224,11 @@ class App:
             advanced, "同比去年", self.compare_var,
         )
         compare_box.pack(side="left")
+        self.all_branches_var = tk.BooleanVar(value=False)
+        branches_box, self._branches_draw = self._check(
+            advanced, "所有分支", self.all_branches_var,
+        )
+        branches_box.pack(side="left", padx=(16, 0))
         tk.Label(advanced, text="旧邮箱/名字", bg=PAPER, fg=MUTED,
                  font=("Microsoft YaHei", 9)).pack(side="left", padx=(22, 6))
         self.alias_var = tk.StringVar(value="")
@@ -362,6 +367,7 @@ class App:
         out_dir = Path(self.out_var.get()).expanduser().resolve()
         identity = self.identity if self.identity_var.get() else None
         compare = self.compare_var.get()
+        all_branches = self.all_branches_var.get()
         aliases = [item.strip() for item in self.alias_var.get().split(",")
                    if item.strip()]
 
@@ -374,12 +380,12 @@ class App:
         threading.Thread(
             target=self._work,
             args=(list(self.roots), depth, year, out_dir, identity,
-                  jobs, compare, aliases),
+                  jobs, compare, aliases, all_branches),
             daemon=True,
         ).start()
 
     def _work(self, roots, depth, year, out_dir, identity, jobs, compare,
-              aliases) -> None:
+              aliases, all_branches) -> None:
         try:
             repos = discover(roots, depth)
             if not repos:
@@ -392,6 +398,7 @@ class App:
             stats, warnings = scan(
                 repos, roots, year, identity, aliases=aliases,
                 progress=progress, jobs=jobs, compare=compare,
+                all_branches=all_branches,
             )
             if stats.commit_count == 0:
                 raise RuntimeError(f"{year} 年没有找到提交。")

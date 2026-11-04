@@ -399,7 +399,26 @@ EN_MAP = {
     "平均一次": "Average",
     "仓库生命周期": "Repository lifecycle",
     "首次–最近": "First–latest",
+    "首次提交": "First commit",
     "仓库墓园": "Repo graveyard",
+    "· 30 天没动": "· untouched for 30 days",
+    "没有休眠超过 30 天的仓库。":
+        "No repositories have been dormant for more than 30 days.",
+    "未知": "Unknown",
+    "（这个仓库的 README 还没写简介）": "(No README description)",
+    "（最近没有提交）": "(No recent commits)",
+    "没有识别到 Conventional Commits 类型。":
+        "No Conventional Commits types found.",
+    "提交信息太短，没有提取到关键词。":
+        "Commit messages are too short to extract keywords.",
+    "没有足够的提交时间数据。": "Not enough commit time data.",
+    "没有足够数据。": "Not enough data.",
+    "没有可统计的代码文件。": "No code files to analyze.",
+    "未检测到 git 身份，统计了所有作者的提交（可用 --all-authors 显式开启）。":
+        "No git identity detected; all authors were counted "
+        "(use --all-authors explicitly).",
+    "· 约定式提交": "· conventional commits",
+    "· 口头禅": "· catchphrases",
     "最常改的文件": "Most edited files",
     "2026 活跃热力图": "2026 activity",
     "少 → 多 · 框出今天": "Less → more · today outlined",

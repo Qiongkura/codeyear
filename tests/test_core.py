@@ -846,3 +846,29 @@ def test_scan_repo_all_branches_option(tmp_path):
     assert len(current.commits) == 1
     every_branch = scan_repo(repo, tmp_path, 2026, all_branches=True)
     assert len(every_branch.commits) == 2
+
+
+def test_english_empty_states_are_translated():
+    import re
+    from dataclasses import replace
+
+    from codeyear.report_theme import decorate, to_english
+
+    stats = _stats()
+    empty_repo = dict(stats.repo_details[0], readme="", recent=[])
+    stats = replace(
+        stats,
+        dormant=[],
+        sessions={},
+        commit_types=[],
+        keywords=[],
+        top_files=[],
+        language_quarters=[],
+        repo_details=[empty_repo],
+        identity_label="",
+        filtered_commits=0,
+    )
+    en = to_english(decorate(build_html(stats), stats), stats)
+    en = re.sub(r"<(style|script)\b.*?</\1>", "", en, flags=re.S | re.I)
+    chinese = set(re.findall(r"[\u4e00-\u9fff]+", en))
+    assert chinese <= {"中文"}
