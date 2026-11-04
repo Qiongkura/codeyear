@@ -73,6 +73,17 @@ On Windows you can also double-click `CodeYear.cmd` in the repo root.
 Tkinter is required; it ships with Python on Windows/macOS. On Linux install `python3-tk`.
 After installing the package, `codeyear-gui` works too.
 
+## UI language
+
+The CLI and terminal wizard follow the system locale by default, and can be forced to English:
+
+```bash
+codeyear --lang en scan ~/code --open
+CODEYEAR_LANG=en codeyear scan ~/code --open
+```
+
+`--lang` goes before the subcommand. The GUI is still Chinese; reports are always bilingual.
+
 Prefer the terminal?
 
 ```bash
@@ -97,6 +108,7 @@ codeyear github Qiongkura --year 2026 --out ./codeyear-github
 - Card only: add `--card-only` to skip the report, poster, and long image.
 - Update the profile repo directly: add `--profile-repo ~/Qiongkura` (local only) or `--push-profile` (commit and push).
 - Cross-year automation: add `--fallback-previous` to keep last year's card until the new year has commits.
+- Faster repeated runs: add `--cache-dir ~/.cache/codeyear` to cache commit details by SHA.
 - Card theme: `--theme paper|mono|forest|ocean`; [theme gallery](docs/themes.md).
 - The local `scan` command remains the default; your code is not uploaded.
 

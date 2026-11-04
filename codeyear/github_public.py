@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 import time
 import urllib.error
@@ -18,6 +19,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 
+from . import i18n
 from .languages import language_for
 from .runner import render
 from .scanner import Commit, FileChange, RepoResult
@@ -25,6 +27,39 @@ from .stats import ReportStats, build_stats, fmt_human, fmt_int
 
 API = "https://api.github.com"
 DETAIL_WORKERS = 4
+CACHE_VERSION = 1
+CACHE_MAX = 5000
+
+
+def _load_cache(path: Path | None) -> dict:
+    if path is None or not path.exists():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    if not isinstance(data, dict) or data.get("version") != CACHE_VERSION:
+        return {}
+    details = data.get("details")
+    return details if isinstance(details, dict) else {}
+
+
+def _save_cache(path: Path | None, details: dict) -> None:
+    if path is None:
+        return
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if len(details) > CACHE_MAX:
+            details = dict(list(details.items())[-CACHE_MAX:])
+        path.write_text(
+            json.dumps(
+                {"version": CACHE_VERSION, "details": details},
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+    except OSError:
+        pass
 
 
 def _dt(value: str | None) -> datetime | None:
@@ -118,6 +153,7 @@ def _commits(
     year: int,
     limit: int,
     quiet: bool,
+    cache: dict | None = None,
 ) -> list[Commit]:
     full = repo["full_name"]
     since = f"{year}-01-01T00:00:00Z"
@@ -135,16 +171,33 @@ def _commits(
             break
 
     items = listed[:limit]
-    if api.remaining is not None and api.remaining < len(items) + 5:
-        raise RuntimeError("GitHub API 额度不足，请设置 GITHUB_TOKEN 后重试。")
+    keys = [f"{full}@{item['sha']}" for item in items]
+    details: list[dict | None] = []
+    missing: list[tuple[int, dict]] = []
+    for index, (item, key) in enumerate(zip(items, keys)):
+        if cache is not None and key in cache:
+            details.append(cache[key])
+        else:
+            details.append(None)
+            missing.append((index, item))
 
-    def fetch_detail(item: dict):
-        return api.get(f"/repos/{full}/commits/{item['sha']}")
+    if missing:
+        if api.remaining is not None and api.remaining < len(missing) + 5:
+            raise RuntimeError(i18n.tr(
+                "GitHub API 额度不足，请设置 GITHUB_TOKEN 后重试。"
+            ))
 
-    # Commit details are independent; a small pool cuts wall time without
-    # changing the request count or adding dependencies.
-    with ThreadPoolExecutor(max_workers=DETAIL_WORKERS) as pool:
-        details = list(pool.map(fetch_detail, items))
+        def fetch_detail(entry: tuple[int, dict]):
+            return api.get(f"/repos/{full}/commits/{entry[1]['sha']}")
+
+        # Commit details are independent; a small pool cuts wall time without
+        # changing the request count or adding dependencies.
+        with ThreadPoolExecutor(max_workers=DETAIL_WORKERS) as pool:
+            fetched = list(pool.map(fetch_detail, missing))
+        for (index, _item), detail in zip(missing, fetched):
+            details[index] = detail
+            if cache is not None and detail:
+                cache[keys[index]] = detail
 
     commits: list[Commit] = []
     for item, detail in zip(items, details):
@@ -185,7 +238,9 @@ def _commits(
             changes=changes,
         ))
     if not quiet and commits:
-        print(f"    {full} · {len(commits)} 次提交", file=sys.stderr)
+        print(i18n.tr(
+            "    {repo} · {count} 次提交", repo=full, count=len(commits),
+        ), file=sys.stderr)
     return commits
 
 
@@ -210,17 +265,23 @@ def fetch_stats(
     max_commits: int = 200,
     include_forks: bool = False,
     quiet: bool = False,
+    cache_path: Path | None = None,
 ) -> tuple[ReportStats, list[str], str]:
     api = GitHubAPI(token)
+    cache = _load_cache(cache_path)
     if not api.token and max_commits > 30:
         max_commits = 30
         if not quiet:
-            print("  ! 未设置 GITHUB_TOKEN，最多拉取 30 条提交。", file=sys.stderr)
+            print("  ! " + i18n.tr(
+                "未设置 GITHUB_TOKEN，最多拉取 30 条提交。"
+            ), file=sys.stderr)
 
     try:
         user = api.get(f"/users/{urllib.parse.quote(username)}")
         if not user:
-            raise RuntimeError(f"找不到 GitHub 用户: {username}")
+            raise RuntimeError(i18n.tr(
+                "找不到 GitHub 用户: {username}", username=username,
+            ))
         login = user.get("login") or username
         display_name = user.get("name") or login
         since = datetime(year, 1, 1)
@@ -229,20 +290,27 @@ def fetch_stats(
             print(f"CodeYear · github.com/{login} · {year}", file=sys.stderr)
         repos = _repos(api, login, since, include_forks)
     except RuntimeError as exc:
-        raise RuntimeError(f"GitHub API 错误: {exc}") from exc
+        raise RuntimeError(i18n.tr(
+            "GitHub API 错误: {exc}", exc=exc,
+        )) from exc
 
     results: list[RepoResult] = []
     warnings: list[str] = []
     total = 0
     for index, repo in enumerate(repos, 1):
         if total >= max_commits:
-            warnings.append(f"已达到 --max-commits 上限（{max_commits}）")
+            warnings.append(i18n.tr(
+                "已达到 --max-commits 上限（{limit}）", limit=max_commits,
+            ))
             break
         full = repo["full_name"]
         if not quiet:
             print(f"[{index}/{len(repos)}] {full}", file=sys.stderr)
         try:
-            commits = _commits(api, repo, login, year, max_commits - total, quiet)
+            commits = _commits(
+                api, repo, login, year, max_commits - total, quiet,
+                cache=cache,
+            )
         except RuntimeError as exc:
             warnings.append(str(exc))
             break
@@ -267,7 +335,12 @@ def fetch_stats(
         ))
 
     if not results:
-        raise RuntimeError(f"{login} 在 {year} 年没有找到公开提交。")
+        _save_cache(cache_path, cache)
+        raise RuntimeError(i18n.tr(
+            "{login} 在 {year} 年没有找到公开提交。", login=login, year=year,
+        ))
+
+    _save_cache(cache_path, cache)
 
     stats = build_stats(
         year=year,
@@ -277,7 +350,9 @@ def fetch_stats(
         identity=(login, display_name),
     )
     if stats.commit_count == 0:
-        raise RuntimeError(f"{login} 在 {year} 年没有找到公开提交。")
+        raise RuntimeError(i18n.tr(
+            "{login} 在 {year} 年没有找到公开提交。", login=login, year=year,
+        ))
     return stats, warnings, login
 
 
@@ -296,11 +371,17 @@ def run(
     profile_repo: str | Path | None = None,
     push_profile: bool = False,
     fallback_previous: bool = False,
+    cache_dir: str | Path | None = None,
 ) -> int:
+    cache_path = None
+    if cache_dir:
+        safe_name = re.sub(r"[^a-z0-9_.-]", "_", username.lower())
+        cache_path = Path(cache_dir) / f"github-{safe_name}.json"
     try:
         stats, warnings, login = fetch_stats(
             username, year, token=token, max_commits=max_commits,
             include_forks=include_forks, quiet=quiet,
+            cache_path=cache_path,
         )
         if (
             fallback_previous
@@ -310,6 +391,7 @@ def run(
             previous, prev_warnings, login = fetch_stats(
                 username, year - 1, token=token, max_commits=max_commits,
                 include_forks=include_forks, quiet=quiet,
+                cache_path=cache_path,
             )
             if previous.commit_count:
                 stats, warnings = previous, prev_warnings
@@ -347,28 +429,41 @@ def run(
                 written.append(("PROFILE", repo))
                 if changed:
                     state = "已提交并推送" if pushed else "仅写入本地"
-                    print(f"\nProfile  {state} · {repo}")
+                    print("\n" + i18n.tr(
+                        "Profile  {state} · {repo}",
+                        state=i18n.tr(state), repo=repo,
+                    ))
                 else:
-                    print(f"\nProfile  卡片已是最新 · {repo}")
+                    print("\n" + i18n.tr(
+                        "Profile  卡片已是最新 · {repo}", repo=repo,
+                    ))
             except Exception as exc:  # pragma: no cover - user environment
-                print(f"  ! 更新 Profile 失败: {exc}", file=sys.stderr)
+                print(i18n.tr(
+                    "  ! 更新 Profile 失败: {exc}", exc=exc
+                ), file=sys.stderr)
                 return 1
 
     print()
-    print(f"CodeYear {year}  ·  {stats.persona.title}")
+    print(i18n.tr(
+        "CodeYear {year}  ·  {title}",
+        year=year, title=stats.persona.title,
+    ))
     print("-" * 46)
-    print(f"账号      github.com/{login}")
-    print(f"仓库      {stats.repo_count}")
-    print(f"提交      {fmt_int(stats.commit_count)}")
-    print(f"代码行    {fmt_human(stats.lines_changed)}")
-    print(f"活跃      {stats.active_days} 天 · 涉及 {stats.file_count} 个文件")
-    print(f"输出      {out.resolve()}")
+    print(f"{i18n.tr('账号'):<10}github.com/{login}")
+    print(f"{i18n.tr('仓库'):<10}{stats.repo_count}")
+    print(f"{i18n.tr('提交'):<10}{fmt_int(stats.commit_count)}")
+    print(f"{i18n.tr('代码行'):<10}{fmt_human(stats.lines_changed)}")
+    print(i18n.tr(
+        "活跃      {days} 天 · 涉及 {count} 个文件",
+        days=stats.active_days, count=stats.file_count,
+    ))
+    print(f"{i18n.tr('输出'):<10}{out.resolve()}")
     print("-" * 46)
     for label, path in written:
         print(f"{label:<9}  {path.name}")
     if warnings:
         print()
-        print("提示:")
+        print(i18n.tr("提示:"))
         for warning in warnings:
             print(f"  - {warning}")
     if open_report:

@@ -912,3 +912,100 @@ def test_config_defaults_and_cli_override(tmp_path, monkeypatch):
     assert args.out == "my-output"
     assert args.theme == "ocean"
     assert args.max_commits == 50
+
+
+def test_public_detail_cache_roundtrip(tmp_path):
+    from codeyear.github_public import _load_cache, _save_cache
+
+    path = tmp_path / "cache.json"
+    _save_cache(path, {"repo@sha": {"commit": {}}})
+    assert _load_cache(path) == {"repo@sha": {"commit": {}}}
+    assert _load_cache(tmp_path / "missing.json") == {}
+
+
+def test_public_detail_cache_avoids_refetch():
+    from codeyear.github_public import _commits
+
+    class FakeAPI:
+        remaining = 100
+
+        def __init__(self):
+            self.detail_calls = 0
+
+        def get(self, path, params=None):
+            if path.endswith("/commits"):
+                return [{"sha": "a"}, {"sha": "b"}]
+            self.detail_calls += 1
+            sha = path.rsplit("/", 1)[-1]
+            return {
+                "commit": {
+                    "author": {"date": "2026-01-02T10:00:00Z"},
+                    "message": f"feat: {sha}",
+                },
+                "stats": {"additions": 1, "deletions": 0},
+                "files": [],
+                "parents": [{}],
+            }
+
+    api = FakeAPI()
+    cache: dict = {}
+    first = _commits(
+        api, {"full_name": "me/demo"}, "me", 2026, 10, True, cache=cache,
+    )
+    assert [commit.hash for commit in first] == ["a", "b"]
+    assert api.detail_calls == 2
+    assert set(cache) == {"me/demo@a", "me/demo@b"}
+
+    second = _commits(
+        api, {"full_name": "me/demo"}, "me", 2026, 10, True, cache=cache,
+    )
+    assert [commit.hash for commit in second] == ["a", "b"]
+    assert api.detail_calls == 2
+
+
+def test_english_cli_help(capsys):
+    from codeyear import i18n
+    from codeyear.cli import main
+
+    def help_text(argv):
+        try:
+            code = main(argv)
+        except SystemExit as exc:
+            code = exc.code
+        assert code == 0
+        return capsys.readouterr().out
+
+    try:
+        top = help_text(["--lang", "en", "--help"])
+        scan = help_text(["--lang", "en", "scan", "--help"])
+        assert "Scan all git repositories" in top
+        assert "Include every local branch/tag" in scan
+        assert "扫描一个文件夹" not in top + scan
+    finally:
+        i18n.set_lang("zh")
+
+
+def test_english_scan_summary(tmp_path):
+    import subprocess
+    import sys
+    from datetime import date
+
+    repo = tmp_path / "repo"
+    env = _init_repo(repo)
+    _commit(
+        repo, "a.txt", "feat: hello", f"{date.today().year}-05-01T10:00:00", env,
+    )
+
+    project = Path(__file__).resolve().parents[1]
+    result = subprocess.run(
+        [
+            sys.executable, "-m", "codeyear", "--lang", "en", "scan", str(repo),
+            "--all-authors", "--out", str(tmp_path / "out"),
+            "--no-html", "--no-png", "--no-long", "--no-card", "--quiet",
+        ],
+        cwd=project, capture_output=True, text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "Repos" in result.stdout
+    assert "Commits" in result.stdout
+    assert "仓库" not in result.stdout

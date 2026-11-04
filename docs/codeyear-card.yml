@@ -26,6 +26,14 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Cache public commit details
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/codeyear
+          key: codeyear-details-${{ github.repository_owner }}-${{ github.run_id }}
+          restore-keys: |
+            codeyear-details-${{ github.repository_owner }}-
+
       - name: Install CodeYear
         # 直接装 Release 里的 wheel，比 git clone + build 更快、更稳。
         # 升级时改 CODEYEAR_VERSION。
@@ -43,6 +51,7 @@ jobs:
           --max-commits 500
           --card-only
           --out "$RUNNER_TEMP/codeyear"
+          --cache-dir "$HOME/.cache/codeyear"
           --profile-repo .
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

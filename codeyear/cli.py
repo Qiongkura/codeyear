@@ -11,7 +11,7 @@ import webbrowser
 from datetime import date
 from pathlib import Path
 
-from . import __version__
+from . import __version__, i18n
 from .card import THEMES
 from .card import render as render_card
 from .config import load as load_config
@@ -32,6 +32,8 @@ def _build_parser() -> argparse.ArgumentParser:
         description="扫描本地 git 仓库，生成一份年度代码报告（HTML + PNG 海报）。",
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
+    parser.add_argument("--lang", choices=["zh", "en"], default=None,
+                        help="界面语言 / UI language")
 
     sub = parser.add_subparsers(dest="command", required=False)
     sub.add_parser("gui", help="图形界面：点选目录、看进度、选输出位置")
@@ -58,6 +60,8 @@ def _build_parser() -> argparse.ArgumentParser:
                         help="本地 GitHub Profile 仓库路径；自动更新 README 里的卡片")
     github.add_argument("--push-profile", action="store_true",
                         help="更新后提交并推送 Profile 仓库（联网）；需同时指定 --profile-repo")
+    github.add_argument("--cache-dir", default=None,
+                        help="缓存公开 commit 详情到该目录，重复运行更快")
     github.add_argument("--fallback-previous", action="store_true",
                         help="当年没有提交时回退到上一年，适合跨年自动更新")
     server = sub.add_parser("serve", help="启动公开 GitHub 卡片 HTTP 服务")
@@ -109,6 +113,7 @@ def _build_parser() -> argparse.ArgumentParser:
     scan.add_argument("--open", action="store_true", default=cfg.get("open", False),
                       help="生成后自动打开报告")
     scan.add_argument("--quiet", action="store_true", help="不打印扫描进度")
+    i18n.localize_parser(parser)
     return parser
 
 
@@ -121,7 +126,7 @@ def _open_path(path: Path) -> None:
         else:
             webbrowser.open(path.resolve().as_uri())
     except Exception as exc:  # pragma: no cover - platform dependent
-        print(f"无法自动打开文件: {exc}", file=sys.stderr)
+        print(i18n.tr("无法自动打开文件: {exc}", exc=exc), file=sys.stderr)
 
 
 def _detect_identity() -> tuple[str, str] | None:
@@ -145,6 +150,8 @@ def _detect_identity() -> tuple[str, str] | None:
 
 
 def main(argv: list[str] | None = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    i18n.set_lang(i18n.detect(argv))
     parser = _build_parser()
     args = parser.parse_args(argv)
 
@@ -152,8 +159,10 @@ def main(argv: list[str] | None = None) -> int:
         try:
             from .gui import run as run_gui
         except ImportError as exc:
-            print(f"无法加载图形界面（Tkinter）: {exc}", file=sys.stderr)
-            print("请改用 codeyear tui 或 codeyear scan。", file=sys.stderr)
+            print(i18n.tr("无法加载图形界面（Tkinter）: {exc}", exc=exc),
+                  file=sys.stderr)
+            print(i18n.tr("请改用 codeyear tui 或 codeyear scan。"),
+                  file=sys.stderr)
             return 1
         return run_gui()
     if args.command == "tui":
@@ -164,7 +173,7 @@ def main(argv: list[str] | None = None) -> int:
         from .github_public import run as run_github
 
         if args.push_profile and not args.profile_repo:
-            parser.error("--push-profile 需要同时指定 --profile-repo")
+            parser.error(i18n.tr("--push-profile 需要同时指定 --profile-repo"))
         return run_github(
             args.username, args.year, Path(args.out),
             token=args.token, max_commits=args.max_commits,
@@ -174,6 +183,7 @@ def main(argv: list[str] | None = None) -> int:
             profile_repo=args.profile_repo,
             push_profile=args.push_profile,
             fallback_previous=args.fallback_previous,
+            cache_dir=args.cache_dir,
         )
     if args.command == "serve":
         from .server import serve
@@ -187,31 +197,35 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.push_profile and not args.profile_repo:
-        parser.error("--push-profile 需要同时指定 --profile-repo")
+        parser.error(i18n.tr("--push-profile 需要同时指定 --profile-repo"))
 
     roots = [Path(path).expanduser() for path in (args.path or ["."])]
     try:
         repos = discover(roots, args.max_depth)
     except (FileNotFoundError, NotADirectoryError) as exc:
-        print(f"错误: {exc}", file=sys.stderr)
+        print(i18n.tr("错误: {exc}", exc=exc), file=sys.stderr)
         return 2
 
     if not repos:
         where = " + ".join(str(root) for root in roots)
-        print(f"在 {where} 下没有找到 git 仓库。", file=sys.stderr)
+        print(i18n.tr("在 {where} 下没有找到 git 仓库。", where=where),
+              file=sys.stderr)
         return 2
 
     if not args.quiet:
         where = " + ".join(str(root) for root in roots)
-        print(f"CodeYear {args.year} · 在 {where} 下找到 {len(repos)} 个仓库",
-              file=sys.stderr)
+        print(i18n.tr(
+            "CodeYear {year} · 在 {where} 下找到 {count} 个仓库",
+            year=args.year, where=where, count=len(repos),
+        ), file=sys.stderr)
 
     identity = None
     if not args.all_authors and not args.author:
         identity = _detect_identity()
         if identity is None and not args.quiet:
-            print("  ! 未检测到 git user.name / user.email，将统计所有作者的提交",
-                  file=sys.stderr)
+            print(i18n.tr(
+                "  ! 未检测到 git user.name / user.email，将统计所有作者的提交"
+            ), file=sys.stderr)
 
     def progress(done: int, total: int, name: str) -> None:
         if not args.quiet and done:
@@ -243,7 +257,10 @@ def main(argv: list[str] | None = None) -> int:
 
     if stats.commit_count == 0:
         print(
-            f"{args.year} 年没有找到提交。可以换 --year，或检查 --author 过滤条件。",
+            i18n.tr(
+                "{year} 年没有找到提交。可以换 --year，或检查 --author 过滤条件。",
+                year=args.year,
+            ),
             file=sys.stderr,
         )
         return 3
@@ -283,8 +300,9 @@ def main(argv: list[str] | None = None) -> int:
     exit_code = 0
     if args.profile_repo:
         if not card_paths:
-            print("  ! 指定了 --profile-repo，但 --no-card 关闭了卡片生成",
-                  file=sys.stderr)
+            print(i18n.tr(
+                "  ! 指定了 --profile-repo，但 --no-card 关闭了卡片生成"
+            ), file=sys.stderr)
             exit_code = 1
         else:
             from .profile import update_profile
@@ -297,40 +315,59 @@ def main(argv: list[str] | None = None) -> int:
                 written.append(("PROFILE", profile_repo))
                 if changed:
                     state = "已提交并推送" if pushed else "仅写入本地"
-                    print(f"\nProfile  {state} · {profile_repo}")
+                    print("\n" + i18n.tr(
+                        "Profile  {state} · {repo}",
+                        state=i18n.tr(state), repo=profile_repo,
+                    ))
                 else:
-                    print(f"\nProfile  卡片已是最新 · {profile_repo}")
+                    print("\n" + i18n.tr(
+                        "Profile  卡片已是最新 · {repo}", repo=profile_repo,
+                    ))
             except Exception as exc:  # pragma: no cover - user environment
-                print(f"  ! 更新 Profile 失败: {exc}", file=sys.stderr)
+                print(i18n.tr(
+                    "  ! 更新 Profile 失败: {exc}", exc=exc
+                ), file=sys.stderr)
                 exit_code = 1
 
     # Console summary
     active_pct = stats.active_days / (366 if _is_leap(args.year) else 365)
     print()
-    print(f"CodeYear {args.year}  ·  {stats.persona.title}")
+    print(i18n.tr(
+        "CodeYear {year}  ·  {title}",
+        year=args.year, title=stats.persona.title,
+    ))
     print("-" * 46)
-    print(f"仓库      {stats.repo_count}")
+    print(f"{i18n.tr('仓库'):<10}{stats.repo_count}")
     if stats.identity_label:
-        print(f"身份      {stats.identity_label}")
+        print(f"{i18n.tr('身份'):<10}{stats.identity_label}")
         if stats.filtered_commits:
-            print(f"已过滤    {stats.filtered_commits} 次他人提交")
+            print(f"{i18n.tr('已过滤'):<10}{stats.filtered_commits} "
+                  f"{i18n.tr('次他人提交')}")
     elif args.author:
-        print(f"身份      --author={args.author}")
+        print(f"{i18n.tr('身份'):<10}--author={args.author}")
     else:
-        print("身份      全部作者")
-    print(f"提交      {fmt_int(stats.commit_count)}")
-    print(f"代码行    {fmt_int(stats.lines_changed)}  (+{fmt_int(stats.insertions)} / -{fmt_int(stats.deletions)})")
-    print(f"活跃      {stats.active_days} 天（{active_pct:.0%}）· 最长连续 {stats.longest_streak} 天")
-    print(f"语言      {stats.language_count} 种")
+        print(f"{i18n.tr('身份'):<10}{i18n.tr('全部作者')}")
+    print(f"{i18n.tr('提交'):<10}{fmt_int(stats.commit_count)}")
+    print(f"{i18n.tr('代码行'):<10}{fmt_int(stats.lines_changed)}  "
+          f"(+{fmt_int(stats.insertions)} / -{fmt_int(stats.deletions)})")
+    print(i18n.tr(
+        "活跃      {days} 天（{pct}）· 最长连续 {streak} 天",
+        days=stats.active_days, pct=f"{active_pct:.0%}",
+        streak=stats.longest_streak,
+    ))
+    print(i18n.tr("语言      {count} 种", count=stats.language_count))
     if stats.busiest_day:
-        print(f"最忙一天  {stats.busiest_day[0]} · {stats.busiest_count} 次提交")
+        print(i18n.tr(
+            "最忙一天  {day} · {count} 次提交",
+            day=stats.busiest_day[0], count=stats.busiest_count,
+        ))
     print("-" * 46)
     for label, path in written:
         print(f"{label:<9}  {path.resolve()}")
 
     if warnings:
         print()
-        print("警告:")
+        print(i18n.tr("警告:"))
         for warning in warnings:
             print(f"  - {warning}")
 

@@ -72,6 +72,17 @@ Windows 也可以在仓库根目录双击 `CodeYear.cmd`。
 
 需要 Tkinter；Windows/macOS 的 Python 自带，Linux 装 `python3-tk`。安装后也可以运行 `codeyear-gui`。
 
+## 界面语言
+
+CLI 和终端向导默认跟随系统语言，也可以强制英文：
+
+```bash
+codeyear --lang en scan ~/code --open
+CODEYEAR_LANG=en codeyear scan ~/code --open
+```
+
+`--lang` 要放在子命令前面。GUI 目前仍是中文；报告本身一直是中英双语。
+
 喜欢终端就用：
 
 ```bash
@@ -96,6 +107,7 @@ codeyear github Qiongkura --year 2026 --out ./codeyear-github
 - 只想要卡片：加 `--card-only`，跳过报告、海报和长图。
 - 想直接更新 Profile 仓库：加 `--profile-repo ~/Qiongkura`（只写本地）或再加 `--push-profile`（联网推送）。
 - 跨年自动更新：加 `--fallback-previous`，当年还没有提交时继续用上一年的卡片。
+- 重复运行更快：加 `--cache-dir ~/.cache/codeyear` 缓存 commit 详情（按 SHA，不会过期）。
 - 卡片主题：`--theme paper|mono|forest|ocean`；[主题预览](docs/themes.md)。
 - 本地 `scan` 仍是默认模式，代码不会上传。
 
