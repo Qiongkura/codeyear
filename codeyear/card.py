@@ -132,6 +132,20 @@ def _e(value: str) -> str:
     return html.escape(str(value), quote=True)
 
 
+def _en_human(n: int) -> str:
+    if n >= 1_000_000:
+        return f"{n / 1_000_000:.1f}m"
+    if n >= 10_000:
+        return f"{n / 1000:.0f}k"
+    return f"{n:,}"
+
+
+def _en_signed_pair(insertions: int, deletions: int) -> str:
+    if max(insertions, deletions) >= 10_000:
+        return f"+{insertions / 1000:.0f}k / -{deletions / 1000:.0f}k"
+    return f"+{insertions:,} / -{deletions:,}"
+
+
 def _truncate(text: str, limit: int) -> str:
     text = (text or "").strip()
     return text if len(text) <= limit else text[: limit - 1] + "…"
@@ -226,22 +240,49 @@ def _heatmap(stats: ReportStats, c: dict, x0: float, y0: float,
     return "".join(rects)
 
 
+MONTHS = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+]
+
+
 def build_svg(stats: ReportStats, *, dark: bool = False,
-              theme: str = "paper") -> str:
+              theme: str = "paper", lang: str = "zh") -> str:
     light, dark_theme = THEMES.get(theme, THEMES["paper"])
     c = dark_theme if dark else light
+    en = lang == "en"
+
+    def t(zh: str, english: str) -> str:
+        return english if en else zh
+
     monthly = stats.monthly
     peak = max(monthly) or 1
     peak_month = monthly.index(peak) + 1 if peak else 1
     peak_hour = stats.by_hour.index(max(stats.by_hour)) if any(stats.by_hour) else 0
     owner = (stats.identity_label or "").split(" <")[0].strip()
 
+    if en:
+        lines_text = _en_human(stats.lines_changed)
+        signed_text = _en_signed_pair(stats.insertions, stats.deletions)
+    else:
+        lines_text = fmt_human(stats.lines_changed)
+        signed_text = fmt_signed_pair(stats.insertions, stats.deletions)
+
     # ---- header -------------------------------------------------------
-    title = _truncate(stats.persona.title, 24)
-    subtitle_parts = stats.persona.subtitle.split("。", 1)
-    sub_lines = [subtitle_parts[0] + ("。" if len(subtitle_parts) > 1 else "")]
-    if len(subtitle_parts) > 1:
-        sub_lines.append(subtitle_parts[1])
+    if en:
+        title = _truncate(stats.persona.title_en, 32)
+        sub_lines = [
+            f"{fmt_int(stats.commit_count)} commits across "
+            f"{stats.repo_count} repos · {lines_text} lines.",
+            f"{stats.night_share:.0%} late-night · {stats.language_count} languages "
+            f"· {stats.active_days} active days.",
+        ]
+    else:
+        title = _truncate(stats.persona.title, 24)
+        subtitle_parts = stats.persona.subtitle.split("。", 1)
+        sub_lines = [subtitle_parts[0] + ("。" if len(subtitle_parts) > 1 else "")]
+        if len(subtitle_parts) > 1:
+            sub_lines.append(subtitle_parts[1])
 
     header = [
         f'<rect x="0" y="0" width="{W}" height="3" fill="{c["accent"]}"/>',
@@ -259,16 +300,21 @@ def build_svg(stats: ReportStats, *, dark: bool = False,
     header.append(_rule(142, c["line"]))
 
     # ---- six summary tiles (3 x 2) ------------------------------------
+    active_pct = stats.active_days / (366 if _is_leap(stats.year) else 365)
     tiles = [
-        ("COMMITS / 提交", fmt_int(stats.commit_count), "年度提交"),
-        ("LINES / 行变更", fmt_human(stats.lines_changed),
-         fmt_signed_pair(stats.insertions, stats.deletions)),
-        ("ACTIVE / 活跃天", str(stats.active_days),
-         f"占全年 {stats.active_days / (366 if _is_leap(stats.year) else 365):.0%}"),
-        ("STREAK / 最长连续", str(stats.longest_streak),
-         f"当前 {stats.current_streak} 天"),
-        ("REPOS / 仓库", str(stats.repo_count), f"今年新开 {stats.new_repos}"),
-        ("TOTAL / 累计", fmt_int(stats.total_commits), "仓库全历史"),
+        (t("COMMITS / 提交", "COMMITS"), fmt_int(stats.commit_count),
+         t("年度提交", "commits this year")),
+        (t("LINES / 行变更", "LINES"), lines_text, signed_text),
+        (t("ACTIVE / 活跃天", "ACTIVE"), str(stats.active_days),
+         t(f"占全年 {active_pct:.0%}", f"{active_pct:.0%} of the year")),
+        (t("STREAK / 最长连续", "STREAK"), str(stats.longest_streak),
+         t(f"当前 {stats.current_streak} 天",
+           f"{stats.current_streak}-day current streak")),
+        (t("REPOS / 仓库", "REPOS"), str(stats.repo_count),
+         t(f"今年新开 {stats.new_repos}",
+           f"{stats.new_repos} started this year")),
+        (t("TOTAL / 累计", "TOTAL"), fmt_int(stats.total_commits),
+         t("仓库全历史", "all-time")),
     ]
     tile_svg = []
     for i, (label, value, sub) in enumerate(tiles):
@@ -313,12 +359,17 @@ def build_svg(stats: ReportStats, *, dark: bool = False,
 
     charts = [
         _text(M, 350, "MONTHLY RHYTHM", 10, c["muted"], spacing=1),
-        _text(RIGHT, 350, f"峰值 {peak_month:02d} 月 · {peak} 次", 10, c["accent"],
-              anchor="end"),
+        _text(RIGHT, 350, t(
+            f"峰值 {peak_month:02d} 月 · {peak} 次",
+            f"Peak {MONTHS[peak_month - 1]} · {peak}",
+        ), 10, c["accent"], anchor="end"),
         *bars,
         _rule(462, c["line"]),
         _text(M, 480, "CONTRIBUTION", 10, c["muted"], spacing=1),
-        _text(RIGHT, 480, f"{stats.active_days} 个活跃日", 10, c["muted"], anchor="end"),
+        _text(RIGHT, 480, t(
+            f"{stats.active_days} 个活跃日",
+            f"{stats.active_days} active days",
+        ), 10, c["muted"], anchor="end"),
         _heatmap(stats, c, grid_x, 498, cell, gap_h),
         *month_ticks,
         _rule(602, c["line"]),
@@ -330,20 +381,29 @@ def build_svg(stats: ReportStats, *, dark: bool = False,
     if top_repo and stats.commit_count:
         share = top_repo["commits"] / stats.commit_count
         focus_num, focus_unit = f"{share * 100:.0f}", "%"
-        focus_sub = f"大部分提交在 {_truncate(top_repo['name'], 16)}"
+        focus_sub = t(
+            f"大部分提交在 {_truncate(top_repo['name'], 16)}",
+            f"Most commits in {_truncate(top_repo['name'], 22)}",
+        )
     else:
-        focus_num, focus_unit, focus_sub = "—", "", "暂无数据"
+        focus_num, focus_unit, focus_sub = "—", "", t("暂无数据", "No data")
 
     night, weekend = stats.night_share, stats.weekend_share
     rhythm_num, rhythm_unit = f"{peak_hour:02d}:00", ""
-    rhythm_sub = f"深夜提交占 {night:.0%} · 周末 {weekend:.0%}"
+    rhythm_sub = t(
+        f"深夜提交占 {night:.0%} · 周末 {weekend:.0%}",
+        f"{night:.0%} late-night · {weekend:.0%} weekend",
+    )
 
     size_map = dict(stats.size_buckets)
     size_total = sum(size_map.values()) or 1
     small_share = (size_map.get("0–10", 0) + size_map.get("10–100", 0)) / size_total
     large_share = (size_map.get("500–2k", 0) + size_map.get("2k+", 0)) / size_total
     style_num, style_unit = f"{small_share * 100:.0f}", "%"
-    style_sub = f"小改动为主 · 大改仅 {large_share:.0%}"
+    style_sub = t(
+        f"小改动为主 · 大改仅 {large_share:.0%}",
+        f"Mostly small changes · large {large_share:.0%}",
+    )
 
     sessions = stats.sessions or {}
     sess_count = int(sessions.get("count") or 0)
@@ -351,58 +411,82 @@ def build_svg(stats: ReportStats, *, dark: bool = False,
     long_min = int(sessions.get("longest_minutes") or 0)
     if avg_min:
         if avg_min >= 90:
-            pace_num, pace_unit = f"{avg_min / 60:.1f}", "小时"
+            pace_num, pace_unit = f"{avg_min / 60:.1f}", t("小时", "h")
         else:
-            pace_num, pace_unit = str(avg_min), "分钟"
-        long_label = f"{long_min / 60:.0f} 小时" if long_min >= 90 else f"{long_min} 分钟"
-        pace_sub = f"{sess_count} 次连续写码 · 最长 {long_label}"
+            pace_num, pace_unit = str(avg_min), t("分钟", "min")
+        long_label = (
+            f"{long_min / 60:.0f}h" if long_min >= 90 else f"{long_min}min"
+        ) if en else (
+            f"{long_min / 60:.0f} 小时" if long_min >= 90 else f"{long_min} 分钟"
+        )
+        pace_sub = t(
+            f"{sess_count} 次连续写码 · 最长 {long_label}",
+            f"{sess_count} sessions · longest {long_label}",
+        )
     else:
-        pace_num, pace_unit, pace_sub = "—", "", "暂无会话"
+        pace_num, pace_unit, pace_sub = "—", "", t("暂无会话", "No sessions")
 
     churn_total = stats.insertions + stats.deletions
     deletion_share = stats.deletions / churn_total if churn_total else 0
     ratio = stats.insertions / stats.deletions if stats.deletions else 0
     if deletion_share >= 0.5:
-        churn_kind = "重构型"
+        churn_kind = t("重构型", "Refactoring")
     elif deletion_share >= 0.3:
-        churn_kind = "平衡型"
+        churn_kind = t("平衡型", "Balanced")
     else:
-        churn_kind = "扩张型"
+        churn_kind = t("扩张型", "Expanding")
     if ratio:
         churn_num, churn_unit = f"{ratio:.1f}", ":1"
-        churn_sub = f"每写 {ratio:.1f} 行才删 1 行" if ratio else "几乎只写不删"
+        churn_sub = t(
+            f"每写 {ratio:.1f} 行才删 1 行",
+            f"{ratio:.1f} lines written per line deleted",
+        )
     else:
-        churn_num, churn_unit = "只增", ""
-        churn_sub = f"{churn_kind} · 没有删除"
+        churn_num, churn_unit = t("只增", "add-only"), ""
+        churn_sub = t(f"{churn_kind} · 没有删除", f"{churn_kind} · no deletions")
 
     peak_share = peak / max(stats.commit_count, 1)
     burst_num, burst_unit = f"{peak_share * 100:.0f}", "%"
-    burst_sub = f"{peak_month} 月贡献了全年近一半提交"
+    burst_sub = t(
+        f"{peak_month} 月贡献了全年近一半提交",
+        f"{MONTHS[peak_month - 1]} produced nearly half the year's commits",
+    )
 
     top2 = sum(repo["commits"] for repo in stats.repo_details[:2])
     top2_share = top2 / max(stats.commit_count, 1)
     breadth_num, breadth_unit = f"{top2_share * 100:.0f}", "%"
-    breadth_sub = f"前 2 个项目拿走 {top2_share:.0%} 的提交"
+    breadth_sub = t(
+        f"前 2 个项目拿走 {top2_share:.0%} 的提交",
+        f"Top 2 repos account for {top2_share:.0%} of commits",
+    )
 
     msg_map = dict(stats.message_buckets)
     msg_total = sum(msg_map.values()) or 1
     mid_share = msg_map.get("40–80", 0) / msg_total
     avg_subject = stats.avg_subject_len
-    msg_num, msg_unit = str(avg_subject), "字"
-    msg_sub = f"说明较详细 · {mid_share:.0%} 在 40–80 字"
+    msg_num, msg_unit = str(avg_subject), t("字", "chars")
+    msg_sub = t(
+        f"说明较详细 · {mid_share:.0%} 在 40–80 字",
+        f"Detailed · {mid_share:.0%} at 40–80 chars",
+    )
 
     insights = [
-        ("主攻项目 / MAIN PROJECT", focus_num, focus_unit, focus_sub),
-        ("写码时段 / WHEN", rhythm_num, rhythm_unit, rhythm_sub),
-        ("改动大小 / COMMIT SIZE", style_num, style_unit, style_sub),
-        ("一次写多久 / SESSION", pace_num, pace_unit, pace_sub),
-        ("写删比例 / ADD VS DELETE", churn_num, churn_unit, churn_sub),
-        ("最忙月份 / BUSIEST MONTH", burst_num, burst_unit, burst_sub),
-        ("精力集中吗 / FOCUS SPREAD", breadth_num, breadth_unit, breadth_sub),
-        ("提交说明 / MESSAGE", msg_num, msg_unit, msg_sub),
+        (t("主攻项目 / MAIN PROJECT", "MAIN PROJECT"),
+         focus_num, focus_unit, focus_sub),
+        (t("写码时段 / WHEN", "WHEN"), rhythm_num, rhythm_unit, rhythm_sub),
+        (t("改动大小 / COMMIT SIZE", "COMMIT SIZE"),
+         style_num, style_unit, style_sub),
+        (t("一次写多久 / SESSION", "SESSION"), pace_num, pace_unit, pace_sub),
+        (t("写删比例 / ADD VS DELETE", "ADD VS DELETE"),
+         churn_num, churn_unit, churn_sub),
+        (t("最忙月份 / BUSIEST MONTH", "BUSIEST MONTH"),
+         burst_num, burst_unit, burst_sub),
+        (t("精力集中吗 / FOCUS SPREAD", "FOCUS SPREAD"),
+         breadth_num, breadth_unit, breadth_sub),
+        (t("提交说明 / MESSAGE", "MESSAGE"), msg_num, msg_unit, msg_sub),
     ]
     insight_svg = [
-        _text(M, 618, "INSIGHTS / 观察", 10, c["muted"], spacing=1),
+        _text(M, 618, t("INSIGHTS / 观察", "INSIGHTS"), 10, c["muted"], spacing=1),
         f'<line x1="321" y1="618" x2="321" y2="894" stroke="{c["line"]}"/>',
     ]
     for i, (label, number, unit, sub) in enumerate(insights):
@@ -424,11 +508,14 @@ def build_svg(stats: ReportStats, *, dark: bool = False,
 
     lang_rows, lang_total = language_breakdown(stats.languages, limit=4, min_share=0.01)
     lang_total = lang_total or 1
-    sections.append(_text(left_x, 912, f"LANGUAGES · {stats.language_count} 种", 10,
-                          c["muted"], spacing=0.6))
+    sections.append(_text(left_x, 912, t(
+        f"LANGUAGES · {stats.language_count} 种",
+        f"LANGUAGES · {stats.language_count}",
+    ), 10, c["muted"], spacing=0.6))
     for i, (name, value) in enumerate(lang_rows[:5]):
         y = 936 + i * 24
-        sections.append(_text(left_x, y, _truncate(name, 22), 11, c["ink2"]))
+        label = "Other" if en and name == "其他" else name
+        sections.append(_text(left_x, y, _truncate(label, 22), 11, c["ink2"]))
         sections.append(_text(left_x + COL2 - 12, y, f"{value / lang_total * 100:.0f}%",
                               10.5, c["muted"], anchor="end"))
         track_w = COL2 - 12
@@ -463,8 +550,10 @@ def build_svg(stats: ReportStats, *, dark: bool = False,
 
     repos = stats.repo_details[:4]
     max_commits = max((r["commits"] for r in repos), default=1)
-    sections.append(_text(left_x, 1058, f"TOP REPOS · {stats.repo_count} 个", 10,
-                          c["muted"], spacing=0.6))
+    sections.append(_text(left_x, 1058, t(
+        f"TOP REPOS · {stats.repo_count} 个",
+        f"TOP REPOS · {stats.repo_count}",
+    ), 10, c["muted"], spacing=0.6))
     for i, repo in enumerate(repos):
         y = 1082 + i * 24
         sections.append(_text(left_x, y, _truncate(repo["name"], 26), 11, c["ink2"]))
@@ -479,7 +568,11 @@ def build_svg(stats: ReportStats, *, dark: bool = False,
     record_items: list[tuple[str, str]] = []
     if stats.busiest_day:
         day, count = stats.busiest_day
-        record_items.append(("最忙一天", f"{count} 次 · {day[5:].replace('-', '.')}"))
+        record_items.append((
+            t("最忙一天", "Busiest day"),
+            t(f"{count} 次 · {day[5:].replace('-', '.')}",
+              f"{count} commits · {day[5:].replace('-', '.')}"),
+        ))
     if stats.busiest_week:
         _week, count = stats.busiest_week
         start_s = stats.busiest_week_start
@@ -487,20 +580,36 @@ def build_svg(stats: ReportStats, *, dark: bool = False,
             start_d = datetime.strptime(start_s, "%Y.%m.%d").date()
             end_d = start_d + timedelta(days=6)
             span = f"{start_d:%m.%d}–{end_d:%m.%d}"
-            record_items.append(("最忙一周", f"{count} 次 · {span}"))
+            record_items.append((
+                t("最忙一周", "Busiest week"),
+                t(f"{count} 次 · {span}", f"{count} commits · {span}"),
+            ))
         else:
-            record_items.append(("最忙一周", f"{count} 次"))
+            record_items.append((
+                t("最忙一周", "Busiest week"),
+                t(f"{count} 次", f"{count} commits"),
+            ))
     if stats.longest_gap:
         days, start, end = stats.longest_gap
         span = f"{start[5:]}–{end[5:]}".replace("-", ".")
-        record_items.append(("最长空窗", f"{days} 天 · {span}"))
+        record_items.append((
+            t("最长空窗", "Longest gap"),
+            t(f"{days} 天 · {span}", f"{days} days · {span}"),
+        ))
     if stats.largest_commit:
-        record_items.append(("最大提交", f"{fmt_int(stats.largest_commit['lines'])} 行"))
+        record_items.append((
+            t("最大提交", "Largest commit"),
+            t(f"{fmt_int(stats.largest_commit['lines'])} 行",
+              f"{fmt_int(stats.largest_commit['lines'])} lines"),
+        ))
     if stats.top_files:
         path, _lines = stats.top_files[0]
-        record_items.append(("最常改文件", _truncate(path.split("/")[-1], 28)))
-    sections.append(_text(right_x, 1058, "RECORDS / 年度之最", 10, c["muted"],
-                          spacing=0.6))
+        record_items.append((
+            t("最常改文件", "Most edited"),
+            _truncate(path.split("/")[-1], 28),
+        ))
+    sections.append(_text(right_x, 1058, t("RECORDS / 年度之最", "RECORDS"),
+                          10, c["muted"], spacing=0.6))
     for i, (label, value) in enumerate(record_items[:5]):
         y = 1082 + i * 24
         sections.append(_text(right_x, y, label, 10.5, c["muted"]))
@@ -510,14 +619,26 @@ def build_svg(stats: ReportStats, *, dark: bool = False,
     # ---- footer -------------------------------------------------------
     meta_parts = []
     if stats.earliest_dt:
-        meta_parts.append(f"最早提交 {stats.earliest_dt:%Y.%m}")
+        meta_parts.append(t(
+            f"最早提交 {stats.earliest_dt:%Y.%m}",
+            f"First commit {stats.earliest_dt:%Y.%m}",
+        ))
     if stats.tags_in_year:
-        meta_parts.append(f"今年 {stats.tags_in_year} 个版本 tag")
+        meta_parts.append(t(
+            f"今年 {stats.tags_in_year} 个版本 tag",
+            f"{stats.tags_in_year} tags this year",
+        ))
     previous = stats.previous or {}
     if previous.get("commits_pct") is not None:
-        meta_parts.append(f"同比 {previous['commits_pct']:+.0%} 提交")
+        meta_parts.append(t(
+            f"同比 {previous['commits_pct']:+.0%} 提交",
+            f"{previous['commits_pct']:+.0%} commits YoY",
+        ))
     meta_line = " · ".join(meta_parts)
-    right_footer = f"生成于 {stats.generated_at.replace('-', '.')}"
+    right_footer = t(
+        f"生成于 {stats.generated_at.replace('-', '.')}",
+        f"Generated {stats.generated_at.replace('-', '.')}",
+    )
     footer = [
         _rule(1202, c["line"]),
         _text(M, 1218, meta_line, 10, c["muted"]),
@@ -547,14 +668,14 @@ def _is_leap(year: int) -> bool:
 
 
 def render(stats: ReportStats, out_path: str | Path, *,
-           theme: str = "paper") -> list[Path]:
+           theme: str = "paper", lang: str = "zh") -> list[Path]:
     path = Path(out_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     paths = [path]
-    path.write_text(build_svg(stats, theme=theme), encoding="utf-8")
+    path.write_text(build_svg(stats, theme=theme, lang=lang), encoding="utf-8")
 
     dark_path = path.with_name(f"{path.stem}-dark{path.suffix}")
     dark_path.write_text(
-        build_svg(stats, dark=True, theme=theme), encoding="utf-8")
+        build_svg(stats, dark=True, theme=theme, lang=lang), encoding="utf-8")
     paths.append(dark_path)
     return paths

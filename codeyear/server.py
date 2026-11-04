@@ -131,10 +131,12 @@ class Handler(BaseHTTPRequestHandler):
         theme = (query.get("theme") or ["paper"])[0]
         if theme not in THEMES:
             theme = "paper"
+        lang = "en" if (query.get("lang") or ["zh"])[0] == "en" else "zh"
         try:
             stats = _cached_stats(username, year, self.token, self.max_commits)
             svg = build_svg(
                 stats, dark=parsed.path.endswith("-dark.svg"), theme=theme,
+                lang=lang,
             )
         except Exception as exc:
             self._send(502, _error_svg(str(exc)), "image/svg+xml")

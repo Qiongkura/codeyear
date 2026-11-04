@@ -181,6 +181,8 @@ def main() -> None:
         "HTML-EN": "sample-report-en.html",
         "CARD": "sample-card.svg",
         "CARD-DARK": "sample-card-dark.svg",
+        "CARD-EN": "sample-card-en.svg",
+        "CARD-DARK-EN": "sample-card-en-dark.svg",
         "PNG": "sample.png",
         "LONG": "sample-long.png",
     }

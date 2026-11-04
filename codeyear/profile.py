@@ -111,7 +111,10 @@ def update_profile(
     keep = {target / light_name, target / dark_name}
     for directory in {repo, target}:
         for pattern in ("codeyear-*-card-v*.svg", "codeyear-*-card.svg",
-                        "codeyear-*-card-dark.svg"):
+                        "codeyear-*-card-dark.svg",
+                        "codeyear-*-card-en-v*.svg",
+                        "codeyear-*-card-en.svg",
+                        "codeyear-*-card-en-dark.svg"):
             for old in directory.glob(pattern):
                 if old not in keep:
                     old.unlink(missing_ok=True)
@@ -119,6 +122,12 @@ def update_profile(
     # Replace any year's card reference so a new year also takes over the
     # README instead of appending a second card block. The path prefix (e.g.
     # "./assets/") is left intact, so subdirectory layouts keep working.
+    # English filenames are handled too, so switching --lang does not append
+    # a second card block next to the old one.
+    text = re.sub(r"codeyear-\d{4}-card-en-v\d+-dark\.svg", dark_name, text)
+    text = re.sub(r"codeyear-\d{4}-card-en-v\d+\.svg", light_name, text)
+    text = re.sub(r"codeyear-\d{4}-card-en-dark\.svg", dark_name, text)
+    text = re.sub(r"codeyear-\d{4}-card-en\.svg", light_name, text)
     text = re.sub(r"codeyear-\d{4}-card-v\d+-dark\.svg", dark_name, text)
     text = re.sub(r"codeyear-\d{4}-card-v\d+\.svg", light_name, text)
     text = re.sub(r"codeyear-\d{4}-card-dark\.svg", dark_name, text)

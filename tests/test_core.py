@@ -284,6 +284,84 @@ def test_github_card_only_updates_profile(tmp_path, monkeypatch):
     assert (out / "codeyear-2026-embed.md").exists()
 
 
+def test_github_english_card_updates_profile(tmp_path, monkeypatch):
+    import subprocess
+
+    from codeyear import github_public
+
+    stats = _stats()
+    monkeypatch.setattr(
+        github_public, "fetch_stats",
+        lambda *args, **kwargs: (stats, [], "Me"),
+    )
+
+    def fake_render(stats, out_dir, formats=None, card_theme="paper"):
+        out = Path(out_dir)
+        out.mkdir(parents=True, exist_ok=True)
+        cards = {}
+        for label, name, body in [
+            ("CARD", "card.svg", "zh"),
+            ("CARD-DARK", "card-dark.svg", "zh-dark"),
+            ("CARD-EN", "card-en.svg", "en"),
+            ("CARD-DARK-EN", "card-en-dark.svg", "en-dark"),
+        ]:
+            path = out / f"codeyear-{stats.year}-{name}"
+            path.write_text(body, encoding="utf-8")
+            cards[label] = path
+        return list(cards.items())
+
+    monkeypatch.setattr(github_public, "render", fake_render)
+
+    repo = tmp_path / "profile"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True, capture_output=True)
+
+    out = tmp_path / "out"
+    code = github_public.run(
+        "me", 2026, out, card_only=True, profile_repo=repo, quiet=True,
+        lang="en",
+    )
+    assert code == 0
+    assert (repo / "codeyear-2026-card-v1.svg").read_text(encoding="utf-8") == "en"
+    assert (repo / "codeyear-2026-card-v1-dark.svg").read_text(
+        encoding="utf-8"
+    ) == "en-dark"
+
+
+def test_profile_replaces_english_card_reference(tmp_path):
+    import subprocess
+
+    from codeyear.profile import update_profile
+
+    repo = tmp_path / "profile"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True, capture_output=True)
+    readme = repo / "README.md"
+    readme.write_text(
+        '<picture>\n'
+        '  <source media="(prefers-color-scheme: dark)" '
+        'srcset="./codeyear-2025-card-en-dark.svg">\n'
+        '  <img src="./codeyear-2025-card-en.svg" width="640" '
+        'alt="CodeYear 2025">\n'
+        "</picture>\n",
+        encoding="utf-8",
+    )
+    (repo / "codeyear-2025-card-en.svg").write_text("old", encoding="utf-8")
+    (repo / "codeyear-2025-card-en-dark.svg").write_text("old", encoding="utf-8")
+    light = tmp_path / "light.svg"
+    dark = tmp_path / "dark.svg"
+    light.write_text("<svg id='new'/>", encoding="utf-8")
+    dark.write_text("<svg id='new-dark'/>", encoding="utf-8")
+
+    update_profile(repo, 2026, light, dark)
+    text = readme.read_text(encoding="utf-8")
+    assert text.count("<picture>") == 1
+    assert "codeyear-2026-card-v1.svg" in text
+    assert "codeyear-2026-card-v1-dark.svg" in text
+    assert "card-en" not in text
+    assert not (repo / "codeyear-2025-card-en.svg").exists()
+
+
 def test_github_fallback_to_previous_year(tmp_path, monkeypatch):
     import subprocess
     from dataclasses import replace
@@ -696,6 +774,7 @@ def test_runner_scan_and_render(tmp_path):
 
 
 def test_server_http_endpoints(tmp_path, monkeypatch):
+    import re
     import threading
     import urllib.error
     import urllib.request
@@ -725,6 +804,13 @@ def test_server_http_endpoints(tmp_path, monkeypatch):
             assert resp.headers["Content-Type"].startswith("image/svg+xml")
             assert "public" in resp.headers["Cache-Control"]
             assert b"<svg" in resp.read()
+
+        with urllib.request.urlopen(
+            f"{base}/card.svg?username=me&year=2026&lang=en", timeout=5
+        ) as resp:
+            body = resp.read().decode("utf-8")
+            assert "COMMITS" in body
+            assert not re.findall(r"[一-鿿]+", body)
 
         with urllib.request.urlopen(f"{base}/", timeout=5) as resp:
             assert resp.status == 200
@@ -1087,3 +1173,15 @@ def test_persona_block_translated():
     assert stats.persona.title_en in en
     assert stats.persona.summary_en in en
     assert stats.persona.title not in en
+
+
+def test_english_card_has_no_chinese():
+    from codeyear.card import build_svg
+
+    stats = _stats()
+    svg = build_svg(stats, lang="en")
+    import re
+
+    assert stats.persona.title_en in svg
+    assert "COMMITS" in svg
+    assert not re.findall(r"[一-鿿]+", svg)

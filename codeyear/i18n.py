@@ -14,7 +14,8 @@ _LANG = "zh"
 
 EN = {
     # top-level parser
-    "界面语言 / UI language": "UI language",
+    "界面与 Profile 卡片语言 / UI and profile-card language":
+        "UI and profile-card language",
     "扫描本地 git 仓库，生成一份年度代码报告（HTML + PNG 海报）。":
         "Scan local git repositories and generate an annual code report "
         "(HTML + poster).",

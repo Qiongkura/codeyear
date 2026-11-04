@@ -182,4 +182,10 @@ def render(
                             theme=card_theme)
         written.append(("CARD", cards[0]))
         written.append(("CARD-DARK", cards[1]))
+        en_cards = render_card(
+            stats, out_dir / f"codeyear-{stats.year}-card-en.svg",
+            theme=card_theme, lang="en",
+        )
+        written.append(("CARD-EN", en_cards[0]))
+        written.append(("CARD-DARK-EN", en_cards[1]))
     return written

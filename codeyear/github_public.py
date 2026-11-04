@@ -372,6 +372,7 @@ def run(
     push_profile: bool = False,
     fallback_previous: bool = False,
     cache_dir: str | Path | None = None,
+    lang: str = "zh",
 ) -> int:
     cache_path = None
     if cache_dir:
@@ -415,10 +416,25 @@ def run(
     embed_path = out / f"codeyear-{year}-embed.md"
     embed_path.write_text(embed, encoding="utf-8")
     written.append(("EMBED", embed_path))
+    embed_en = chr(10).join([
+        "<picture>",
+        f'  <source media="(prefers-color-scheme: dark)" '
+        f'srcset="./codeyear-{year}-card-en-dark.svg">',
+        f'  <img src="./codeyear-{year}-card-en.svg" width="640" '
+        f'alt="CodeYear {year}">',
+        "</picture>",
+        "",
+    ])
+    embed_en_path = out / f"codeyear-{year}-embed-en.md"
+    embed_en_path.write_text(embed_en, encoding="utf-8")
+    written.append(("EMBED-EN", embed_en_path))
 
     if profile_repo:
         cards = {label: path for label, path in written}
-        light, dark = cards.get("CARD"), cards.get("CARD-DARK")
+        if lang == "en":
+            light, dark = cards.get("CARD-EN"), cards.get("CARD-DARK-EN")
+        else:
+            light, dark = cards.get("CARD"), cards.get("CARD-DARK")
         if light and dark:
             from .profile import update_profile
 

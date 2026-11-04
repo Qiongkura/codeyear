@@ -34,7 +34,7 @@ codeyear
 Or install the wheel from the release:
 
 ```bash
-pip install https://github.com/Qiongkura/codeyear/releases/download/v0.2.11/codeyear-0.2.11-py3-none-any.whl
+pip install https://github.com/Qiongkura/codeyear/releases/download/v0.2.12/codeyear-0.2.12-py3-none-any.whl
 ```
 
 > The exe is unsigned; Windows SmartScreen may warn. Click “More info → Run anyway”.
@@ -83,6 +83,7 @@ CODEYEAR_LANG=en codeyear scan ~/code --open
 ```
 
 `--lang` goes before the subcommand. The GUI follows the same language setting; reports are always bilingual.
+`--profile-repo` uses the same language for the card written to your profile: Chinese by default, English with `--lang en`.
 
 Prefer the terminal?
 
@@ -136,6 +137,7 @@ docker run -p 8000:8000 -e GITHUB_TOKEN=your_token ghcr.io/qiongkura/codeyear:la
 ```text
 https://your-host/card.svg?username=Qiongkura&year=2026
 https://your-host/card-dark.svg?username=Qiongkura&year=2026
+https://your-host/card.svg?username=Qiongkura&year=2026&lang=en
 ```
 
 `--max-commits` is the number of commit details fetched per request, not a GitHub total.
@@ -156,7 +158,7 @@ If you only have Cloudflare, expose the local service with a tunnel:
 > daily at 04:00 UTC by default; change the workflow `cron` to weekly (`0 4 * * 1`)
 > or monthly (`0 4 1 * *`). `--fallback-previous` keeps last year's card until the
 > new year has commits. The template installs the release wheel; bump
-> `CODEYEAR_VERSION` (currently `0.2.11`) when upgrading.
+> `CODEYEAR_VERSION` (currently `0.2.12`) when upgrading.
 
 GitHub Action template: [docs/codeyear-card.yml](docs/codeyear-card.yml).
 
@@ -213,7 +215,7 @@ By default it counts only commits authored by you (matching git `user.name` / `u
 - Bilingual: generates both Chinese and English reports from the same data, switchable in-page
 - Vanilla JS only; respects `prefers-reduced-motion`
 - System fonts only (Georgia / Songti / SimSun + Consolas); no external font requests
-- GitHub card: 640×1254 poster layout, transparent background, light/dark variants, hierarchy from type, hairlines, and one terracotta accent
+- GitHub card: 640×1254 poster layout, transparent background, Chinese and English versions, each in light/dark, hierarchy from type, hairlines, and one terracotta accent
 - Eight plain-language insights: main project, coding hours, commit size, session length, add/delete ratio, busiest month, focus spread, commit-message style
 - Card themes: paper / mono / forest / ocean; the public card service accepts a `theme` parameter
 - The report can be printed or saved as PDF directly from the browser
@@ -237,6 +239,8 @@ codeyear-2026.png           2400×3200 poster (2× render)
 codeyear-2026-long.png      2400×5330 full-length image
 codeyear-2026-card.svg      640×1254 GitHub profile card (transparent, light)
 codeyear-2026-card-dark.svg 640×1254 dark variant (transparent)
+codeyear-2026-card-en.svg   640×1254 English profile card (transparent, light)
+codeyear-2026-card-en-dark.svg 640×1254 English card, dark variant
 codeyear-2026.json          raw statistics for further processing
 ```
 
@@ -248,12 +252,12 @@ Full-length sample: [docs/sample-long.png](docs/sample-long.png)
 
 ## Put it on your GitHub profile
 
-The scan also produces a light and a dark card, both with transparent backgrounds. Commit both files to your profile repository (the repository named after your username, e.g. `Qiongkura/Qiongkura`) and use `<picture>` in its README to switch by theme:
+The scan also produces Chinese and English cards, each in light and dark, all with transparent backgrounds. Commit the pair for your language to your profile repository (the repository named after your username, e.g. `Qiongkura/Qiongkura`) and use `<picture>` in its README to switch by theme (the English pair is shown here; use `codeyear-2026-card.svg` / `codeyear-2026-card-dark.svg` for Chinese):
 
 ```md
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="./codeyear-2026-card-dark.svg">
-  <img src="./codeyear-2026-card.svg" width="640" alt="CodeYear 2026">
+  <source media="(prefers-color-scheme: dark)" srcset="./codeyear-2026-card-en-dark.svg">
+  <img src="./codeyear-2026-card-en.svg" width="640" alt="CodeYear 2026">
 </picture>
 ```
 
@@ -285,8 +289,8 @@ For private repositories, schedule it with Task Scheduler, cron, or a self-hoste
 [scheduled private cards](docs/schedule.md).
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/sample-card-dark.svg">
-  <img src="docs/sample-card.svg" width="640" alt="CodeYear GitHub profile card sample">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/sample-card-en-dark.svg">
+  <img src="docs/sample-card-en.svg" width="640" alt="CodeYear GitHub profile card sample">
 </picture>
 
 ## Only your own commits

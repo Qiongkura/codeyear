@@ -33,7 +33,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     parser.add_argument("--lang", choices=["zh", "en"], default=None,
-                        help="界面语言 / UI language")
+                        help="界面与 Profile 卡片语言 / UI and profile-card language")
 
     sub = parser.add_subparsers(dest="command", required=False)
     sub.add_parser("gui", help="图形界面：点选目录、看进度、选输出位置")
@@ -184,6 +184,7 @@ def main(argv: list[str] | None = None) -> int:
             push_profile=args.push_profile,
             fallback_previous=args.fallback_previous,
             cache_dir=args.cache_dir,
+            lang=i18n.get_lang(),
         )
     if args.command == "serve":
         from .server import serve
@@ -292,10 +293,16 @@ def main(argv: list[str] | None = None) -> int:
             written.append(("LONG", long_path))
 
     card_paths = []
+    en_cards = []
     if not args.no_card:
         card_paths = render_card(stats, out_dir / f"codeyear-{args.year}-card.svg")
         written.append(("CARD", card_paths[0]))
         written.append(("CARD-DARK", card_paths[1]))
+        en_cards = render_card(
+            stats, out_dir / f"codeyear-{args.year}-card-en.svg", lang="en",
+        )
+        written.append(("CARD-EN", en_cards[0]))
+        written.append(("CARD-DARK-EN", en_cards[1]))
 
     exit_code = 0
     if args.profile_repo:
@@ -307,9 +314,11 @@ def main(argv: list[str] | None = None) -> int:
         else:
             from .profile import update_profile
 
+            profile_cards = en_cards if i18n.get_lang() == "en" else card_paths
             try:
                 profile_repo, changed, pushed = update_profile(
-                    args.profile_repo, args.year, card_paths[0], card_paths[1],
+                    args.profile_repo, args.year,
+                    profile_cards[0], profile_cards[1],
                     push=args.push_profile,
                 )
                 written.append(("PROFILE", profile_repo))

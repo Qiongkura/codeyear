@@ -33,7 +33,7 @@ codeyear
 也可以从 Release 下载 wheel：
 
 ```bash
-pip install https://github.com/Qiongkura/codeyear/releases/download/v0.2.11/codeyear-0.2.11-py3-none-any.whl
+pip install https://github.com/Qiongkura/codeyear/releases/download/v0.2.12/codeyear-0.2.12-py3-none-any.whl
 ```
 
 > exe 未做代码签名，Windows SmartScreen 可能提示；点「更多信息 → 仍要运行」。
@@ -82,6 +82,7 @@ CODEYEAR_LANG=en codeyear scan ~/code --open
 ```
 
 `--lang` 要放在子命令前面。GUI 也跟随同一语言设置；报告本身一直是中英双语。
+`--profile-repo` 会按这个语言选择写入主页的卡片：默认中文，`--lang en` 时写英文卡片。
 
 喜欢终端就用：
 
@@ -135,6 +136,7 @@ docker run -p 8000:8000 -e GITHUB_TOKEN=your_token ghcr.io/qiongkura/codeyear:la
 ```text
 https://your-host/card.svg?username=Qiongkura&year=2026
 https://your-host/card-dark.svg?username=Qiongkura&year=2026
+https://your-host/card.svg?username=Qiongkura&year=2026&lang=en
 ```
 
 `--max-commits` 是每次最多拉多少条提交详情，不是 GitHub 的总提交数；每条详情一次 API 请求。
@@ -152,7 +154,7 @@ https://your-host/card-dark.svg?username=Qiongkura&year=2026
 > 文件名绕过 GitHub 的图片缓存；无需手动粘贴 embed 片段。模板默认每天 04:00 UTC
 > 更新；改 workflow 里的 `cron` 可切成每周一 `0 4 * * 1` 或每月 1 日 `0 4 1 * *`。
 > 跨年时如果新的一年还没有提交，`--fallback-previous` 会继续显示上一年的卡片。
-> 模板直接安装 Release 里的 wheel；升级时改 `CODEYEAR_VERSION`（当前 `0.2.11`）。
+> 模板直接安装 Release 里的 wheel；升级时改 `CODEYEAR_VERSION`（当前 `0.2.12`）。
 
 GitHub Action 自动更新模板：[docs/codeyear-card.yml](docs/codeyear-card.yml)。
 
@@ -211,7 +213,7 @@ CodeYear 是给开发者做的「年度报告」。官方的 Wrapped 通常只�
 - 中英双语：同时生成中文和英文报告，页内可切换
 - 纯 vanilla JS，不依赖任何第三方前端库；尊重 `prefers-reduced-motion`
 - 字体：系统衬线（Georgia / Songti / SimSun）+ 等宽（Consolas），不加载任何外部字体
-- GitHub 卡片：640×1254 海报式布局，透明底、无整块底色，浅色/深色两版，靠大字号、细线和一个陶土色强调区分层级
+- GitHub 卡片：640×1254 海报式布局，透明底、无整块底色，中英文各一组浅色/深色版本，靠大字号、细线和一个陶土色强调区分层级
 - 卡片内有 8 条大白话分析：主攻项目、写码时段、改动大小、一次写多久、写删比例、最忙月份、精力集中度、提交说明
 - 卡片主题：paper / mono / forest / ocean；公开卡片服务支持 `theme` 参数
 - 报告可直接通过浏览器打印/导出 PDF
@@ -235,6 +237,8 @@ codeyear-2026.png           2400×3200 海报（2× 渲染），直接发图
 codeyear-2026-long.png      2400×5330 完整长图，适合发长图/存档
 codeyear-2026-card.svg      640×1254 海报式 GitHub 卡片（透明底 · 浅色）
 codeyear-2026-card-dark.svg 640×1254 同一张卡片的深色版（透明底）
+codeyear-2026-card-en.svg   640×1254 英文版 GitHub 卡片（透明底 · 浅色）
+codeyear-2026-card-en-dark.svg 640×1254 英文版卡片的深色版（透明底）
 codeyear-2026.json          原始统计数据，方便二次开发
 ```
 
@@ -246,9 +250,10 @@ codeyear-2026.json          原始统计数据，方便二次开发
 
 ## 挂到 GitHub 主页
 
-扫描时会额外生成浅色和深色两张卡片，都没有背景色。把两个文件一起提交到你的
-Profile 仓库（仓库名与用户名相同，例如 `Qiongkura/Qiongkura`），在 README 里用
-`<picture>` 按主题切换：
+扫描时会额外生成中英文各一组浅色/深色卡片，都没有背景色。把对应语言的两个文件
+一起提交到你的 Profile 仓库（仓库名与用户名相同，例如 `Qiongkura/Qiongkura`），
+在 README 里用 `<picture>` 按主题切换（下面是中文版；英文主页把文件名换成
+`codeyear-2026-card-en.svg` / `-card-en-dark.svg`）：
 
 ```md
 <picture>
