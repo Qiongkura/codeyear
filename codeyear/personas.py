@@ -50,35 +50,51 @@ def build_persona(
     fix_share = fix_commits / max(typed_commits, 1)
     feat_share = feat_commits / max(typed_commits, 1)
     avg_per_active = commits / max(active_days, 1)
+    delete_ratio = deletions / max(insertions + deletions, 1)
 
     if night_share >= 0.35:
-        time_label = "深夜"
         time_window = "22:00–05:00"
         time_share = night_share
         time_label_en = "late-night"
     elif early_share >= 0.28:
-        time_label = "清晨"
         time_window = "05:00–09:00"
         time_share = early_share
         time_label_en = "early-morning"
     elif weekend_share >= 0.35:
-        time_label = "周末"
         time_window = "周末"
         time_share = weekend_share
         time_label_en = "weekend"
     elif 9 <= peak_hour <= 18:
-        time_label = "白天"
         time_window = f"{peak_hour:02d}:00 前后"
         time_share = 0.0
         time_label_en = "daytime"
     else:
-        time_label = "夜间"
         time_window = f"{peak_hour:02d}:00 前后"
         time_share = 0.0
         time_label_en = "night"
 
-    title = f"{commits:,} 次提交 · {lang_count} 种语言"
-    title_en = f"{commits:,} commits · {lang_count} languages"
+    if delete_ratio >= 0.5:
+        title, title_en = "删代码比写代码还多的人", "Deletes more than writes"
+    elif fix_share >= 0.35:
+        title, title_en = "主要在和 bug 打交道的人", "Mostly fixing bugs"
+    elif feat_share >= 0.35:
+        title, title_en = "一直在加功能的人", "Always adding features"
+    elif night_share >= 0.5:
+        title, title_en = "夜里出活的人", "Works late at night"
+    elif night_share >= 0.35:
+        title, title_en = "偶尔熬到深夜的人", "Sometimes up late"
+    elif early_share >= 0.28:
+        title, title_en = "早起写代码的人", "Early-morning coder"
+    elif weekend_share >= 0.35:
+        title, title_en = "周末才有点空写代码的人", "Weekend coder"
+    elif lang_count >= 8:
+        title, title_en = "什么语言都碰一点的人", "Touches everything"
+    elif longest_streak >= 21:
+        title, title_en = "很少断更的人", "Rarely breaks the streak"
+    elif avg_per_active >= 5:
+        title, title_en = "一天能提交很多次的人", "Commits a lot"
+    else:
+        title, title_en = "稳稳当当写代码的人", "Steady coder"
 
     if time_share:
         time_sentence = f"{_pct(time_share)} 的提交发生在 {time_window}"
@@ -114,19 +130,12 @@ def build_persona(
         f"{lang_count} 种语言",
         f"{repos} 个仓库",
         f"{active_days} 个活跃日",
-        f"{time_label} {_pct(time_share)}" if time_share else f"{time_label}高峰",
-        f"最长连续 {longest_streak} 天",
     ]
     badges_en = [
         f"{commits:,} commits",
         f"{lang_count} languages",
         f"{repos} repositories",
         f"{active_days} active days",
-        (
-            f"{_pct(time_share)} {time_label_en}"
-            if time_share else f"{time_label_en} peak"
-        ),
-        f"{longest_streak}-day streak",
     ]
 
     style_text_en = ", ".join(style_parts_en)

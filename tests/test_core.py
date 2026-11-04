@@ -1059,17 +1059,17 @@ def test_persona_variety():
 
     persona = build_persona(
         year=2026, commits=1200, repos=12, lines=90000,
-        insertions=30000, deletions=60000, active_days=100,
+        insertions=50000, deletions=10000, active_days=100,
         longest_streak=60, current_streak=3, night_commits=700,
         early_commits=50, weekend_commits=500, peak_hour=23,
-        fix_commits=60, feat_commits=20, typed_commits=100,
+        fix_commits=20, feat_commits=20, typed_commits=100,
         lang_count=9, busiest_count=40,
     )
-    assert persona.title == "1,200 次提交 · 9 种语言"
-    assert "深夜 58%" in persona.badges
+    assert persona.title == "夜里出活的人"
+    assert persona.title_en == "Works late at night"
+    assert "1,200 次提交" in persona.badges
     assert "夜猫子" not in persona.badges
-    assert "考古学家" not in persona.title
-    assert persona.title_en == "1,200 commits · 9 languages"
+    assert "深夜 58%" not in persona.badges
     assert "longest streak" in persona.summary_en.lower()
 
 
