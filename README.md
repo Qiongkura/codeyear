@@ -3,7 +3,7 @@
 [![CI](https://github.com/Qiongkura/codeyear/actions/workflows/ci.yml/badge.svg)](https://github.com/Qiongkura/codeyear/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/Qiongkura/codeyear)](https://github.com/Qiongkura/codeyear/releases/latest)
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/)
-[![Demo](https://img.shields.io/badge/demo-online-brightgreen)](https://qiongkura.github.io/codeyear/)
+[![Demo](https://img.shields.io/badge/demo-online-brightgreen)](https://qiongkura.github.io/codeyear/index.html)
 
 **简体中文** | [English](README.en.md) · [中文简介](docs/intro.zh.md)
 
@@ -13,7 +13,7 @@
 
 ![CodeYear 报告预览](docs/report-preview.png)
 
-**在线示例**：[https://qiongkura.github.io/codeyear/](https://qiongkura.github.io/codeyear/)
+**在线示例**：[https://qiongkura.github.io/codeyear/index.html](https://qiongkura.github.io/codeyear/index.html)
 
 **示例报告**：[中文](docs/sample-report.html) · [English](docs/sample-report-en.html)
 （脱敏演示数据，可直接浏览器打开）

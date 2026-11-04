@@ -3,7 +3,7 @@
 [![CI](https://github.com/Qiongkura/codeyear/actions/workflows/ci.yml/badge.svg)](https://github.com/Qiongkura/codeyear/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/Qiongkura/codeyear)](https://github.com/Qiongkura/codeyear/releases/latest)
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/)
-[![Demo](https://img.shields.io/badge/demo-online-brightgreen)](https://qiongkura.github.io/codeyear/)
+[![Demo](https://img.shields.io/badge/demo-online-brightgreen)](https://qiongkura.github.io/codeyear/index.en.html)
 
 **English** | [简体中文](README.md)
 
@@ -14,7 +14,7 @@
 
 ![CodeYear report preview](docs/report-preview.png)
 
-**Live demo**: [https://qiongkura.github.io/codeyear/](https://qiongkura.github.io/codeyear/)
+**Live demo**: [https://qiongkura.github.io/codeyear/index.en.html](https://qiongkura.github.io/codeyear/index.en.html)
 
 **Sample reports**: [Chinese](docs/sample-report.html) · [English](docs/sample-report-en.html) — anonymized demo data; open either directly in a browser.
 
