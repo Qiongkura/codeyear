@@ -140,6 +140,7 @@ def run() -> int:
         out_dir = Path(out_raw).expanduser().resolve()
         out_dir.mkdir(parents=True, exist_ok=True)
         compare = _yes("同时统计去年，生成同比?", False)
+        all_branches = _yes("统计所有分支/tag?", False)
         jobs_raw = _ask("并行扫描数", "1")
         try:
             jobs = max(1, int(jobs_raw))
@@ -150,6 +151,7 @@ def run() -> int:
         stats, warnings = scan(
             repos, roots, year, identity, aliases=aliases,
             progress=_progress, jobs=jobs, compare=compare,
+            all_branches=all_branches,
         )
         if stats.commit_count == 0:
             print(f"\n{year} 年没有找到提交。")
