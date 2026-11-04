@@ -289,6 +289,8 @@ codeyear github Qiongkura --year 2026 --card-only \
   年度提交数仍只统计你本人。
 - 提交用了别的邮箱/名字时可能被过滤，可用 `--author` 或 `--all-authors` 覆盖。
 - 保留旧邮箱/旧名字：`--alias "old@example.com"`，可重复；这些提交仍算你本人。
+- 仓库里有 `.mailmap` 时会自动使用，把旧邮箱/名字映射到当前身份；不想用加 `--no-mailmap`。
+- 默认只看当前分支；加 `--all-branches` 会统计所有本地分支/tag 的提交（合并提交仍不计入）。
   GUI 里对应「旧邮箱/名字」输入框，多个用逗号分隔。
 
 ## 常用参数
@@ -302,6 +304,8 @@ codeyear github Qiongkura --year 2026 --card-only \
 | `--compare` | 同时扫描去年，生成同比数据（扫描时间翻倍） |
 | `--fallback-previous` | 当年没有提交时回退到上一年，适合跨年定时任务 |
 | `--alias "old@example.com"` | 额外作者邮箱/名字，可重复 |
+| `--no-mailmap` | 忽略仓库里的 `.mailmap`（默认自动使用） |
+| `--all-branches` | 统计所有本地分支/tag 的提交（默认只看当前分支） |
 | `--max-depth 6` | 每个根目录向下查找仓库的最大文件夹层数 |
 | `--timeout 300` | 单个仓库的扫描超时（秒） |
 | `--jobs 4` | 并行扫描的仓库数，项目多时明显加快 |
@@ -357,7 +361,7 @@ codeyear scan D:\code --year 2026 --compare
 
 ```text
 git log --since=2026-01-01 --until=2027-01-01 \
-  --pretty=format:%H%x1f%ad%x1f%ae%x1f%an%x1f%s \
+  --pretty=format:%H%x1f%ad%x1f%aE%x1f%aN%x1f%s \
   --numstat --no-renames --no-merges
 ```
 

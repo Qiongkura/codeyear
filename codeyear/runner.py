@@ -79,6 +79,8 @@ def scan(
     jobs: int = 1,
     progress: Progress | None = None,
     compare: bool = False,
+    use_mailmap: bool = True,
+    all_branches: bool = False,
 ) -> tuple[ReportStats, list[str]]:
     labels = _root_labels(roots)
     results: list[RepoResult] = []
@@ -86,7 +88,10 @@ def scan(
     total = len(repos)
 
     def prepare(repo: Path, root: Path) -> RepoResult:
-        result = scan_repo(repo, root, year, author=author, timeout=timeout)
+        result = scan_repo(
+            repo, root, year, author=author, timeout=timeout,
+            use_mailmap=use_mailmap, all_branches=all_branches,
+        )
         if len(roots) > 1:
             label = labels[root]
             old = result.name
@@ -137,7 +142,8 @@ def scan(
         previous, _ = scan(
             repos, roots, year - 1, identity,
             aliases=aliases, author=author, timeout=timeout, jobs=jobs,
-            progress=None, compare=False,
+            progress=None, compare=False, use_mailmap=use_mailmap,
+            all_branches=all_branches,
         )
         stats.previous = compare_summary(stats, previous)
     return stats, warnings

@@ -795,3 +795,54 @@ def test_cli_parser_and_help():
     except SystemExit as exc:
         code = exc.code
     assert code == 0
+
+
+def test_scan_uses_mailmap_for_old_identities(tmp_path):
+    from codeyear.scanner import scan_repo
+    from codeyear.stats import build_stats
+
+    repo = tmp_path / "repo"
+    env = _init_repo(repo)
+    (repo / ".mailmap").write_text(
+        "Me <me@example.com> Old Name <old@example.com>\n", encoding="utf-8"
+    )
+    old_env = dict(
+        env,
+        GIT_AUTHOR_NAME="Old Name", GIT_AUTHOR_EMAIL="old@example.com",
+        GIT_COMMITTER_NAME="Old Name", GIT_COMMITTER_EMAIL="old@example.com",
+    )
+    _commit(repo, "a.txt", "feat: old identity", "2026-03-01T10:00:00", old_env)
+
+    mapped = scan_repo(repo, tmp_path, 2026)
+    assert mapped.commits[0].author_email == "me@example.com"
+    assert mapped.commits[0].author_name == "Me"
+    stats = build_stats(
+        year=2026, root=str(tmp_path), repos=[mapped],
+        identity=("me@example.com", "Me"),
+    )
+    assert stats.commit_count == 1
+
+    raw = scan_repo(repo, tmp_path, 2026, use_mailmap=False)
+    assert raw.commits[0].author_email == "old@example.com"
+    filtered = build_stats(
+        year=2026, root=str(tmp_path), repos=[raw],
+        identity=("me@example.com", "Me"),
+    )
+    assert filtered.commit_count == 0
+
+
+def test_scan_repo_all_branches_option(tmp_path):
+    from codeyear.scanner import scan_repo
+
+    repo = tmp_path / "repo"
+    env = _init_repo(repo)
+    default_branch = _git(repo, "branch", "--show-current").stdout.strip()
+    _commit(repo, "a.txt", "feat: main", "2026-04-01T10:00:00", env)
+    _git(repo, "checkout", "-qb", "feature")
+    _commit(repo, "b.txt", "feat: branch", "2026-04-02T10:00:00", env)
+    _git(repo, "checkout", "-q", default_branch)
+
+    current = scan_repo(repo, tmp_path, 2026)
+    assert len(current.commits) == 1
+    every_branch = scan_repo(repo, tmp_path, 2026, all_branches=True)
+    assert len(every_branch.commits) == 2

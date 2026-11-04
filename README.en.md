@@ -278,6 +278,8 @@ versions; a new year also replaces the previous year's README reference.
 - "All-time commits" and "first commit" use repository scope: every local repository after deduplication, without author filtering. Yearly commit counts still include only your own commits.
 - Commits made with another email/name may be filtered out; use `--author` or `--all-authors` to override.
 - Keep old identities: `--alias "old@example.com"` (repeatable); those commits still count as yours.
+- Repositories with a `.mailmap` are mapped automatically; use `--no-mailmap` to ignore it.
+- By default only the current branch is scanned; `--all-branches` includes every local branch/tag (merge commits are still excluded).
   The GUI has the same field under “旧邮箱/名字”, comma-separated.
 
 ## Common options
@@ -291,6 +293,8 @@ versions; a new year also replaces the previous year's README reference.
 | `--compare` | Also scan last year and show deltas (roughly doubles scan time) |
 | `--fallback-previous` | Keep last year's report/card when the requested year has no commits |
 | `--alias "old@example.com"` | Extra author email/name, repeatable |
+| `--no-mailmap` | Ignore a repository's `.mailmap` (used automatically by default) |
+| `--all-branches` | Include every local branch/tag (default: current branch only) |
 | `--max-depth 6` | Maximum folder depth per root to search for repositories |
 | `--timeout 300` | Per-repository timeout in seconds |
 | `--jobs 4` | Scan this many repositories in parallel |
@@ -344,7 +348,7 @@ For each repository:
 
 ```text
 git log --since=2026-01-01 --until=2027-01-01 \
-  --pretty=format:%H%x1f%ad%x1f%ae%x1f%an%x1f%s \
+  --pretty=format:%H%x1f%ad%x1f%aE%x1f%aN%x1f%s \
   --numstat --no-renames --no-merges
 ```
 

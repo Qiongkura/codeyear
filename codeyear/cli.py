@@ -72,6 +72,10 @@ def _build_parser() -> argparse.ArgumentParser:
                       help="当年没有提交时回退到上一年，适合跨年自动更新")
     scan.add_argument("--alias", action="append", default=[],
                       help="额外作者邮箱或名字，可重复；用于旧提交")
+    scan.add_argument("--no-mailmap", action="store_true",
+                      help="忽略仓库里的 .mailmap（默认自动使用）")
+    scan.add_argument("--all-branches", action="store_true",
+                      help="统计所有本地分支/tag 的提交（默认只看当前分支）")
     scan.add_argument("--all-authors", action="store_true",
                       help="统计所有作者的提交（默认只统计你本人，按 git user.name / user.email 识别）")
     scan.add_argument("--max-depth", type=int, default=6, help="向下查找仓库的最大文件夹层数，默认 6")
@@ -199,7 +203,8 @@ def main(argv: list[str] | None = None) -> int:
         repos, roots, args.year, identity,
         aliases=args.alias, author=args.author, timeout=args.timeout,
         jobs=max(1, args.jobs), progress=progress,
-        compare=args.compare,
+        compare=args.compare, use_mailmap=not args.no_mailmap,
+        all_branches=args.all_branches,
     )
 
     if (
@@ -211,7 +216,8 @@ def main(argv: list[str] | None = None) -> int:
             repos, roots, args.year - 1, identity,
             aliases=args.alias, author=args.author, timeout=args.timeout,
             jobs=max(1, args.jobs), progress=progress,
-            compare=args.compare,
+            compare=args.compare, use_mailmap=not args.no_mailmap,
+            all_branches=args.all_branches,
         )
         if previous.commit_count:
             stats, warnings = previous, prev_warnings

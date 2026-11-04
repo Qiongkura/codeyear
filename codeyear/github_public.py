@@ -14,6 +14,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 
@@ -23,6 +24,7 @@ from .scanner import Commit, FileChange, RepoResult
 from .stats import ReportStats, build_stats, fmt_human, fmt_int
 
 API = "https://api.github.com"
+DETAIL_WORKERS = 4
 
 
 def _dt(value: str | None) -> datetime | None:
@@ -132,11 +134,20 @@ def _commits(
         if len(data) < 100 or len(listed) >= limit:
             break
 
+    items = listed[:limit]
+    if api.remaining is not None and api.remaining < len(items) + 5:
+        raise RuntimeError("GitHub API 额度不足，请设置 GITHUB_TOKEN 后重试。")
+
+    def fetch_detail(item: dict):
+        return api.get(f"/repos/{full}/commits/{item['sha']}")
+
+    # Commit details are independent; a small pool cuts wall time without
+    # changing the request count or adding dependencies.
+    with ThreadPoolExecutor(max_workers=DETAIL_WORKERS) as pool:
+        details = list(pool.map(fetch_detail, items))
+
     commits: list[Commit] = []
-    for item in listed[:limit]:
-        if api.remaining is not None and api.remaining <= 2:
-            raise RuntimeError("GitHub API 额度不足，请设置 GITHUB_TOKEN 后重试。")
-        detail = api.get(f"/repos/{full}/commits/{item['sha']}")
+    for item, detail in zip(items, details):
         if not detail:
             continue
         # Match the local scanner's --no-merges behavior.

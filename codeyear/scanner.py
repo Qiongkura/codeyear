@@ -126,6 +126,8 @@ def _build_log_cmd(
     author: str | None,
     *,
     trust_repo: bool,
+    use_mailmap: bool = True,
+    all_branches: bool = False,
 ) -> list[str]:
     cmd = ["git", "-c", "core.quotepath=false"]
     if trust_repo:
@@ -133,20 +135,29 @@ def _build_log_cmd(
         # Git refuses to read them unless the exact path is trusted. Scope the
         # trust to this one repo instead of changing the user's global config.
         cmd += ["-c", f"safe.directory={repo_path}"]
+    mailmap = use_mailmap and (repo_path / ".mailmap").exists()
+    name_fmt = "%aN" if mailmap else "%an"
+    email_fmt = "%aE" if mailmap else "%ae"
     cmd += [
         "-C", str(repo_path),
         "log",
         f"--since={year}-01-01T00:00:00",
         f"--until={year + 1}-01-01T00:00:00",
         "--date=format:%Y-%m-%dT%H:%M:%S",
-        "--pretty=format:%x1e%H%x1f%ad%x1f%ae%x1f%an%x1f%s",
+        f"--pretty=format:%x1e%H%x1f%ad%x1f{email_fmt}%x1f{name_fmt}%x1f%s",
         "--numstat",
         "--no-renames",
         "--no-merges",
         f"--max-count={MAX_COMMITS_PER_REPO}",
     ]
+    if all_branches:
+        cmd.append("--all")
     if author:
         cmd.append(f"--author={author}")
+    if mailmap:
+        # Git's canonical identity mapping: old emails/names collapse into the
+        # current one without requiring --alias on every run.
+        cmd.append("--use-mailmap")
     return cmd
 
 
@@ -250,13 +261,19 @@ def scan_repo(
     *,
     author: str | None = None,
     timeout: int = 300,
+    use_mailmap: bool = True,
+    all_branches: bool = False,
 ) -> RepoResult:
     name = _repo_name(repo_path, root)
     result = RepoResult(path=repo_path, name=name)
 
     trust_repo = False
     while True:
-        cmd = _build_log_cmd(repo_path, year, author, trust_repo=trust_repo)
+        cmd = _build_log_cmd(
+            repo_path, year, author,
+            trust_repo=trust_repo, use_mailmap=use_mailmap,
+            all_branches=all_branches,
+        )
         try:
             proc = subprocess.run(
                 cmd,
