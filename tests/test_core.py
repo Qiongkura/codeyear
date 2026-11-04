@@ -872,3 +872,43 @@ def test_english_empty_states_are_translated():
     en = re.sub(r"<(style|script)\b.*?</\1>", "", en, flags=re.S | re.I)
     chinese = set(re.findall(r"[\u4e00-\u9fff]+", en))
     assert chinese <= {"中文"}
+
+
+def test_config_defaults_and_cli_override(tmp_path, monkeypatch):
+    import json
+
+    from codeyear.cli import _build_parser
+
+    config = {
+        "roots": ["D:/code"],
+        "year": 2024,
+        "out": "my-output",
+        "aliases": ["old@example.com"],
+        "compare": True,
+        "jobs": 4,
+        "theme": "ocean",
+        "max_commits": 50,
+    }
+    path = tmp_path / "config.json"
+    path.write_text(json.dumps(config), encoding="utf-8")
+    monkeypatch.setenv("CODEYEAR_CONFIG", str(path))
+
+    parser = _build_parser()
+    args = parser.parse_args(["scan"])
+    assert args.path == ["D:/code"]
+    assert args.year == 2024
+    assert args.out == "my-output"
+    assert args.alias == ["old@example.com"]
+    assert args.compare is True
+    assert args.jobs == 4
+
+    args = parser.parse_args(["scan", "E:/other", "--year", "2026", "--jobs", "2"])
+    assert args.path == ["E:/other"]
+    assert args.year == 2026
+    assert args.jobs == 2
+
+    args = parser.parse_args(["github", "me"])
+    assert args.year == 2024
+    assert args.out == "my-output"
+    assert args.theme == "ocean"
+    assert args.max_commits == 50

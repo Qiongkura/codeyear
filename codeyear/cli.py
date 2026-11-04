@@ -14,6 +14,7 @@ from pathlib import Path
 from . import __version__
 from .card import THEMES
 from .card import render as render_card
+from .config import load as load_config
 from .html_report import render as render_html
 from .html_report import render_en as render_html_en
 from .poster import render as render_poster
@@ -25,6 +26,7 @@ _NO_WINDOW = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
 
 
 def _build_parser() -> argparse.ArgumentParser:
+    cfg = load_config()
     parser = argparse.ArgumentParser(
         prog="codeyear",
         description="扫描本地 git 仓库，生成一份年度代码报告（HTML + PNG 海报）。",
@@ -36,15 +38,19 @@ def _build_parser() -> argparse.ArgumentParser:
     sub.add_parser("tui", help="终端交互向导：选目录、看进度、选输出位置")
     github = sub.add_parser("github", help="从公开 GitHub 账号生成（联网，仅公开仓库）")
     github.add_argument("username", help="GitHub 用户名")
-    github.add_argument("--year", type=int, default=date.today().year, help="统计年份")
-    github.add_argument("--out", default="codeyear-output", help="输出目录")
+    github.add_argument("--year", type=int, default=cfg.get("year", date.today().year),
+                        help="统计年份")
+    github.add_argument("--out", default=cfg.get("out", "codeyear-output"),
+                        help="输出目录")
     github.add_argument("--token", default=None, help="GitHub token；也可用 GITHUB_TOKEN")
-    github.add_argument("--max-commits", type=int, default=200,
+    github.add_argument("--max-commits", type=int, default=cfg.get("max_commits", 200),
                         help="最多拉取多少条提交（无 token 时自动限制为 30）")
     github.add_argument("--include-forks", action="store_true", help="包含 fork 仓库")
-    github.add_argument("--open", action="store_true", help="生成后打开报告")
+    github.add_argument("--open", action="store_true", default=cfg.get("open", False),
+                        help="生成后打开报告")
     github.add_argument("--quiet", action="store_true", help="不打印扫描进度")
-    github.add_argument("--theme", choices=sorted(THEMES), default="paper",
+    github.add_argument("--theme", choices=sorted(THEMES),
+                        default=cfg.get("theme", "paper"),
                         help="卡片主题：paper / mono / forest / ocean")
     github.add_argument("--card-only", action="store_true",
                         help="只生成主页卡片和 embed 片段，不生成完整报告")
@@ -61,26 +67,37 @@ def _build_parser() -> argparse.ArgumentParser:
     server.add_argument("--max-commits", type=int, default=200,
                         help="每张卡片最多拉取多少条提交")
     scan = sub.add_parser("scan", help="扫描一个文件夹下的所有 git 仓库")
-    scan.add_argument("path", nargs="*", default=["."],
+    scan.add_argument("path", nargs="*", default=(cfg.get("roots") or ["."]),
                       help="要扫描的文件夹（可以多个，默认当前目录）")
-    scan.add_argument("--year", type=int, default=date.today().year, help="统计年份，默认今年")
-    scan.add_argument("--out", default="codeyear-output", help="输出目录，默认 ./codeyear-output")
-    scan.add_argument("--author", default=None, help="只统计匹配的 git author（--author 参数）")
+    scan.add_argument("--year", type=int, default=cfg.get("year", date.today().year),
+                      help="统计年份，默认今年")
+    scan.add_argument("--out", default=cfg.get("out", "codeyear-output"),
+                      help="输出目录，默认 ./codeyear-output")
+    scan.add_argument("--author", default=cfg.get("author"),
+                      help="只统计匹配的 git author（--author 参数）")
     scan.add_argument("--compare", action="store_true",
+                      default=cfg.get("compare", False),
                       help="同时扫描去年，在报告里生成同比数据")
     scan.add_argument("--fallback-previous", action="store_true",
+                      default=cfg.get("fallback_previous", False),
                       help="当年没有提交时回退到上一年，适合跨年自动更新")
-    scan.add_argument("--alias", action="append", default=[],
+    scan.add_argument("--alias", action="append", default=cfg.get("aliases", []),
                       help="额外作者邮箱或名字，可重复；用于旧提交")
     scan.add_argument("--no-mailmap", action="store_true",
+                      default=cfg.get("no_mailmap", False),
                       help="忽略仓库里的 .mailmap（默认自动使用）")
     scan.add_argument("--all-branches", action="store_true",
+                      default=cfg.get("all_branches", False),
                       help="统计所有本地分支/tag 的提交（默认只看当前分支）")
     scan.add_argument("--all-authors", action="store_true",
+                      default=cfg.get("all_authors", False),
                       help="统计所有作者的提交（默认只统计你本人，按 git user.name / user.email 识别）")
-    scan.add_argument("--max-depth", type=int, default=6, help="向下查找仓库的最大文件夹层数，默认 6")
-    scan.add_argument("--timeout", type=int, default=300, help="单个仓库的扫描超时秒数")
-    scan.add_argument("--jobs", type=int, default=1, help="并行扫描的仓库数，默认 1")
+    scan.add_argument("--max-depth", type=int, default=cfg.get("max_depth", 6),
+                      help="向下查找仓库的最大文件夹层数，默认 6")
+    scan.add_argument("--timeout", type=int, default=cfg.get("timeout", 300),
+                      help="单个仓库的扫描超时秒数")
+    scan.add_argument("--jobs", type=int, default=cfg.get("jobs", 1),
+                      help="并行扫描的仓库数，默认 1")
     scan.add_argument("--no-png", action="store_true", help="不生成 PNG 海报")
     scan.add_argument("--no-long", action="store_true", help="不生成完整版长图")
     scan.add_argument("--no-card", action="store_true", help="不生成 GitHub 主页卡片")
@@ -89,7 +106,8 @@ def _build_parser() -> argparse.ArgumentParser:
                       help="本地 GitHub Profile 仓库路径；只写入本地，不联网")
     scan.add_argument("--push-profile", action="store_true",
                       help="更新后提交并推送 Profile 仓库（联网）；需同时指定 --profile-repo")
-    scan.add_argument("--open", action="store_true", help="生成后自动打开报告")
+    scan.add_argument("--open", action="store_true", default=cfg.get("open", False),
+                      help="生成后自动打开报告")
     scan.add_argument("--quiet", action="store_true", help="不打印扫描进度")
     return parser
 

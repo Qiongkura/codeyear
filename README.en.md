@@ -264,6 +264,9 @@ With it, only the card SVGs and profile README are committed; the report and JSO
 Each update writes `codeyear-2026-card-vN.svg`, rewrites the README, and removes older
 versions; a new year also replaces the previous year's README reference.
 
+For private repositories, schedule it with Task Scheduler, cron, or a self-hosted runner:
+[scheduled private cards](docs/schedule.md).
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/sample-card-dark.svg">
   <img src="docs/sample-card.svg" width="640" alt="CodeYear GitHub profile card sample">
@@ -324,6 +327,27 @@ codeyear scan D:\work E:\oss --year 2026
 # Compare with last year
 codeyear scan D:\code --year 2026 --compare
 ```
+
+## Config file (optional)
+
+Put common defaults in `~/.codeyear.json` (or point `CODEYEAR_CONFIG` at a file):
+
+```json
+{
+  "roots": ["D:/code"],
+  "year": 2026,
+  "aliases": ["old@example.com"],
+  "compare": true,
+  "all_branches": true,
+  "jobs": 4,
+  "out": "codeyear-output"
+}
+```
+
+Supported keys: `roots / year / out / author / all_authors / aliases / compare /
+fallback_previous / all_branches / no_mailmap / jobs / max_depth / timeout /
+theme / max_commits / open`. Explicit CLI flags win; missing files and invalid
+field types are ignored.
 
 ## Privacy
 

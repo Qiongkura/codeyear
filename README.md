@@ -274,6 +274,9 @@ codeyear github Qiongkura --year 2026 --card-only \
 `codeyear-2026-card-vN.svg` 并重写 README，同时清掉旧版本文件；跨年时也会把 README
 里上一年的引用替换成新一年的卡片。
 
+私有仓库要定时更新，可以用 Windows 任务计划、cron 或 self-hosted runner：
+[定时更新私有项目卡片](docs/schedule.md)。
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/sample-card-dark.svg">
   <img src="docs/sample-card.svg" width="640" alt="CodeYear GitHub 主页卡片示例">
@@ -335,6 +338,27 @@ codeyear scan D:\work E:\oss --year 2026
 # 和去年对比
 codeyear scan D:\code --year 2026 --compare
 ```
+
+## 配置文件（可选）
+
+常用参数可以写进 `~/.codeyear.json`（或用 `CODEYEAR_CONFIG` 指定路径）：
+
+```json
+{
+  "roots": ["D:/code"],
+  "year": 2026,
+  "aliases": ["old@example.com"],
+  "compare": true,
+  "all_branches": true,
+  "jobs": 4,
+  "out": "codeyear-output"
+}
+```
+
+支持 `roots / year / out / author / all_authors / aliases / compare /
+fallback_previous / all_branches / no_mailmap / jobs / max_depth / timeout /
+theme / max_commits / open`。命令行显式参数优先于配置文件；文件不存在或字段
+类型不对时会自动忽略。
 
 ## 隐私
 

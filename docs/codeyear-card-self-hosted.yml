@@ -1,0 +1,48 @@
+name: Update CodeYear card (self-hosted)
+
+on:
+  schedule:
+    # 每天 04:00 UTC；按需改成每周 0 4 * * 1
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: codeyear-card
+  cancel-in-progress: true
+
+jobs:
+  update:
+    # 这个 runner 必须能访问你的私有代码目录，并已登录 GitHub。
+    runs-on: self-hosted
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Configure git
+        run: |
+          git config user.name "codeyear-bot"
+          git config user.email "codeyear-bot@users.noreply.github.com"
+
+      - name: Install CodeYear
+        run: >
+          pip install
+          "https://github.com/Qiongkura/codeyear/releases/download/v0.2.4/codeyear-0.2.4-py3-none-any.whl"
+
+      - name: Generate from local private code
+        env:
+          CODE_DIR: ${{ vars.CODEYEAR_CODE_DIR }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >
+          codeyear scan "$CODE_DIR"
+          --year $(date +%Y)
+          --out "$RUNNER_TEMP/codeyear"
+          --no-html --no-png --no-long
+          --profile-repo . --push-profile
+          --fallback-previous --quiet
