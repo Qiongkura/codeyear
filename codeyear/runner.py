@@ -6,14 +6,15 @@ import json
 import os
 import subprocess
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
 from .card import render as render_card
-from .html_report import render as render_html, render_en as render_html_en
-from .poster import render as render_poster, render_long
-from .scanner import find_repos, scan_repo
+from .html_report import render as render_html
+from .html_report import render_en as render_html_en
+from .poster import render as render_poster
+from .poster import render_long
+from .scanner import RepoResult, find_repos, scan_repo
 from .stats import ReportStats, build_stats, compare_summary
 
 Progress = Callable[[int, int, str], None]

@@ -342,12 +342,6 @@ def build_svg(stats: ReportStats, *, dark: bool = False,
     size_total = sum(size_map.values()) or 1
     small_share = (size_map.get("0–10", 0) + size_map.get("10–100", 0)) / size_total
     large_share = (size_map.get("500–2k", 0) + size_map.get("2k+", 0)) / size_total
-    if small_share >= 0.6:
-        style_kind = "小步迭代"
-    elif large_share >= 0.35:
-        style_kind = "大提交"
-    else:
-        style_kind = "中等粒度"
     style_num, style_unit = f"{small_share * 100:.0f}", "%"
     style_sub = f"小改动为主 · 大改仅 {large_share:.0%}"
 
@@ -355,14 +349,6 @@ def build_svg(stats: ReportStats, *, dark: bool = False,
     sess_count = int(sessions.get("count") or 0)
     avg_min = int(sessions.get("avg_minutes") or 0)
     long_min = int(sessions.get("longest_minutes") or 0)
-    if avg_min >= 90:
-        pace_kind = "沉浸型"
-    elif avg_min >= 45:
-        pace_kind = "专注型"
-    elif avg_min > 0:
-        pace_kind = "碎片型"
-    else:
-        pace_kind = ""
     if avg_min:
         if avg_min >= 90:
             pace_num, pace_unit = f"{avg_min / 60:.1f}", "小时"
@@ -402,12 +388,6 @@ def build_svg(stats: ReportStats, *, dark: bool = False,
     msg_total = sum(msg_map.values()) or 1
     mid_share = msg_map.get("40–80", 0) / msg_total
     avg_subject = stats.avg_subject_len
-    if avg_subject >= 50:
-        msg_kind = "详细型"
-    elif avg_subject <= 25:
-        msg_kind = "简洁型"
-    else:
-        msg_kind = "适中"
     msg_num, msg_unit = str(avg_subject), "字"
     msg_sub = f"说明较详细 · {mid_share:.0%} 在 40–80 字"
 

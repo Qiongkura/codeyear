@@ -404,9 +404,12 @@ python -m codeyear scan I:\projects --year 2026 --out ./out
 # 语法检查
 python -m compileall -q codeyear
 
-# 测试
+# 代码风格
+ruff check codeyear tests tools
+
+# 测试 + 覆盖率（CI 门槛 75%，UI/海报模块不计入）
 pip install -e ".[dev]"
-pytest -q
+pytest -q --cov=codeyear --cov-report=term-missing
 ```
 
 代码结构：

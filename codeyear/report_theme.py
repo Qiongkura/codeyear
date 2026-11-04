@@ -552,10 +552,7 @@ def _translate_node(value: str) -> str:
     if not core:
         return value
     en = _translate_core(core)
-    if en is None:
-        en = _wan_convert(core)
-    else:
-        en = _wan_convert(en)
+    en = _wan_convert(core) if en is None else _wan_convert(en)
     return lead + en + trail
 
 
@@ -733,7 +730,7 @@ def decorate(source: str, stats: ReportStats) -> str:
                 f'<span class="name">{label} <i>{arrow}</i></span></a>')
         html = re.sub(
             rf'(<section id="{sid}">)(.*?)(</section>)',
-            lambda m: m.group(1) + m.group(2) + link + m.group(3),
+            lambda m, link=link: m.group(1) + m.group(2) + link + m.group(3),
             html, count=1, flags=re.S,
         )
 

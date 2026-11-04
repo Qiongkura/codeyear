@@ -302,7 +302,7 @@ def _monthly(draw: ImageDraw.ImageDraw, stats: ReportStats) -> None:
     bar_w = int((W - 2 * M - gap * 11) / 12)
     for i, value in enumerate(stats.monthly):
         x = M + i * (bar_w + gap)
-        h = max(int(value / max_v * max_h), 2 if value else 2)
+        h = max(int(value / max_v * max_h), 2)
         draw.rectangle((x, baseline - h, x + bar_w, baseline),
                        fill=ACCENT if value == max_v and value > 0 else INK)
     draw.line((M, baseline, W - M, baseline), fill=INK, width=1)

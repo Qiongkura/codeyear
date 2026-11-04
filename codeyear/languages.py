@@ -113,9 +113,7 @@ def is_skipped(path: str) -> bool:
     if any(part in SKIP_PARTS for part in parts[:-1]):
         return True
     suffix = Path(name).suffix.lower()
-    if suffix in SKIP_EXTS:
-        return True
-    return False
+    return suffix in SKIP_EXTS
 
 
 def language_for(path: str) -> str | None:

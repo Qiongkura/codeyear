@@ -87,7 +87,7 @@ def _commits(
     months = list(range(1, len(weights) + 1))
     files = LANG_FILES
     commits: list[Commit] = []
-    for index in range(count):
+    for _ in range(count):
         month = rng.choices(months, weights=weights, k=1)[0]
         day = rng.randint(1, monthrange(year, month)[1])
         if year == YEAR and (month, day) > (TODAY.month, TODAY.day):

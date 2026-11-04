@@ -119,6 +119,7 @@ def test_compare_panel_without_previous_commits():
 
 def test_compare_line_without_previous_commits():
     from dataclasses import replace
+
     from codeyear.report_theme import decorate
 
     stats = _stats()
@@ -620,3 +621,177 @@ def test_compare_percentages_and_rounded_points():
     assert "0 (0%)" in html
     assert "+1 个百分点" in html
     assert "+0 个百分点" not in html
+
+
+def _git(repo, *args, env=None):
+    import subprocess
+
+    return subprocess.run(
+        ["git", "-C", str(repo), *args], check=True, capture_output=True,
+        text=True, env=env,
+    )
+
+
+def _init_repo(repo):
+    import os
+    import subprocess
+
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    _git(repo, "config", "user.email", "me@example.com")
+    _git(repo, "config", "user.name", "Me")
+    return os.environ.copy()
+
+
+def _commit(repo, filename, message, date, env):
+    (repo / filename).write_text(message, encoding="utf-8")
+    _git(repo, "add", "-A")
+    stamp = dict(env, GIT_AUTHOR_DATE=date, GIT_COMMITTER_DATE=date)
+    _git(repo, "commit", "-qm", message, env=stamp)
+
+
+def test_scan_repo_parses_commits_and_skips_merges(tmp_path):
+    from codeyear.scanner import scan_repo
+
+    repo = tmp_path / "repo"
+    env = _init_repo(repo)
+    default_branch = _git(repo, "branch", "--show-current").stdout.strip()
+    (repo / "README.md").write_text("A demo repo.\n\n# Demo\n", encoding="utf-8")
+    _commit(repo, "a.txt", "feat: first", "2026-01-02T10:00:00", env)
+    _git(repo, "checkout", "-qb", "feature")
+    _commit(repo, "b.txt", "feat: branch", "2026-01-03T10:00:00", env)
+    _git(repo, "checkout", "-q", default_branch)
+    _commit(repo, "c.txt", "fix: main", "2026-01-04T10:00:00", env)
+    merge_env = dict(
+        env, GIT_AUTHOR_DATE="2026-01-05T10:00:00",
+        GIT_COMMITTER_DATE="2026-01-05T10:00:00",
+    )
+    _git(repo, "merge", "--no-ff", "feature", "-m", "Merge feature", env=merge_env)
+
+    result = scan_repo(repo, tmp_path, 2026)
+    assert result.warning is None
+    assert result.readme_line == "A demo repo."
+    assert len(result.commits) == 3
+    assert all("Merge feature" not in commit.subject for commit in result.commits)
+
+
+def test_runner_scan_and_render(tmp_path):
+    from codeyear.runner import discover, render, scan
+
+    repo = tmp_path / "demo"
+    env = _init_repo(repo)
+    _commit(repo, "a.txt", "feat: one", "2026-02-01T10:00:00", env)
+    _commit(repo, "b.txt", "fix: two", "2026-02-02T11:00:00", env)
+
+    repos = discover([tmp_path])
+    stats, warnings = scan(repos, [tmp_path], 2026, None)
+    assert stats.commit_count == 2
+    assert not warnings
+
+    out = tmp_path / "out"
+    written = render(stats, out, formats={"json", "html", "card"})
+    labels = {label for label, _path in written}
+    assert {"JSON", "HTML", "HTML-EN", "CARD", "CARD-DARK"} <= labels
+    assert all(path.exists() for _label, path in written)
+
+
+def test_server_http_endpoints(tmp_path, monkeypatch):
+    import threading
+    import urllib.error
+    import urllib.request
+    from http.server import ThreadingHTTPServer
+
+    from codeyear import server
+
+    stats = _stats()
+    monkeypatch.setattr(server, "fetch_stats", lambda *args, **kwargs: (stats, [], "me"))
+    monkeypatch.setattr(server.Handler, "log_message", lambda *args, **kwargs: None)
+    server.CACHE.clear()
+    server.RATE.clear()
+
+    httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    base = f"http://127.0.0.1:{httpd.server_address[1]}"
+    try:
+        with urllib.request.urlopen(f"{base}/health", timeout=5) as resp:
+            assert resp.status == 200
+            assert resp.read() == b"ok"
+
+        with urllib.request.urlopen(
+            f"{base}/card.svg?username=me&year=2026", timeout=5
+        ) as resp:
+            assert resp.status == 200
+            assert resp.headers["Content-Type"].startswith("image/svg+xml")
+            assert "public" in resp.headers["Cache-Control"]
+            assert b"<svg" in resp.read()
+
+        with urllib.request.urlopen(f"{base}/", timeout=5) as resp:
+            assert resp.status == 200
+            assert b"CodeYear" in resp.read()
+
+        try:
+            urllib.request.urlopen(
+                f"{base}/card.svg?username=bad/name&year=2026", timeout=5
+            )
+        except urllib.error.HTTPError as exc:
+            assert exc.code == 400
+            assert "no-store" in exc.headers["Cache-Control"]
+            assert b"invalid GitHub username" in exc.read()
+        else:
+            raise AssertionError("invalid username should return 400")
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+        thread.join(timeout=5)
+
+
+def test_public_repos_filters_private_forks_and_old_pushes():
+    from codeyear.github_public import _repos
+
+    class FakeAPI:
+        def get(self, path, params=None):
+            return [
+                {
+                    "full_name": "me/active", "private": False, "fork": False,
+                    "pushed_at": "2026-10-01T00:00:00Z", "html_url": "x",
+                },
+                {
+                    "full_name": "me/private", "private": True, "fork": False,
+                    "pushed_at": "2026-10-01T00:00:00Z", "html_url": "x",
+                },
+                {
+                    "full_name": "me/fork", "private": False, "fork": True,
+                    "pushed_at": "2026-10-01T00:00:00Z", "html_url": "x",
+                },
+                {
+                    "full_name": "me/old", "private": False, "fork": False,
+                    "pushed_at": "2025-01-01T00:00:00Z", "html_url": "x",
+                },
+            ]
+
+    repos = _repos(FakeAPI(), "me", datetime(2026, 1, 1), False)
+    assert [repo["full_name"] for repo in repos] == ["me/active"]
+
+
+def test_cli_parser_and_help():
+    from codeyear.cli import _build_parser, main
+
+    parser = _build_parser()
+    args = parser.parse_args([
+        "scan", "x", "--year", "2026", "--compare", "--fallback-previous",
+    ])
+    assert args.command == "scan"
+    assert args.compare and args.fallback_previous
+
+    args = parser.parse_args([
+        "github", "me", "--card-only", "--profile-repo", "p", "--push-profile",
+    ])
+    assert args.command == "github"
+    assert args.card_only and args.profile_repo == "p" and args.push_profile
+
+    try:
+        code = main(["--help"])
+    except SystemExit as exc:
+        code = exc.code
+    assert code == 0

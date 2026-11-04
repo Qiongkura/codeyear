@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import ctypes
 import os
 import queue
@@ -44,10 +45,8 @@ class App:
 
     def _style(self) -> None:
         style = ttk.Style()
-        try:
+        with contextlib.suppress(tk.TclError):
             style.theme_use("clam")
-        except tk.TclError:
-            pass
         style.configure(
             "CY.Horizontal.TProgressbar",
             troughcolor=PAPER2, background=ACCENT, bordercolor=LINE,
@@ -527,10 +526,8 @@ class App:
 
 
 def _enable_dpi() -> None:
-    try:
+    with contextlib.suppress(Exception):
         ctypes.windll.shcore.SetProcessDpiAwareness(1)
-    except Exception:
-        pass
 
 
 def run() -> int:

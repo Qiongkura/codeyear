@@ -20,5 +20,7 @@ jobs:
         run: pip install -e ".[dev]"
       - name: Compile
         run: python -m compileall -q codeyear
+      - name: Lint
+        run: ruff check codeyear tests tools
       - name: Tests
-        run: pytest -q
+        run: pytest -q --cov=codeyear --cov-report=term-missing --cov-fail-under=75

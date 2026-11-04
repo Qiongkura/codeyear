@@ -12,11 +12,14 @@ from datetime import date
 from pathlib import Path
 
 from . import __version__
-from .card import THEMES, render as render_card
-from .html_report import render as render_html, render_en as render_html_en
-from .poster import render as render_poster, render_long
-from .stats import fmt_int
+from .card import THEMES
+from .card import render as render_card
+from .html_report import render as render_html
+from .html_report import render_en as render_html_en
+from .poster import render as render_poster
+from .poster import render_long
 from .runner import discover, scan
+from .stats import fmt_int
 
 _NO_WINDOW = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
 

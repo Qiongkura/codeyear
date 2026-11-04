@@ -11,7 +11,6 @@ count-up numbers, a real commit ticker, and an index-table filter. Honors
 
 from __future__ import annotations
 
-import calendar
 from datetime import date, datetime, timedelta
 from html import escape
 from pathlib import Path
@@ -20,7 +19,6 @@ from .stats import (
     ReportStats,
     fmt_human,
     fmt_int,
-    fmt_signed_pair,
     language_breakdown,
     parse_daily,
 )
@@ -1077,10 +1075,10 @@ def build_compare(stats: ReportStats) -> str:
         return text
 
     def delta_human(value: int, pct: float | None) -> str:
-        if value:
-            text = ("+" if value > 0 else "-") + human(abs(value))
-        else:
-            text = "0"
+        text = (
+            ("+" if value > 0 else "-") + human(abs(value))
+            if value else "0"
+        )
         if pct is not None:
             text += " (0%)" if not pct else f" ({pct:+.0%})"
         return text

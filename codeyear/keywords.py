@@ -18,9 +18,9 @@ EN_STOP: set[str] = {
     "updated", "add", "adds", "added", "remove", "removes", "removed",
     "delete", "deleted", "change", "changes", "changed", "improve",
     "improves", "improved", "support", "supports", "initial", "init",
-    "commit", "commit", "wip", "minor", "major", "patch", "new", "use",
+    "commit", "wip", "minor", "major", "patch", "new", "use",
     "using", "used", "make", "makes", "made", "move", "moves", "moved",
-    "rename", "renamed", "cleanup", "clean", "cleanup", "misc", "small",
+    "rename", "renamed", "cleanup", "clean", "misc", "small",
     "readme", "license", "gitignore",
     # generic English
     "the", "and", "for", "with", "from", "this", "that", "these", "those",
@@ -32,7 +32,7 @@ EN_STOP: set[str] = {
     "via", "per", "after", "before", "during", "without", "within",
     "file", "files", "code", "project", "work", "stuff", "thing", "things",
     "todo", "note", "notes", "error", "errors", "issue", "issues",
-    "test", "tests", "type", "types", "line", "lines", "page", "pages",
+    "type", "types", "line", "lines", "page", "pages",
 }
 
 # High-frequency Chinese 2-grams that carry little meaning in a word cloud.
@@ -50,12 +50,12 @@ ZH_STOP_2: set[str] = {
     "兼容", "性能", "安全", "错误", "异常", "警告", "日志", "缓存", "网络",
     "请求", "响应", "数据库", "字段", "表格", "列表", "详情", "编辑", "创建",
     "初始化", "加载", "显示", "隐藏", "点击", "输入", "输出", "上传", "下载",
-    "导入", "导出", "已经", "重新", "再次", "直接", "通过", "根据", "对于",
+    "导入", "导出", "重新", "再次", "直接", "通过", "根据", "对于",
     "关于", "用于", "位于", "包括", "包含", "提供", "获取", "设置", "打开",
-    "关闭", "开始", "结束", "完成", "失败", "成功", "正常", "默认", "手动",
+    "关闭", "开始", "结束", "完成", "失败", "成功", "正常", "手动",
     "自动", "简单", "复杂", "小型", "大型", "新的", "旧的", "当前", "之前",
-    "之后", "现在", "今年", "今天", "昨天", "明天", "最后", "第一", "第二",
-    "一下", "一直", "一起", "一样", "一定", "非常", "比较", "更加", "最好",
+    "之后", "今年", "今天", "昨天", "明天", "最后", "第一", "第二",
+    "一直", "一起", "一样", "一定", "非常", "比较", "更加", "最好",
 }
 
 _CJK_RE = re.compile(r"[\u4e00-\u9fff]{2,}")

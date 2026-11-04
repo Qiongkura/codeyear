@@ -393,9 +393,12 @@ python -m codeyear scan I:\projects --year 2026 --out ./out
 # Syntax check
 python -m compileall -q codeyear
 
-# Tests
+# Lint
+ruff check codeyear tests tools
+
+# Tests + coverage (CI gate 75%; UI/poster modules are excluded)
 pip install -e ".[dev]"
-pytest -q
+pytest -q --cov=codeyear --cov-report=term-missing
 ```
 
 Code layout:
