@@ -595,3 +595,28 @@ def test_english_report_has_no_untranslated_ui():
     chinese = set(re.findall(r"[\u4e00-\u9fff]+", en))
     # "中文" is the intentional link back to the Chinese edition.
     assert chinese <= {"中文"}
+
+
+def test_compare_percentages_and_rounded_points():
+    from dataclasses import replace
+
+    stats = _stats()
+    previous = replace(
+        stats, year=2025, commit_count=1, lines_changed=50,
+        active_days=1, repo_count=1, longest_streak=1,
+        insertions=64, deletions=30, avg_subject_len=10,
+        weekend_share=0.58, night_share=0.58,
+    )
+    stats = replace(stats, weekend_share=0.59, night_share=0.59)
+    stats.previous = compare_summary(stats, previous)
+    summary = stats.previous
+    assert summary["insertions_pct"] == 1.0
+    assert summary["deletions_pct"] == -0.5
+    assert summary["repos_pct"] == 0.0
+
+    html = build_html(stats)
+    assert "+64 (+100%)" in html
+    assert "-15 (-50%)" in html
+    assert "0 (0%)" in html
+    assert "+1 个百分点" in html
+    assert "+0 个百分点" not in html

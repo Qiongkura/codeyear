@@ -1073,7 +1073,7 @@ def build_compare(stats: ReportStats) -> str:
     def delta_int(value: int, pct: float | None) -> str:
         text = f"{value:+,}" if value else "0"
         if pct is not None:
-            text += f" ({pct:+.0%})"
+            text += " (0%)" if not pct else f" ({pct:+.0%})"
         return text
 
     def delta_human(value: int, pct: float | None) -> str:
@@ -1082,14 +1082,27 @@ def build_compare(stats: ReportStats) -> str:
         else:
             text = "0"
         if pct is not None:
-            text += f" ({pct:+.0%})"
+            text += " (0%)" if not pct else f" ({pct:+.0%})"
         return text
 
-    def delta_pp(value: float) -> str:
-        return f"{value * 100:+.0f} 个百分点" if value else "0"
+    def pp_parts(before: float, now: float) -> tuple[str, str, str]:
+        before_pct = round(before * 100)
+        now_pct = round(now * 100)
+        delta = now_pct - before_pct
+        return (
+            f"{before_pct}%",
+            f"{now_pct}%",
+            f"{delta:+d} 个百分点" if delta else "0",
+        )
 
     prev_weekend = previous.get("previous_weekend_share", 0.0)
     prev_night = previous.get("previous_night_share", 0.0)
+    weekend_before, weekend_now, weekend_delta = pp_parts(
+        prev_weekend, stats.weekend_share
+    )
+    night_before, night_now, night_delta = pp_parts(
+        prev_night, stats.night_share
+    )
     rows = [
         ("提交", f"{prev_commits:,}", f"{stats.commit_count:,}",
          delta_int(previous["commits"], previous.get("commits_pct"))),
@@ -1098,24 +1111,27 @@ def build_compare(stats: ReportStats) -> str:
          delta_human(previous["lines"], previous.get("lines_pct"))),
         ("新增行", human(previous.get("previous_insertions", 0)),
          human(stats.insertions),
-         delta_human(previous.get("insertions", 0), None)),
+         delta_human(previous.get("insertions", 0),
+                     previous.get("insertions_pct"))),
         ("删除行", human(previous.get("previous_deletions", 0)),
          human(stats.deletions),
-         delta_human(previous.get("deletions", 0), None)),
+         delta_human(previous.get("deletions", 0),
+                     previous.get("deletions_pct"))),
         ("活跃日", f'{previous.get("previous_active_days", 0):,}',
          f"{stats.active_days:,}",
          delta_int(previous["active_days"], previous.get("active_days_pct"))),
         ("涉及仓库", f'{previous.get("previous_repos", 0):,}',
-         f"{stats.repo_count:,}", delta_int(previous["repos"], None)),
+         f"{stats.repo_count:,}",
+         delta_int(previous["repos"], previous.get("repos_pct"))),
         ("最长连续（天）", f'{previous.get("previous_streak", 0):,}',
-         f"{stats.longest_streak:,}", delta_int(previous["streak"], None)),
+         f"{stats.longest_streak:,}",
+         delta_int(previous["streak"], previous.get("streak_pct"))),
         ("平均提交信息（字符）", f'{previous.get("previous_avg_subject_len", 0):,}',
          f"{stats.avg_subject_len:,}",
-         delta_int(previous.get("avg_subject_len", 0), None)),
-        ("周末占比", f"{prev_weekend:.0%}", f"{stats.weekend_share:.0%}",
-         delta_pp(stats.weekend_share - prev_weekend)),
-        ("深夜占比", f"{prev_night:.0%}", f"{stats.night_share:.0%}",
-         delta_pp(stats.night_share - prev_night)),
+         delta_int(previous.get("avg_subject_len", 0),
+                   previous.get("avg_subject_len_pct"))),
+        ("周末占比", weekend_before, weekend_now, weekend_delta),
+        ("深夜占比", night_before, night_now, night_delta),
     ]
     table = "".join(
         f'<div class="cmp-row"><span class="cmp-k">{label}</span>'

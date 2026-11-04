@@ -129,12 +129,19 @@ def compare_summary(current: "ReportStats", previous: "ReportStats") -> dict:
         "lines": current.lines_changed - previous.lines_changed,
         "lines_pct": pct(current.lines_changed, previous.lines_changed),
         "insertions": current.insertions - previous.insertions,
+        "insertions_pct": pct(current.insertions, previous.insertions),
         "deletions": current.deletions - previous.deletions,
+        "deletions_pct": pct(current.deletions, previous.deletions),
         "active_days": current.active_days - previous.active_days,
         "active_days_pct": pct(current.active_days, previous.active_days),
         "repos": current.repo_count - previous.repo_count,
+        "repos_pct": pct(current.repo_count, previous.repo_count),
         "streak": current.longest_streak - previous.longest_streak,
+        "streak_pct": pct(current.longest_streak, previous.longest_streak),
         "avg_subject_len": current.avg_subject_len - previous.avg_subject_len,
+        "avg_subject_len_pct": pct(
+            current.avg_subject_len, previous.avg_subject_len
+        ),
         "weekend_share": current.weekend_share - previous.weekend_share,
         "night_share": current.night_share - previous.night_share,
     }
