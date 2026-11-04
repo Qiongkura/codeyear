@@ -184,11 +184,14 @@ def main() -> None:
         "CARD-EN": "sample-card-en.svg",
         "CARD-DARK-EN": "sample-card-en-dark.svg",
         "PNG": "sample.png",
+        "PNG-EN": "sample-en.png",
         "LONG": "sample-long.png",
+        "LONG-EN": "sample-en-long.png",
     }
     with tempfile.TemporaryDirectory() as tmp:
         written = render(
             stats, Path(tmp), formats={"html", "card", "png", "long"},
+            lang="en",
         )
         for label, path in written:
             if label in names:

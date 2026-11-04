@@ -783,6 +783,16 @@ def test_report_path_follows_ui_language():
     assert report_path([("CARD", Path("card.svg"))]) is None
 
 
+def test_english_posters_are_generated(tmp_path):
+    from codeyear.runner import render
+
+    stats = _stats()
+    written = render(stats, tmp_path, formats={"png", "long"}, lang="en")
+    labels = {label for label, _path in written}
+    assert {"PNG", "PNG-EN", "LONG", "LONG-EN"} <= labels
+    assert all(path.exists() for _label, path in written)
+
+
 def test_server_http_endpoints(tmp_path, monkeypatch):
     import re
     import threading

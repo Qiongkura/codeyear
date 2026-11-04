@@ -165,6 +165,7 @@ def render(
     formats: set[str] | None = None,
     *,
     card_theme: str = "paper",
+    lang: str = "zh",
 ) -> list[tuple[str, Path]]:
     formats = formats or ALL_FORMATS
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -184,9 +185,16 @@ def render(
             stats, out_dir / f"codeyear-{stats.year}-en.html")))
     if "png" in formats:
         written.append(("PNG", render_poster(stats, base.with_suffix(".png"))))
+        if lang == "en":
+            written.append(("PNG-EN", render_poster(
+                stats, out_dir / f"codeyear-{stats.year}-en.png", lang="en")))
     if "long" in formats:
         written.append(("LONG", render_long(
             stats, out_dir / f"codeyear-{stats.year}-long.png")))
+        if lang == "en":
+            written.append(("LONG-EN", render_long(
+                stats, out_dir / f"codeyear-{stats.year}-en-long.png",
+                lang="en")))
     if "card" in formats:
         cards = render_card(stats, out_dir / f"codeyear-{stats.year}-card.svg",
                             theme=card_theme)

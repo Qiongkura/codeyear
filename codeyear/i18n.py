@@ -16,6 +16,8 @@ EN = {
     # top-level parser
     "界面与 Profile 卡片语言 / UI and profile-card language":
         "UI and profile-card language",
+    # GUI language-switch label stays in Chinese
+    "中文": "中文",
     "扫描本地 git 仓库，生成一份年度代码报告（HTML + PNG 海报）。":
         "Scan local git repositories and generate an annual code report "
         "(HTML + poster).",

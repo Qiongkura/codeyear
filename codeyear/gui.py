@@ -120,13 +120,24 @@ class App:
 
     def _build(self) -> None:
         pad = {"padx": 22}
+        self.root.title(i18n.tr("CodeYear · 代码手账"))
 
         header = tk.Frame(self.root, bg=PAPER)
         header.pack(fill="x", **pad, pady=(22, 10))
+        header_top = tk.Frame(header, bg=PAPER)
+        header_top.pack(fill="x")
+        title_col = tk.Frame(header_top, bg=PAPER)
+        title_col.pack(side="left", anchor="w")
         tk.Label(
-            header, text=i18n.tr("代码手账"), bg=PAPER, fg=INK,
+            title_col, text=i18n.tr("代码手账"), bg=PAPER, fg=INK,
             font=("Georgia", 26), anchor="w",
         ).pack(anchor="w")
+        self.lang_btn = self._button(
+            header_top,
+            "中文" if i18n.get_lang() == "en" else "English",
+            self._switch_lang,
+        )
+        self.lang_btn.pack(side="right", anchor="ne", pady=(4, 0))
         tk.Label(
             header, text=i18n.tr("选择目录，生成一份本地年度代码报告。"),
             bg=PAPER, fg=MUTED, font=("Microsoft YaHei", 10), anchor="w",
@@ -329,6 +340,56 @@ class App:
         self.folder_list.delete(0, "end")
         self.roots.clear()
 
+    def _switch_lang(self) -> None:
+        if self.busy:
+            return
+        target = "en" if i18n.get_lang() == "zh" else "zh"
+        saved = {
+            "roots": list(self.roots),
+            "year": self.year_var.get(),
+            "depth": self.depth_var.get(),
+            "jobs": self.jobs_var.get(),
+            "out": self.out_var.get(),
+            "alias": self.alias_var.get(),
+            "compare": self.compare_var.get(),
+            "branches": self.all_branches_var.get(),
+            "identity": self.identity_var.get(),
+            "result": self.result.get("1.0", "end-1c"),
+        }
+        i18n.set_lang(target)
+        for child in self.root.winfo_children():
+            child.destroy()
+        self._build()
+
+        self.roots = saved["roots"]
+        for root in self.roots:
+            self.folder_list.insert("end", str(root))
+        self.year_var.set(saved["year"])
+        self.depth_var.set(saved["depth"])
+        self.jobs_var.set(saved["jobs"])
+        self.out_var.set(saved["out"])
+        self.alias_var.set(saved["alias"])
+        self.compare_var.set(saved["compare"])
+        self.all_branches_var.set(saved["branches"])
+        self.identity_var.set(saved["identity"])
+        self._identity_draw()
+        self._compare_draw()
+        self._branches_draw()
+        if self.roots:
+            self.count_label.configure(
+                text=i18n.tr("已添加，开始生成时会统计仓库数量"))
+        self._set_result(saved["result"])
+        if self.written:
+            self.open_btn.configure(
+                state="normal" if self.html_path else "disabled")
+            self.folder_btn.configure(state="normal")
+            self.progress.configure(maximum=1, value=1)
+            self.status.configure(text=i18n.tr("完成。"))
+        else:
+            self.status.configure(
+                text=i18n.tr("选择目录后点击「开始生成」。"))
+        self._set_busy(False)
+
     def _check_repos(self) -> None:
         if not self.roots:
             messagebox.showwarning(
@@ -418,7 +479,7 @@ class App:
                 raise RuntimeError(i18n.tr(
                     "{year} 年没有找到提交。", year=year,
                 ))
-            written = render(stats, out_dir)
+            written = render(stats, out_dir, lang=i18n.get_lang())
             self.queue.put(("done", stats, written, warnings, out_dir))
         except Exception as exc:  # pragma: no cover - UI path
             self.queue.put(("error", str(exc)))
@@ -484,6 +545,8 @@ class App:
         self.busy = busy
         state = "disabled" if busy else "normal"
         self.start_btn.configure(state=state)
+        if hasattr(self, "lang_btn"):
+            self.lang_btn.configure(state=state)
 
     def _check(self, parent, text, variable, enabled=True):
         frame = tk.Frame(parent, bg=PAPER,

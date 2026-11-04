@@ -85,6 +85,8 @@ CODEYEAR_LANG=en codeyear scan ~/code --open
 `--lang` goes before the subcommand. The GUI follows the same language setting; reports are always bilingual.
 Launch the English GUI with `codeyear --lang en gui` (or `codeyear-gui --lang en`); its
 "Open report" button opens the English HTML directly, while both HTML reports are always generated.
+The English UI also generates the English PNG poster and long image. The "English / 中文"
+button in the GUI header switches language in place and keeps your selected folders and settings.
 `--profile-repo` uses the same language for the card written to your profile: Chinese by default, English with `--lang en`.
 
 Prefer the terminal?
@@ -238,7 +240,9 @@ Outputs go to `./codeyear-output/` by default:
 codeyear-2026.html          Chinese report; open in a browser
 codeyear-2026-en.html       English report, same data
 codeyear-2026.png           2400×3200 poster (2× render)
+codeyear-2026-en.png        English poster (generated when the UI is English)
 codeyear-2026-long.png      2400×5330 full-length image
+codeyear-2026-en-long.png   English full-length image (English UI only)
 codeyear-2026-card.svg      640×1254 GitHub profile card (transparent, light)
 codeyear-2026-card-dark.svg 640×1254 dark variant (transparent)
 codeyear-2026-card-en.svg   640×1254 English profile card (transparent, light)
@@ -248,9 +252,9 @@ codeyear-2026.json          raw statistics for further processing
 
 Poster sample (same data):
 
-<img src="docs/sample.png" width="420" alt="CodeYear poster sample">
+<img src="docs/sample-en.png" width="420" alt="CodeYear English poster sample">
 
-Full-length sample: [docs/sample-long.png](docs/sample-long.png)
+Full-length sample: [docs/sample-en-long.png](docs/sample-en-long.png)
 
 ## Put it on your GitHub profile
 

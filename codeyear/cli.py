@@ -288,9 +288,18 @@ def main(argv: list[str] | None = None) -> int:
     if not args.no_png:
         png_path = render_poster(stats, base.with_suffix(".png"))
         written.append(("PNG", png_path))
+        if i18n.get_lang() == "en":
+            png_en = render_poster(
+                stats, out_dir / f"codeyear-{args.year}-en.png", lang="en")
+            written.append(("PNG-EN", png_en))
         if not args.no_long:
             long_path = render_long(stats, out_dir / f"codeyear-{args.year}-long.png")
             written.append(("LONG", long_path))
+            if i18n.get_lang() == "en":
+                long_en = render_long(
+                    stats, out_dir / f"codeyear-{args.year}-en-long.png",
+                    lang="en")
+                written.append(("LONG-EN", long_en))
 
     card_paths = []
     en_cards = []

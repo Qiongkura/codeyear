@@ -83,7 +83,9 @@ CODEYEAR_LANG=en codeyear scan ~/code --open
 
 `--lang` 要放在子命令前面。GUI 也跟随同一语言设置；报告本身一直是中英双语。
 英文界面可以用 `codeyear --lang en gui`（或 `codeyear-gui --lang en`）启动，
-GUI 的「打开报告」会直接打开英文 HTML；中英文两份报告始终都会生成。
+GUI 的「打开报告」会直接打开英文 HTML；中英文两份报告始终都会生成，
+英文界面还会额外生成英文 PNG 海报和长图。GUI 右上角的「English / 中文」
+可以在窗口内直接切换语言，已选目录和参数会保留。
 `--profile-repo` 会按这个语言选择写入主页的卡片：默认中文，`--lang en` 时写英文卡片。
 
 喜欢终端就用：
@@ -236,7 +238,9 @@ codeyear scan ~/code --year 2026 --open
 codeyear-2026.html          中文报告，浏览器直接打开
 codeyear-2026-en.html       英文报告，同一份数据
 codeyear-2026.png           2400×3200 海报（2× 渲染），直接发图
+codeyear-2026-en.png        英文海报（界面为英文时额外生成）
 codeyear-2026-long.png      2400×5330 完整长图，适合发长图/存档
+codeyear-2026-en-long.png   英文完整长图（界面为英文时额外生成）
 codeyear-2026-card.svg      640×1254 海报式 GitHub 卡片（透明底 · 浅色）
 codeyear-2026-card-dark.svg 640×1254 同一张卡片的深色版（透明底）
 codeyear-2026-card-en.svg   640×1254 英文版 GitHub 卡片（透明底 · 浅色）
@@ -249,6 +253,8 @@ codeyear-2026.json          原始统计数据，方便二次开发
 <img src="docs/sample.png" width="420" alt="CodeYear PNG 海报示例">
 
 完整长图示例：[docs/sample-long.png](docs/sample-long.png)
+
+英文海报示例：[docs/sample-en.png](docs/sample-en.png) · [英文长图](docs/sample-en-long.png)
 
 ## 挂到 GitHub 主页
 
