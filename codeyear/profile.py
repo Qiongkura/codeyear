@@ -11,6 +11,7 @@ import os
 import re
 import shutil
 import subprocess
+import time
 from pathlib import Path
 
 _NO_WINDOW = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
@@ -26,6 +27,20 @@ def _git(repo: Path, *args: str) -> subprocess.CompletedProcess:
         check=False,
         creationflags=_NO_WINDOW,
     )
+
+
+def _push(repo: Path) -> None:
+    """Push, rebasing once if another workflow committed in the meantime."""
+    last: subprocess.CompletedProcess | None = None
+    for attempt in range(3):
+        result = _git(repo, "push")
+        if result.returncode == 0:
+            return
+        last = result
+        if attempt < 2:
+            _git(repo, "pull", "--rebase")
+            time.sleep(2)
+    raise RuntimeError(((last.stderr if last else "") or "git push failed").strip())
 
 
 def _latest_version(directory: Path, year: int) -> tuple[int, Path | None]:
@@ -160,8 +175,6 @@ def update_profile(
             )
             if commit.returncode != 0:
                 raise RuntimeError((commit.stderr or "git commit failed").strip())
-            push_result = _git(repo, "push")
-            if push_result.returncode != 0:
-                raise RuntimeError((push_result.stderr or "git push failed").strip())
+            _push(repo)
             pushed = True
     return repo, True, pushed

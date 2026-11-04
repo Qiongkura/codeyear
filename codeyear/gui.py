@@ -379,6 +379,7 @@ class App:
             self.count_label.configure(
                 text=i18n.tr("已添加，开始生成时会统计仓库数量"))
         self._set_result(saved["result"])
+        self.html_path = report_path(self.written, lang=i18n.get_lang())
         if self.written:
             self.open_btn.configure(
                 state="normal" if self.html_path else "disabled")

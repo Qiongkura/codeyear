@@ -72,7 +72,7 @@ jobs:
           git commit -m "Update CodeYear card [skip ci]"
           # Other profile workflows may push while this job runs; rebase and retry.
           for attempt in 1 2 3; do
-            if git pull --rebase origin main && git push; then
+            if git pull --rebase && git push; then
               exit 0
             fi
             sleep 5
