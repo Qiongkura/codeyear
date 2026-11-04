@@ -1328,7 +1328,7 @@ def build_persona_block(stats: ReportStats) -> str:
     return f"""
     <div class="persona-block">
       <div>
-        <div class="persona-kicker">PERSONA · {stats.year}</div>
+        <div class="persona-kicker">YEAR AT A GLANCE · {stats.year}</div>
         <h2 class="persona-name" data-persona-name>{escape(persona.title)}</h2>
         <p class="persona-summary" data-persona-summary>{escape(summary)}</p>
       </div>

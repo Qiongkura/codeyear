@@ -1,4 +1,4 @@
-"""Turn raw numbers into a small, human-readable coding persona."""
+"""Turn raw numbers into a short, factual year-at-a-glance summary."""
 
 from __future__ import annotations
 
@@ -51,124 +51,95 @@ def build_persona(
     feat_share = feat_commits / max(typed_commits, 1)
     avg_per_active = commits / max(active_days, 1)
 
-    # 1) When do they write code?
     if night_share >= 0.35:
-        time_adj, time_en = "深夜", "Late-night"
-        time_desc = f"{_pct(night_share)} 的提交发生在 22:00–05:00"
-        time_desc_en = f"{_pct(night_share)} of commits happened between 22:00–05:00"
+        time_label = "深夜"
+        time_window = "22:00–05:00"
+        time_share = night_share
+        time_label_en = "late-night"
     elif early_share >= 0.28:
-        time_adj, time_en = "清晨", "Early-morning"
-        time_desc = f"{_pct(early_share)} 的提交发生在 05:00–09:00"
-        time_desc_en = f"{_pct(early_share)} of commits happened between 05:00–09:00"
+        time_label = "清晨"
+        time_window = "05:00–09:00"
+        time_share = early_share
+        time_label_en = "early-morning"
     elif weekend_share >= 0.35:
-        time_adj, time_en = "周末", "Weekend"
-        time_desc = f"{_pct(weekend_share)} 的提交发生在周末"
-        time_desc_en = f"{_pct(weekend_share)} of commits happened on weekends"
+        time_label = "周末"
+        time_window = "周末"
+        time_share = weekend_share
+        time_label_en = "weekend"
     elif 9 <= peak_hour <= 18:
-        time_adj, time_en = "白天", "Daytime"
-        time_desc = f"提交高峰在 {peak_hour:02d}:00"
-        time_desc_en = f"peak hour was {peak_hour:02d}:00"
+        time_label = "白天"
+        time_window = f"{peak_hour:02d}:00 前后"
+        time_share = 0.0
+        time_label_en = "daytime"
     else:
-        time_adj, time_en = "全天候", "All-hours"
-        time_desc = f"提交高峰在 {peak_hour:02d}:00"
-        time_desc_en = f"peak hour was {peak_hour:02d}:00"
+        time_label = "夜间"
+        time_window = f"{peak_hour:02d}:00 前后"
+        time_share = 0.0
+        time_label_en = "night"
 
-    # 2) How do they write code?
-    delete_ratio = deletions / max(insertions + deletions, 1)
+    title = f"{commits:,} 次提交 · {lang_count} 种语言"
+    title_en = f"{commits:,} commits · {lang_count} languages"
 
-    if delete_ratio >= 0.5:
-        noun, noun_en = "考古学家", "archaeologist"
-        style_desc = "删掉的代码比写下的还多"
-        style_desc_en = "you deleted more code than you wrote"
-    elif fix_share >= 0.35:
-        noun, noun_en = "修补匠", "tinkerer"
-        style_desc = f"修复类提交占 {_pct(fix_share)}"
-        style_desc_en = f"{_pct(fix_share)} of typed commits were fixes"
-    elif feat_share >= 0.35:
-        noun, noun_en = "建筑师", "builder"
-        style_desc = f"功能类提交占 {_pct(feat_share)}"
-        style_desc_en = f"{_pct(feat_share)} of typed commits were features"
-    elif lang_count >= 5:
-        noun, noun_en = "多语言者", "polyglot"
-        style_desc = f"一年里碰了 {lang_count} 种语言"
-        style_desc_en = f"you touched {lang_count} languages"
-    elif longest_streak >= 21:
-        noun, noun_en = "长跑选手", "long-distance runner"
-        style_desc = f"最长连续 {longest_streak} 天没有断更"
-        style_desc_en = f"your longest streak was {longest_streak} days"
-    elif avg_per_active >= 5:
-        noun, noun_en = "高产机器", "high-output machine"
-        style_desc = f"每个活跃日平均 {avg_per_active:.1f} 次提交"
-        style_desc_en = f"you averaged {avg_per_active:.1f} commits per active day"
+    if time_share:
+        time_sentence = f"{_pct(time_share)} 的提交发生在 {time_window}"
+        time_sentence_en = (
+            f"{_pct(time_share)} of commits happened in the {time_label_en} "
+            f"window"
+        )
     else:
-        noun, noun_en = "稳健开发者", "steady developer"
-        style_desc = f"每个活跃日平均 {avg_per_active:.1f} 次提交"
-        style_desc_en = f"you averaged {avg_per_active:.1f} commits per active day"
+        time_sentence = f"提交高峰在 {time_window}"
+        time_sentence_en = f"peak hour was {time_window}"
 
-    title = f"{time_adj}{noun}"
-    title_en = f"{time_en} {noun_en}"
+    style_parts = []
+    style_parts_en = []
+    if typed_commits:
+        style_parts.append(f"修复类占 {_pct(fix_share)}")
+        style_parts_en.append(f"fixes {_pct(fix_share)}")
+        style_parts.append(f"功能类占 {_pct(feat_share)}")
+        style_parts_en.append(f"features {_pct(feat_share)}")
+    style_parts.append(f"{lang_count} 种语言")
+    style_parts_en.append(f"{lang_count} languages")
 
     subtitle = (
         f"{year} 年，你在 {repos} 个仓库里提交了 {commits:,} 次，"
-        f"改了 {lines:,} 行代码。{time_desc}；{style_desc}。"
+        f"改了 {lines:,} 行代码。{time_sentence}。"
     )
     subtitle_en = (
         f"In {year} you made {commits:,} commits across {repos} repositories, "
-        f"changing {lines:,} lines. {time_desc_en}; {style_desc_en}."
+        f"changing {lines:,} lines. {time_sentence_en}."
     )
 
-    badges: list[str] = []
-    badges_en: list[str] = []
+    badges = [
+        f"{commits:,} 次提交",
+        f"{lang_count} 种语言",
+        f"{repos} 个仓库",
+        f"{active_days} 个活跃日",
+        f"{time_label} {_pct(time_share)}" if time_share else f"{time_label}高峰",
+        f"最长连续 {longest_streak} 天",
+    ]
+    badges_en = [
+        f"{commits:,} commits",
+        f"{lang_count} languages",
+        f"{repos} repositories",
+        f"{active_days} active days",
+        (
+            f"{_pct(time_share)} {time_label_en}"
+            if time_share else f"{time_label_en} peak"
+        ),
+        f"{longest_streak}-day streak",
+    ]
 
-    def add(label: str, label_en: str) -> None:
-        if label not in badges:
-            badges.append(label)
-            badges_en.append(label_en)
-
-    if night_share >= 0.5:
-        add("夜猫子", "Night owl")
-    elif night_share >= 0.35:
-        add("深夜型", "Late-night")
-    if early_share >= 0.4:
-        add("早起鸟", "Early bird")
-    if weekend_share >= 0.4:
-        add("周末战士", "Weekend warrior")
-    if delete_ratio >= 0.6:
-        add("删繁就简", "Simplifier")
-    if fix_share >= 0.5:
-        add("修 bug 主力", "Bug fixer")
-    if feat_share >= 0.5:
-        add("功能输出", "Feature shipper")
-    if lang_count >= 8:
-        add("语言收藏家", "Language collector")
-    if longest_streak >= 50:
-        add("连续记录者", "Streak keeper")
-    if avg_per_active >= 8:
-        add("高频提交", "High frequency")
-    if commits >= 1000:
-        add("千次提交", "1k commits")
-    if active_days >= 100:
-        add("长期主义", "Consistent")
-    if busiest_count >= 20:
-        add("爆发日", "Burst day")
-    if repos >= 10:
-        add("多线并行", "Multi-project")
-    elif repos >= 5:
-        add("多项目", "Multi-project")
-    if current_streak >= 7:
-        add("正在连续", "On a streak")
-    if not badges:
-        add(f"{time_adj}型", time_en)
-
-    badges = badges[:6]
-    badges_en = badges_en[:6]
+    style_text_en = ", ".join(style_parts_en)
+    style_text_en = style_text_en[:1].upper() + style_text_en[1:]
 
     summary = subtitle + (
-        f"最长连续 {longest_streak} 天，"
+        "，".join(style_parts)
+        + f"；最长连续 {longest_streak} 天，"
         f"每个活跃日平均 {avg_per_active:.1f} 次提交。"
     )
     summary_en = subtitle_en + (
-        f" Longest streak {longest_streak} days, "
+        style_text_en
+        + f"; longest streak {longest_streak} days, "
         f"{avg_per_active:.1f} commits per active day."
     )
 

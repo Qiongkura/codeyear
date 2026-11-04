@@ -1065,12 +1065,12 @@ def test_persona_variety():
         fix_commits=60, feat_commits=20, typed_commits=100,
         lang_count=9, busiest_count=40,
     )
-    assert "深夜" in persona.title
-    assert "考古学家" in persona.title
-    assert "夜猫子" in persona.badges
-    assert "删繁就简" in persona.badges
-    assert persona.title_en
-    assert "Longest streak" in persona.summary_en
+    assert persona.title == "1,200 次提交 · 9 种语言"
+    assert "深夜 58%" in persona.badges
+    assert "夜猫子" not in persona.badges
+    assert "考古学家" not in persona.title
+    assert persona.title_en == "1,200 commits · 9 languages"
+    assert "longest streak" in persona.summary_en.lower()
 
 
 def test_persona_block_translated():
@@ -1080,6 +1080,8 @@ def test_persona_block_translated():
     html = build_html(stats)
     assert 'class="persona-block"' in html
     assert 'class="persona-badges"' in html
+    assert "YEAR AT A GLANCE" in html
+    assert "PERSONA" not in html
 
     en = to_english(decorate(html, stats), stats)
     assert stats.persona.title_en in en

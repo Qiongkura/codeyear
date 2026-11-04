@@ -33,7 +33,7 @@ codeyear
 也可以从 Release 下载 wheel：
 
 ```bash
-pip install https://github.com/Qiongkura/codeyear/releases/download/v0.2.9/codeyear-0.2.9-py3-none-any.whl
+pip install https://github.com/Qiongkura/codeyear/releases/download/v0.2.10/codeyear-0.2.10-py3-none-any.whl
 ```
 
 > exe 未做代码签名，Windows SmartScreen 可能提示；点「更多信息 → 仍要运行」。
@@ -152,7 +152,7 @@ https://your-host/card-dark.svg?username=Qiongkura&year=2026
 > 文件名绕过 GitHub 的图片缓存；无需手动粘贴 embed 片段。模板默认每天 04:00 UTC
 > 更新；改 workflow 里的 `cron` 可切成每周一 `0 4 * * 1` 或每月 1 日 `0 4 1 * *`。
 > 跨年时如果新的一年还没有提交，`--fallback-previous` 会继续显示上一年的卡片。
-> 模板直接安装 Release 里的 wheel；升级时改 `CODEYEAR_VERSION`（当前 `0.2.9`）。
+> 模板直接安装 Release 里的 wheel；升级时改 `CODEYEAR_VERSION`（当前 `0.2.10`）。
 
 GitHub Action 自动更新模板：[docs/codeyear-card.yml](docs/codeyear-card.yml)。
 
@@ -175,9 +175,9 @@ CodeYear 是给开发者做的「年度报告」。官方的 Wrapped 通常只�
 
 ## 报告里有什么
 
-**年度画像**
-- 根据提交时段、修复/功能比例、语言数、连续天数生成一个主标题
-- 最多 6 个标签（夜猫子、修补匠、多语言者、长跑选手等）+ 一段数字总结
+**年度概览**
+- 用提交数、语言数、仓库数和时段占比做一个小结
+- 6 个纯数据标签（提交 / 语言 / 仓库 / 活跃日 / 深夜占比 / 最长连续）+ 一段数字总结
 
 **年度之最**
 - 最忙的一天 / 一周、最长连续、最长空窗、最大单次提交、最长的 commit
