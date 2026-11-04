@@ -145,6 +145,12 @@ def _strip_trailing(path: Path) -> None:
     )
 
 
+def _fix_lang_link(path: Path, old: str, new: str) -> None:
+    """Point the sample report's language switch at the renamed docs file."""
+    text = path.read_text(encoding="utf-8")
+    path.write_text(text.replace(old, new), encoding="utf-8")
+
+
 def main() -> None:
     rng = random.Random(20261103)
     current_repos = [
@@ -188,6 +194,16 @@ def main() -> None:
                 shutil.copy2(path, target)
                 if label.startswith("HTML"):
                     _strip_trailing(target)
+                    if target.name == "sample-report.html":
+                        _fix_lang_link(
+                            target, f"codeyear-{YEAR}-en.html",
+                            "sample-report-en.html",
+                        )
+                    elif target.name == "sample-report-en.html":
+                        _fix_lang_link(
+                            target, f"codeyear-{YEAR}.html",
+                            "sample-report.html",
+                        )
 
     print(f"wrote {len(names)} files to {DOCS}")
 
