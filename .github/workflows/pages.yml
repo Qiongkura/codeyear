@@ -27,7 +27,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Configure Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
         with:
           # 首次运行会自动开启 Pages；如果仓库策略不允许，请在
           # Settings → Pages 里手动把 Source 设为 GitHub Actions。
