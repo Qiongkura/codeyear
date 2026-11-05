@@ -15,6 +15,9 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
 from . import i18n
+from .card import THEMES
+from .config import load as load_config
+from .config import save as save_config
 from .runner import detect_identity, discover, render, report_path, scan
 from .stats import fmt_int
 
@@ -29,7 +32,14 @@ LINE = "#d8d2c2"
 class App:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
+        self.cfg = load_config()
         self.roots: list[Path] = []
+        for raw in self.cfg.get("roots", []):
+            candidate = Path(raw).expanduser()
+            if candidate.is_dir():
+                resolved = candidate.resolve()
+                if resolved not in self.roots:
+                    self.roots.append(resolved)
         self.queue: queue.Queue = queue.Queue()
         self.identity = detect_identity()
         self.written: list[tuple[str, Path]] = []
@@ -42,6 +52,12 @@ class App:
         root.configure(bg=PAPER)
         self._style()
         self._build()
+        for folder in self.roots:
+            self.folder_list.insert("end", str(folder))
+        if self.roots:
+            self.count_label.configure(
+                text=i18n.tr("已添加，开始生成时会统计仓库数量")
+            )
         self._poll()
 
     def _style(self) -> None:
@@ -189,7 +205,9 @@ class App:
 
         tk.Label(options, text=i18n.tr("年份"), bg=PAPER, fg=MUTED,
                  font=("Microsoft YaHei", 9)).grid(row=0, column=0, sticky="w")
-        self.year_var = tk.StringVar(value=str(date.today().year))
+        self.year_var = tk.StringVar(
+            value=str(self.cfg.get("year", date.today().year))
+        )
         ttk.Entry(
             options, width=8, textvariable=self.year_var, style="CY.TEntry",
         ).grid(row=1, column=0, sticky="w", pady=(2, 0))
@@ -197,10 +215,23 @@ class App:
         tk.Label(options, text=i18n.tr("扫描层级"), bg=PAPER, fg=MUTED,
                  font=("Microsoft YaHei", 9)).grid(
             row=0, column=1, sticky="w", padx=(22, 0))
-        self.depth_var = tk.StringVar(value="6")
+        self.depth_var = tk.StringVar(
+            value=str(self.cfg.get("max_depth", 6))
+        )
         ttk.Entry(
             options, width=6, textvariable=self.depth_var, style="CY.TEntry",
         ).grid(row=1, column=1, sticky="w", padx=(22, 0), pady=(2, 0))
+
+        tk.Label(options, text=i18n.tr("卡片主题"), bg=PAPER, fg=MUTED,
+                 font=("Microsoft YaHei", 9)).grid(
+            row=0, column=2, sticky="w", padx=(22, 0))
+        self.theme_var = tk.StringVar(
+            value=str(self.cfg.get("theme", "paper"))
+        )
+        ttk.Combobox(
+            options, width=8, textvariable=self.theme_var,
+            values=sorted(THEMES), state="readonly",
+        ).grid(row=1, column=2, sticky="w", padx=(22, 0), pady=(2, 0))
 
         if self.identity:
             email, name = self.identity
@@ -208,13 +239,16 @@ class App:
             identity_text = i18n.tr("只统计我本人（{who}）", who=who)
         else:
             identity_text = i18n.tr("未检测到 git 身份，将统计所有作者")
-        self.identity_var = tk.BooleanVar(value=bool(self.identity))
+        only_me_default = bool(self.identity) and not bool(
+            self.cfg.get("all_authors", False)
+        )
+        self.identity_var = tk.BooleanVar(value=only_me_default)
         self.identity_box, self._identity_draw = self._check(
             options, identity_text, self.identity_var,
             enabled=bool(self.identity),
         )
         self.identity_box.grid(
-            row=0, column=2, rowspan=2, sticky="w", padx=(26, 0))
+            row=0, column=3, rowspan=2, sticky="w", padx=(26, 0))
 
         tk.Label(
             body, text=i18n.tr(
@@ -227,23 +261,31 @@ class App:
         advanced.pack(fill="x", pady=(0, 10))
         tk.Label(advanced, text=i18n.tr("并行数"), bg=PAPER, fg=MUTED,
                  font=("Microsoft YaHei", 9)).pack(side="left")
-        self.jobs_var = tk.StringVar(value="1")
+        self.jobs_var = tk.StringVar(
+            value=str(self.cfg.get("jobs", 1))
+        )
         ttk.Entry(
             advanced, width=4, textvariable=self.jobs_var, style="CY.TEntry",
         ).pack(side="left", padx=(6, 20))
-        self.compare_var = tk.BooleanVar(value=False)
+        self.compare_var = tk.BooleanVar(
+            value=bool(self.cfg.get("compare", False))
+        )
         compare_box, self._compare_draw = self._check(
             advanced, i18n.tr("同比去年"), self.compare_var,
         )
         compare_box.pack(side="left")
-        self.all_branches_var = tk.BooleanVar(value=False)
+        self.all_branches_var = tk.BooleanVar(
+            value=bool(self.cfg.get("all_branches", False))
+        )
         branches_box, self._branches_draw = self._check(
             advanced, i18n.tr("所有分支"), self.all_branches_var,
         )
         branches_box.pack(side="left", padx=(16, 0))
         tk.Label(advanced, text=i18n.tr("旧邮箱/名字"), bg=PAPER, fg=MUTED,
                  font=("Microsoft YaHei", 9)).pack(side="left", padx=(22, 6))
-        self.alias_var = tk.StringVar(value="")
+        self.alias_var = tk.StringVar(
+            value=", ".join(self.cfg.get("aliases", []))
+        )
         ttk.Entry(
             advanced, width=22, textvariable=self.alias_var, style="CY.TEntry",
         ).pack(side="left")
@@ -252,7 +294,9 @@ class App:
         out_row.pack(fill="x", pady=(0, 14))
         tk.Label(out_row, text=i18n.tr("输出目录"), bg=PAPER, fg=MUTED,
                  font=("Microsoft YaHei", 9)).pack(side="left", padx=(0, 8))
-        self.out_var = tk.StringVar(value="codeyear-output")
+        self.out_var = tk.StringVar(
+            value=str(self.cfg.get("out", "codeyear-output"))
+        )
         ttk.Entry(
             out_row, textvariable=self.out_var, style="CY.TEntry",
         ).pack(side="left", fill="x", expand=True)
@@ -277,6 +321,9 @@ class App:
         )
         self.folder_btn.configure(state="disabled")
         self.folder_btn.pack(side="left", padx=(10, 0))
+        self._button(
+            actions, i18n.tr("保存默认"), self._save_defaults,
+        ).pack(side="right")
 
         self.progress = ttk.Progressbar(
             body, style="CY.Horizontal.TProgressbar", mode="determinate",
@@ -348,6 +395,7 @@ class App:
             "roots": list(self.roots),
             "year": self.year_var.get(),
             "depth": self.depth_var.get(),
+            "theme": self.theme_var.get(),
             "jobs": self.jobs_var.get(),
             "out": self.out_var.get(),
             "alias": self.alias_var.get(),
@@ -366,6 +414,7 @@ class App:
             self.folder_list.insert("end", str(root))
         self.year_var.set(saved["year"])
         self.depth_var.set(saved["depth"])
+        self.theme_var.set(saved["theme"])
         self.jobs_var.set(saved["jobs"])
         self.out_var.set(saved["out"])
         self.alias_var.set(saved["alias"])
@@ -420,6 +469,41 @@ class App:
         if path:
             self.out_var.set(path)
 
+    def _save_defaults(self) -> None:
+        try:
+            year = int(self.year_var.get())
+            depth = int(self.depth_var.get())
+            jobs = max(1, int(self.jobs_var.get()))
+        except ValueError:
+            messagebox.showwarning(
+                i18n.tr("参数不对"),
+                i18n.tr("年份、扫描层级和并行数必须是数字。"),
+            )
+            return
+        aliases = [
+            item.strip() for item in self.alias_var.get().split(",")
+            if item.strip()
+        ]
+        data = {
+            "roots": [str(r) for r in self.roots],
+            "year": year,
+            "max_depth": depth,
+            "jobs": jobs,
+            "compare": bool(self.compare_var.get()),
+            "all_branches": bool(self.all_branches_var.get()),
+            "all_authors": not bool(self.identity_var.get()),
+            "aliases": aliases,
+            "out": self.out_var.get().strip() or "codeyear-output",
+            "theme": self.theme_var.get() or "paper",
+        }
+        try:
+            save_config(data)
+        except OSError as exc:
+            messagebox.showerror(i18n.tr("无法保存"), str(exc))
+            return
+        self.cfg.update(data)
+        self.status.configure(text=i18n.tr("已保存默认设置。"))
+
     # ---- worker ------------------------------------------------------
     def _start(self) -> None:
         if self.busy:
@@ -473,14 +557,22 @@ class App:
 
             stats, warnings = scan(
                 repos, roots, year, identity, aliases=aliases,
+                author=self.cfg.get("author"),
+                timeout=int(self.cfg.get("timeout", 300)),
                 progress=progress, jobs=jobs, compare=compare,
+                use_mailmap=not bool(self.cfg.get("no_mailmap", False)),
                 all_branches=all_branches,
             )
             if stats.commit_count == 0:
                 raise RuntimeError(i18n.tr(
                     "{year} 年没有找到提交。", year=year,
                 ))
-            written = render(stats, out_dir, lang=i18n.get_lang())
+            theme = self.theme_var.get() or str(self.cfg.get("theme", "paper"))
+            written = render(
+                stats, out_dir,
+                card_theme=theme,
+                lang=i18n.get_lang(),
+            )
             self.queue.put(("done", stats, written, warnings, out_dir))
         except Exception as exc:  # pragma: no cover - UI path
             self.queue.put(("error", str(exc)))

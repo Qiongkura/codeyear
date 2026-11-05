@@ -64,6 +64,8 @@ def _build_parser() -> argparse.ArgumentParser:
                         help="缓存公开 commit 详情到该目录，重复运行更快")
     github.add_argument("--fallback-previous", action="store_true",
                         help="当年没有提交时回退到上一年，适合跨年自动更新")
+    github.add_argument("--tz", default=cfg.get("tz"),
+                        help="时区（如 UTC+8 或 Asia/Shanghai；默认本机时区）")
     server = sub.add_parser("serve", help="启动公开 GitHub 卡片 HTTP 服务")
     server.add_argument("--host", default="127.0.0.1", help="监听地址，默认 127.0.0.1")
     server.add_argument("--port", type=int, default=8000, help="监听端口，默认 8000")
@@ -102,6 +104,9 @@ def _build_parser() -> argparse.ArgumentParser:
                       help="单个仓库的扫描超时秒数")
     scan.add_argument("--jobs", type=int, default=cfg.get("jobs", 1),
                       help="并行扫描的仓库数，默认 1")
+    scan.add_argument("--theme", choices=sorted(THEMES),
+                      default=cfg.get("theme", "paper"),
+                      help="卡片主题：paper / mono / forest / ocean")
     scan.add_argument("--no-png", action="store_true", help="不生成 PNG 海报")
     scan.add_argument("--no-long", action="store_true", help="不生成完整版长图")
     scan.add_argument("--no-card", action="store_true", help="不生成 GitHub 主页卡片")
@@ -185,6 +190,7 @@ def main(argv: list[str] | None = None) -> int:
             fallback_previous=args.fallback_previous,
             cache_dir=args.cache_dir,
             lang=i18n.get_lang(),
+            tz=args.tz,
         )
     if args.command == "serve":
         from .server import serve
@@ -303,12 +309,17 @@ def main(argv: list[str] | None = None) -> int:
 
     card_paths = []
     en_cards = []
+    card_theme = getattr(args, "theme", "paper") or "paper"
     if not args.no_card:
-        card_paths = render_card(stats, out_dir / f"codeyear-{args.year}-card.svg")
+        card_paths = render_card(
+            stats, out_dir / f"codeyear-{args.year}-card.svg",
+            theme=card_theme,
+        )
         written.append(("CARD", card_paths[0]))
         written.append(("CARD-DARK", card_paths[1]))
         en_cards = render_card(
-            stats, out_dir / f"codeyear-{args.year}-card-en.svg", lang="en",
+            stats, out_dir / f"codeyear-{args.year}-card-en.svg",
+            theme=card_theme, lang="en",
         )
         written.append(("CARD-EN", en_cards[0]))
         written.append(("CARD-DARK-EN", en_cards[1]))

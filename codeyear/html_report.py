@@ -513,11 +513,15 @@ JS = r"""
 """
 
 
-def _stamp_for(last_iso: str, generated: str) -> tuple[str, bool]:
+def _stamp_for(
+    last_iso: str, generated: str, year: int | None = None
+) -> tuple[str, bool]:
     """(label, is_active) based on how recently the repo was touched."""
     try:
         last = datetime.strptime(last_iso, "%Y.%m.%d").date()
         gen = datetime.strptime(generated, "%Y-%m-%d %H:%M").date()
+        if year is not None and year < gen.year:
+            gen = date(year, 12, 31)
         days = (gen - last).days
     except ValueError:
         return "未知", False
@@ -561,7 +565,7 @@ def _web_url(remote: str) -> str | None:
 def build_archives(stats: ReportStats) -> str:
     blocks = []
     for i, repo in enumerate(stats.repo_details[:3]):
-        stamp, active = _stamp_for(repo["last"], stats.generated_at)
+        stamp, active = _stamp_for(repo["last"], stats.generated_at, stats.year)
         langs = "".join(
             f'<span>{escape(str(lang))} {(n / max(repo["lines"], 1) * 100):.0f}%</span>'
             for lang, n in repo["langs"]
@@ -639,7 +643,7 @@ def build_table(stats: ReportStats) -> str:
 
     rows = []
     for i, repo in enumerate(stats.repo_details, 1):
-        stamp, active = _stamp_for(repo["last"], stats.generated_at)
+        stamp, active = _stamp_for(repo["last"], stats.generated_at, stats.year)
         name = escape(repo["name"])
         url = _web_url(repo.get("remote") or "")
         if url:
@@ -1003,7 +1007,7 @@ def build_lifecycle(stats: ReportStats) -> str:
             continue
         left = (first - start).days / span_days * 100
         width = (last - first).days / span_days * 100
-        _stamp, active = _stamp_for(repo["last"], stats.generated_at)
+        _stamp, active = _stamp_for(repo["last"], stats.generated_at, stats.year)
         hot = " hot" if active else ""
         if (last - first).days == 0:
             bar = f'<i class="dot{hot}" style="left:calc({left:.2f}% - 3px)"></i>'
@@ -1022,7 +1026,7 @@ def build_lifecycle(stats: ReportStats) -> str:
             f'<span class="lc-date">{dates}</span></div>'
         )
     return _panel(
-        "仓库生命周期 <b>· 2026 活跃区间</b>",
+        f"仓库生命周期 <b>· {stats.year} 活跃区间</b>",
         f'<div class="lc-chart">{head}{"".join(rows)}</div>',
         span=True,
     )
@@ -1302,6 +1306,14 @@ def build_about(stats: ReportStats) -> str:
         "尤其是加了 --no-merges 的时候。" if not public
         else "尤其是只读公开数据的时候。"
     )
+    embed_snippet = escape(
+        "<picture>\n"
+        f'  <source media="(prefers-color-scheme: dark)" '
+        f'srcset="./codeyear-{stats.year}-card-dark.svg">\n'
+        f'  <img src="./codeyear-{stats.year}-card.svg" width="640" '
+        f'alt="CodeYear {stats.year}">\n'
+        "</picture>"
+    )
     return f"""
     <div class="about rv">
       <ul>
@@ -1312,6 +1324,10 @@ def build_about(stats: ReportStats) -> str:
         <li>时间取 author date；跨时区协作时以提交者本地时间为准。</li>
         <li>「自有代码」= 非空行；已剔除第三方库、生成工程与二进制。</li>
       </ul>
+      <div class="sub-head" style="margin-top:24px">GitHub 主页卡片</div>
+      <p class="num-note" style="margin:6px 0 8px">将生成的 SVG 卡片放入你的同名 Profile 仓库，粘贴以下代码到 README.md：</p>
+      <pre class="embed-code" id="embed-snippet" style="background:var(--paper2);border:1px solid var(--line);padding:12px;font-family:var(--mono);font-size:11.5px;overflow-x:auto;margin:0 0 8px">{embed_snippet}</pre>
+      <button class="filter" type="button" id="copy-embed" onclick="navigator.clipboard&&navigator.clipboard.writeText(document.getElementById('embed-snippet').textContent)">复制嵌入代码</button>
     </div>
     <div class="quote rv">「git 不会说谎——<em style="font-style:normal;color:var(--acc)">{quote_tail}</em>」
       <small>CODEYEAR · {stats.generated_at}</small>

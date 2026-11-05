@@ -16,8 +16,9 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
+from datetime import datetime, timedelta, timezone, tzinfo
 from pathlib import Path
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from . import i18n
 from .languages import language_for
@@ -29,6 +30,59 @@ API = "https://api.github.com"
 DETAIL_WORKERS = 4
 CACHE_VERSION = 1
 CACHE_MAX = 5000
+
+_OFFSET_RE = re.compile(
+    r"^(?:UTC|GMT)?\s*([+-])\s*(\d{1,2})(?::?(\d{2}))?$", re.I
+)
+_FALLBACK_ZONES: dict[str, int] = {
+    "utc": 0,
+    "gmt": 0,
+    "etc/utc": 0,
+    "europe/london": 0,
+    "europe/berlin": 60,
+    "europe/paris": 60,
+    "asia/shanghai": 480,
+    "asia/chongqing": 480,
+    "asia/hong_kong": 480,
+    "asia/taipei": 480,
+    "asia/singapore": 480,
+    "asia/tokyo": 540,
+    "asia/seoul": 540,
+    "Asia/Kolkata".lower(): 330,
+    "america/new_york": -300,
+    "america/chicago": -360,
+    "america/denver": -420,
+    "america/los_angeles": -480,
+}
+
+
+def _parse_tz(tz: str | tzinfo | None = None) -> tzinfo | None:
+    if isinstance(tz, tzinfo):
+        return tz
+    spec = (
+        tz
+        or os.environ.get("CODEYEAR_TZ")
+        or os.environ.get("TZ")
+        or ""
+    ).strip()
+    if not spec:
+        return None
+    if spec.upper() in {"Z", "UTC", "GMT"}:
+        return timezone.utc
+    m = _OFFSET_RE.match(spec)
+    if m:
+        sign = -1 if m.group(1) == "-" else 1
+        hours = int(m.group(2))
+        minutes = int(m.group(3) or 0)
+        if hours <= 14 and minutes < 60:
+            return timezone(sign * timedelta(hours=hours, minutes=minutes))
+    try:
+        return ZoneInfo(spec)
+    except (ZoneInfoNotFoundError, KeyError, ValueError):
+        mins = _FALLBACK_ZONES.get(spec.lower())
+        if mins is not None:
+            return timezone(timedelta(minutes=mins))
+    return None
 
 
 def _load_cache(path: Path | None) -> dict:
@@ -62,15 +116,19 @@ def _save_cache(path: Path | None, details: dict) -> None:
         pass
 
 
-def _dt(value: str | None) -> datetime | None:
+def _dt(
+    value: str | None, tz: str | tzinfo | None = None
+) -> datetime | None:
     if not value:
         return None
     try:
         parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
-        # GitHub timestamps are UTC. Convert to the machine's local timezone
-        # so hour-of-day and late-night statistics match the local report.
+        # GitHub timestamps are UTC. Convert to the requested timezone (or the
+        # machine's local timezone) so hour-of-day and late-night statistics
+        # match the local report.
         if parsed.tzinfo is not None:
-            parsed = parsed.astimezone().replace(tzinfo=None)
+            target_tz = _parse_tz(tz)
+            parsed = parsed.astimezone(target_tz).replace(tzinfo=None)
         return parsed
     except ValueError:
         return None
@@ -127,8 +185,15 @@ class GitHubAPI:
         return items
 
 
-def _repos(api: GitHubAPI, username: str, since: datetime,
-           include_forks: bool) -> list[dict]:
+def _repos(
+    api: GitHubAPI,
+    username: str,
+    since: datetime,
+    include_forks: bool,
+    *,
+    tz: str | tzinfo | None = None,
+) -> list[dict]:
+    target_tz = _parse_tz(tz)
     repos: list[dict] = []
     for page in range(1, 11):
         data = api.get(f"/users/{username}/repos", {
@@ -142,7 +207,7 @@ def _repos(api: GitHubAPI, username: str, since: datetime,
                 continue
             if repo.get("fork") and not include_forks:
                 continue
-            pushed = _dt(repo.get("pushed_at"))
+            pushed = _dt(repo.get("pushed_at"), tz=target_tz)
             if pushed and pushed < since:
                 return repos
             repos.append(repo)
@@ -159,7 +224,10 @@ def _commits(
     limit: int,
     quiet: bool,
     cache: dict | None = None,
+    *,
+    tz: str | tzinfo | None = None,
 ) -> list[Commit]:
+    target_tz = _parse_tz(tz)
     full = repo["full_name"]
     # Pad the UTC window by a day on each side; actual filtering below uses
     # the local year, so commits near midnight in non-UTC zones are kept.
@@ -216,9 +284,9 @@ def _commits(
         if len(detail.get("parents") or []) > 1:
             continue
         author_date = ((detail.get("commit") or {}).get("author") or {}).get("date")
-        dt = _dt(author_date)
+        dt = _dt(author_date, tz=target_tz)
         if dt is None:
-            dt = _dt((item.get("commit") or {}).get("author", {}).get("date"))
+            dt = _dt((item.get("commit") or {}).get("author", {}).get("date"), tz=target_tz)
         if dt is None or dt.year != year:
             continue
         message = ((detail.get("commit") or {}).get("message") or "").splitlines()
@@ -275,8 +343,10 @@ def fetch_stats(
     include_forks: bool = False,
     quiet: bool = False,
     cache_path: Path | None = None,
+    tz: str | tzinfo | None = None,
 ) -> tuple[ReportStats, list[str], str]:
     api = GitHubAPI(token)
+    target_tz = _parse_tz(tz)
     cache = _load_cache(cache_path)
     if not api.token and max_commits > 30:
         max_commits = 30
@@ -293,11 +363,13 @@ def fetch_stats(
             ))
         login = user.get("login") or username
         display_name = user.get("name") or login
-        since = datetime(year, 1, 1)
+        # Pad the repo cutoff by 1 day so repos pushed near Jan 1 UTC are not
+        # skipped when converted to negative-offset timezones.
+        since = datetime(year - 1, 12, 31)
 
         if not quiet:
             print(f"CodeYear · github.com/{login} · {year}", file=sys.stderr)
-        repos = _repos(api, login, since, include_forks)
+        repos = _repos(api, login, since, include_forks, tz=target_tz)
     except RuntimeError as exc:
         raise RuntimeError(i18n.tr(
             "GitHub API 错误: {exc}", exc=exc,
@@ -318,7 +390,7 @@ def fetch_stats(
         try:
             commits = _commits(
                 api, repo, login, year, max_commits - total, quiet,
-                cache=cache,
+                cache=cache, tz=target_tz,
             )
         except RuntimeError as exc:
             warnings.append(str(exc))
@@ -338,7 +410,7 @@ def fetch_stats(
             remote=repo.get("html_url"),
             readme_line=repo.get("description") or "",
             root=full,
-            root_dt=_dt(repo.get("created_at")),
+            root_dt=_dt(repo.get("created_at"), tz=target_tz),
             total_commits=repo_total or len(commits),
             tags_in_year=0,
         ))
@@ -382,6 +454,7 @@ def run(
     fallback_previous: bool = False,
     cache_dir: str | Path | None = None,
     lang: str = "zh",
+    tz: str | None = None,
 ) -> int:
     cache_path = None
     if cache_dir:
@@ -391,7 +464,7 @@ def run(
         stats, warnings, login = fetch_stats(
             username, year, token=token, max_commits=max_commits,
             include_forks=include_forks, quiet=quiet,
-            cache_path=cache_path,
+            cache_path=cache_path, tz=tz,
         )
         if (
             fallback_previous
@@ -401,7 +474,7 @@ def run(
             previous, prev_warnings, login = fetch_stats(
                 username, year - 1, token=token, max_commits=max_commits,
                 include_forks=include_forks, quiet=quiet,
-                cache_path=cache_path,
+                cache_path=cache_path, tz=tz,
             )
             if previous.commit_count:
                 stats, warnings = previous, prev_warnings

@@ -30,6 +30,7 @@ SCHEMA = {
     "theme": str,
     "max_commits": int,
     "open": bool,
+    "tz": str,
 }
 
 
@@ -76,3 +77,33 @@ def load() -> dict:
     if clean.get("jobs", 1) <= 0:
         clean.pop("jobs", None)
     return clean
+
+
+def save(values: dict) -> Path:
+    """Validate and persist user defaults to ``~/.codeyear.json``."""
+    merged = load()
+    merged.update(values)
+    clean: dict = {}
+    for key, expected in SCHEMA.items():
+        if key not in merged:
+            continue
+        value = merged[key]
+        if expected is list:
+            if isinstance(value, list) and all(isinstance(item, str) for item in value):
+                clean[key] = value
+        elif expected is bool:
+            if isinstance(value, bool):
+                clean[key] = value
+        elif expected is int:
+            if isinstance(value, int) and not isinstance(value, bool):
+                clean[key] = value
+        elif expected is str and isinstance(value, str):
+            if key == "theme" and value not in {"paper", "mono", "forest", "ocean"}:
+                continue
+            clean[key] = value
+    target = path()
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(
+        json.dumps(clean, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    return target

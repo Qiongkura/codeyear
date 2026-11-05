@@ -104,7 +104,7 @@ def build_persona(
         )
     else:
         time_sentence = f"提交高峰在 {time_window}"
-        time_sentence_en = f"peak hour was {time_window}"
+        time_sentence_en = f"Peak hour was around {peak_hour:02d}:00"
 
     style_parts = []
     style_parts_en = []

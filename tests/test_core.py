@@ -1296,3 +1296,114 @@ def test_english_card_has_no_chinese():
     assert stats.persona.title_en in svg
     assert "COMMITS" in svg
     assert not re.findall(r"[一-鿿]+", svg)
+
+
+
+def test_public_timezone_conversion():
+    from codeyear.github_public import _dt
+
+    assert _dt("2026-01-01T16:30:00Z", tz="UTC+8") == datetime(2026, 1, 2, 0, 30)
+    assert _dt("2026-01-01T02:00:00Z", tz="-05:00") == datetime(2025, 12, 31, 21, 0)
+    assert _dt("2026-06-01T15:00:00Z", tz="Asia/Shanghai") == datetime(2026, 6, 1, 23, 0)
+
+
+def test_runner_compare_scans_each_repo_once(tmp_path):
+    from codeyear.runner import discover, scan
+
+    repo = tmp_path / "demo"
+    env = _init_repo(repo)
+    _commit(repo, "a.txt", "feat: prev", "2025-05-01T10:00:00", env)
+    _commit(repo, "b.txt", "feat: curr1", "2026-05-01T10:00:00", env)
+    _commit(repo, "c.txt", "fix: curr2", "2026-05-02T11:00:00", env)
+
+    repos = discover([tmp_path])
+    stats, warnings = scan(repos, [tmp_path], 2026, None, compare=True)
+    assert not warnings
+    assert stats.commit_count == 2
+    assert stats.previous is not None
+    assert stats.previous["previous_commits"] == 1
+    assert stats.previous["commits"] == 1
+    assert stats.previous["commits_pct"] == 1.0
+
+
+def test_daytime_persona_has_no_chinese_in_english():
+    import re
+
+    from codeyear.personas import build_persona
+
+    persona = build_persona(
+        year=2025, commits=100, repos=3, lines=5000,
+        insertions=4000, deletions=1000, active_days=40,
+        longest_streak=5, current_streak=0, night_commits=10,
+        early_commits=5, weekend_commits=10, peak_hour=14,
+        fix_commits=10, feat_commits=20, typed_commits=40,
+        lang_count=2, busiest_count=8,
+    )
+    assert "Peak hour was around 14:00" in persona.subtitle_en
+    assert not re.findall(r"[\u4e00-\u9fff]+", persona.summary_en)
+
+
+def test_html_report_past_year_stamp_uses_year_end():
+    from codeyear.html_report import _stamp_for, build_html
+
+    label, active = _stamp_for("2024.12.28", "2026-11-05 18:00", 2024)
+    assert label == "活跃" and active is True
+
+    repo = RepoResult(
+        path=Path("demo"), name="demo",
+        commits=[Commit(
+            repo="demo", hash="d" * 40, dt=datetime(2024, 12, 28, 14, 0),
+            subject="feat: year end", added=10, deleted=2, files=1,
+            author_email="me@example.com", author_name="Me",
+            changes=[FileChange("a.py", "Python", 12)],
+        )],
+        total_commits=1,
+    )
+    stats = build_stats(
+        year=2024, root="/tmp", repos=[repo],
+        identity=("me@example.com", "Me"),
+    )
+    html = build_html(stats)
+    assert "2024 活跃区间" in html
+
+
+def test_config_save_and_load_roundtrip(tmp_path, monkeypatch):
+    from codeyear.config import load, save
+
+    cfg_file = tmp_path / "codeyear.json"
+    monkeypatch.setenv("CODEYEAR_CONFIG", str(cfg_file))
+    save({"year": 2025, "theme": "forest", "compare": True, "roots": ["D:/work"]})
+    loaded = load()
+    assert loaded["year"] == 2025
+    assert loaded["theme"] == "forest"
+    assert loaded["compare"] is True
+    assert loaded["roots"] == ["D:/work"]
+
+
+def test_scanner_fast_metadata_extraction(tmp_path):
+    from codeyear.scanner import _git_remote, _git_root_info, _git_tags_in_year
+
+    repo = tmp_path / "repo"
+    env = _init_repo(repo)
+    _git(repo, "remote", "add", "origin", "https://github.com/me/demo.git")
+    _commit(repo, "a.txt", "feat: init", "2026-01-10T09:30:00", env)
+
+    assert _git_remote(repo) == "https://github.com/me/demo.git"
+    root_hash, root_dt = _git_root_info(repo)
+    assert root_hash and len(root_hash) == 40
+    assert root_dt == datetime(2026, 1, 10, 9, 30, 0)
+    assert _git_tags_in_year(repo, 2026) == 0
+
+
+def test_report_contains_profile_card_embed_snippet():
+    from codeyear.report_theme import decorate, to_english
+
+    stats = _stats()
+    html = decorate(build_html(stats), stats)
+    assert 'id="embed-snippet"' in html
+    assert "codeyear-2026-card-dark.svg" in html
+    assert "复制嵌入代码" in html
+
+    en = to_english(html, stats)
+    assert "GitHub profile card" in en
+    assert "Copy embed snippet" in en

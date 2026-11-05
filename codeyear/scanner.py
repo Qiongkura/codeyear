@@ -125,10 +125,12 @@ def _build_log_cmd(
     year: int,
     author: str | None,
     *,
+    since_year: int | None = None,
     trust_repo: bool,
     use_mailmap: bool = True,
     all_branches: bool = False,
 ) -> list[str]:
+    start_year = since_year if since_year is not None else year
     cmd = ["git", "-c", "core.quotepath=false"]
     if trust_repo:
         # Some repos are copies/backups owned by another Windows account.
@@ -141,7 +143,7 @@ def _build_log_cmd(
     cmd += [
         "-C", str(repo_path),
         "log",
-        f"--since={year}-01-01T00:00:00",
+        f"--since={start_year}-01-01T00:00:00",
         f"--until={year + 1}-01-01T00:00:00",
         "--date=format:%Y-%m-%dT%H:%M:%S",
         f"--pretty=format:%x1e%H%x1f%ad%x1f{email_fmt}%x1f{name_fmt}%x1f%s",
@@ -182,7 +184,28 @@ def _readme_line(repo_path: Path) -> str | None:
     return None
 
 
+_ORIGIN_SECTION_RE = re.compile(
+    r'^\[remote\s+"origin"\]\s*$([\s\S]*?)(?=^\[|\Z)', re.M
+)
+_ORIGIN_URL_RE = re.compile(r"^\s*url\s*=\s*(.+)$", re.M)
+
+
 def _git_remote(repo_path: Path) -> str | None:
+    git_cfg = repo_path / ".git" / "config"
+    if git_cfg.is_file():
+        try:
+            cfg_text = git_cfg.read_text(encoding="utf-8", errors="replace")
+            sec = _ORIGIN_SECTION_RE.search(cfg_text)
+            if sec:
+                m = _ORIGIN_URL_RE.search(sec.group(1))
+                if m:
+                    url = m.group(1).strip()
+                    if url:
+                        return url
+            else:
+                return None
+        except OSError:
+            pass
     try:
         proc = subprocess.run(
             ["git", "-c", f"safe.directory={repo_path.as_posix()}",
@@ -248,7 +271,60 @@ def _git_total_commits(repo_path: Path) -> int:
         return 0
 
 
+def _git_root_info(repo_path: Path) -> tuple[str | None, datetime | None]:
+    """Fetch both root commit hash and its author date in one git call."""
+    value = _git_text(
+        repo_path,
+        [
+            "rev-list", "--max-parents=0",
+            "--format=%ad", "--date=format:%Y-%m-%dT%H:%M:%S", "HEAD",
+        ],
+    )
+    if not value:
+        return None, None
+    lines = [line.strip() for line in value.splitlines() if line.strip()]
+    root_hash: str | None = None
+    root_dt: datetime | None = None
+    for idx, line in enumerate(lines):
+        if line.startswith("commit "):
+            candidate = line[7:].strip()
+            if candidate:
+                root_hash = candidate
+                if idx + 1 < len(lines):
+                    try:
+                        root_dt = datetime.strptime(
+                            lines[idx + 1], "%Y-%m-%dT%H:%M:%S"
+                        )
+                    except ValueError:
+                        root_dt = None
+                break
+    return root_hash, root_dt
+
+
+def _has_any_tags(repo_path: Path) -> bool:
+    git_dir = repo_path / ".git"
+    if not git_dir.is_dir():
+        return True
+    tags_dir = git_dir / "refs" / "tags"
+    try:
+        if tags_dir.is_dir() and any(tags_dir.iterdir()):
+            return True
+    except OSError:
+        return True
+    packed = git_dir / "packed-refs"
+    if packed.is_file():
+        try:
+            return "refs/tags/" in packed.read_text(
+                encoding="utf-8", errors="replace"
+            )
+        except OSError:
+            return True
+    return False
+
+
 def _git_tags_in_year(repo_path: Path, year: int) -> int:
+    if not _has_any_tags(repo_path):
+        return 0
     value = _git_text(repo_path, ["for-each-ref", "--format=%(creatordate:short)", "refs/tags"])
     prefix = f"{year}-"
     return sum(1 for line in value.splitlines() if line.strip().startswith(prefix))
@@ -259,11 +335,13 @@ def scan_repo(
     root: Path,
     year: int,
     *,
+    since_year: int | None = None,
     author: str | None = None,
     timeout: int = 300,
     use_mailmap: bool = True,
     all_branches: bool = False,
 ) -> RepoResult:
+    start_year = since_year if since_year is not None else year
     name = _repo_name(repo_path, root)
     result = RepoResult(path=repo_path, name=name)
 
@@ -271,6 +349,7 @@ def scan_repo(
     while True:
         cmd = _build_log_cmd(
             repo_path, year, author,
+            since_year=since_year,
             trust_repo=trust_repo, use_mailmap=use_mailmap,
             all_branches=all_branches,
         )
@@ -316,10 +395,8 @@ def scan_repo(
         return result
 
     result.remote = _git_remote(repo_path)
-    result.readme_line = _readme_line(repo_path)
-    result.root = _git_root(repo_path)
-    if result.root:
-        result.root_dt = _git_root_date(repo_path, result.root)
+    result.readme_line = _readme_line(repo_path) if proc.stdout.strip() else None
+    result.root, result.root_dt = _git_root_info(repo_path)
     result.total_commits = _git_total_commits(repo_path)
     result.tags_in_year = _git_tags_in_year(repo_path, year)
 
@@ -341,7 +418,7 @@ def scan_repo(
             dt = datetime.strptime(date_s, "%Y-%m-%dT%H:%M:%S")
         except ValueError:
             continue
-        if dt.year != year:
+        if not (start_year <= dt.year <= year):
             continue
 
         added_total = 0

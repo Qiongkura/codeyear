@@ -20,9 +20,9 @@ from .card import THEMES, build_svg
 from .github_public import fetch_stats
 
 USERNAME_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$")
-CACHE: OrderedDict[tuple[str, int, int], tuple[float, object]] = OrderedDict()
+CACHE: OrderedDict[tuple, tuple[float, object]] = OrderedDict()
 CACHE_LOCK = threading.Lock()
-KEY_LOCKS: dict[tuple[str, int, int], threading.Lock] = {}
+KEY_LOCKS: dict[tuple, threading.Lock] = {}
 KEY_LOCKS_GUARD = threading.Lock()
 CACHE_TTL = 3600
 CACHE_MAX = 128
@@ -49,8 +49,19 @@ def _allow(ip: str) -> bool:
         return True
 
 
-def _cached_stats(username: str, year: int, token: str | None, max_commits: int):
-    key = (username.lower(), year, max_commits)
+def _cached_stats(
+    username: str,
+    year: int,
+    token: str | None,
+    max_commits: int,
+    tz: str | None = None,
+):
+    tz_norm = (tz or "").strip().lower()
+    key = (
+        (username.lower(), year, max_commits, tz_norm)
+        if tz_norm
+        else (username.lower(), year, max_commits)
+    )
     now = time.time()
     with CACHE_LOCK:
         item = CACHE.get(key)
@@ -72,9 +83,14 @@ def _cached_stats(username: str, year: int, token: str | None, max_commits: int)
             if item and now - item[0] < CACHE_TTL:
                 CACHE.move_to_end(key)
                 return item[1]
-        stats, _warnings, _login = fetch_stats(
-            username, year, token=token, max_commits=max_commits, quiet=True,
-        )
+        fetch_kwargs: dict = {
+            "token": token,
+            "max_commits": max_commits,
+            "quiet": True,
+        }
+        if tz:
+            fetch_kwargs["tz"] = tz
+        stats, _warnings, _login = fetch_stats(username, year, **fetch_kwargs)
         with CACHE_LOCK:
             CACHE[key] = (time.time(), stats)
             CACHE.move_to_end(key)
@@ -152,8 +168,11 @@ class Handler(BaseHTTPRequestHandler):
         if theme not in THEMES:
             theme = "paper"
         lang = "en" if (query.get("lang") or ["zh"])[0] == "en" else "zh"
+        tz = (query.get("tz") or [""])[0].strip() or None
         try:
-            stats = _cached_stats(username, year, self.token, self.max_commits)
+            stats = _cached_stats(
+                username, year, self.token, self.max_commits, tz=tz,
+            )
             svg = build_svg(
                 stats, dark=parsed.path.endswith("-dark.svg"), theme=theme,
                 lang=lang,

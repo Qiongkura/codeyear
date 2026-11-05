@@ -6,6 +6,7 @@ import json
 import os
 import subprocess
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import replace
 from pathlib import Path
 from typing import Callable
 
@@ -98,10 +99,15 @@ def scan(
     total = len(repos)
 
     def prepare(repo: Path, root: Path) -> RepoResult:
-        result = scan_repo(
-            repo, root, year, author=author, timeout=timeout,
-            use_mailmap=use_mailmap, all_branches=all_branches,
-        )
+        kwargs: dict = {
+            "author": author,
+            "timeout": timeout,
+            "use_mailmap": use_mailmap,
+            "all_branches": all_branches,
+        }
+        if compare:
+            kwargs["since_year"] = year - 1
+        result = scan_repo(repo, root, year, **kwargs)
         if len(roots) > 1:
             label = labels[root]
             old = result.name
@@ -140,22 +146,42 @@ def scan(
                 if progress:
                     progress(done, total, result.name)
 
-    stats = build_stats(
-        year=year,
-        root=" + ".join(str(root) for root in roots),
-        repos=results,
-        warnings=warnings,
-        identity=identity,
-        aliases=aliases,
-    )
+    root_label = " + ".join(str(root) for root in roots)
     if compare:
-        previous, _ = scan(
-            repos, roots, year - 1, identity,
-            aliases=aliases, author=author, timeout=timeout, jobs=jobs,
-            progress=None, compare=False, use_mailmap=use_mailmap,
-            all_branches=all_branches,
+        current_results = [
+            replace(r, commits=[c for c in r.commits if c.dt.year == year])
+            for r in results
+        ]
+        prev_results = [
+            replace(r, commits=[c for c in r.commits if c.dt.year == year - 1])
+            for r in results
+        ]
+        stats = build_stats(
+            year=year,
+            root=root_label,
+            repos=current_results,
+            warnings=warnings,
+            identity=identity,
+            aliases=aliases,
+        )
+        previous = build_stats(
+            year=year - 1,
+            root=root_label,
+            repos=prev_results,
+            warnings=[],
+            identity=identity,
+            aliases=aliases,
         )
         stats.previous = compare_summary(stats, previous)
+    else:
+        stats = build_stats(
+            year=year,
+            root=root_label,
+            repos=results,
+            warnings=warnings,
+            identity=identity,
+            aliases=aliases,
+        )
     return stats, warnings
 
 

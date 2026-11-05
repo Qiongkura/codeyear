@@ -126,6 +126,8 @@ codeyear github Qiongkura --year 2026 --out ./codeyear-github
 - 缓存会复用已拉取的 commit 详情，所以日常增量更新很快；缓存上限为 5,000 条。
 - 公开模式的提交时间会按运行机器的本地时区换算；“深夜/作息”统计取决于 `TZ`。
   Profile 模板默认 `TZ=Asia/Shanghai`，其他时区改这一行即可。
+  也可以用 `--tz UTC+8` / `CODEYEAR_TZ=Asia/Shanghai` 显式指定；在线服务支持
+  `/card.svg?...&tz=Asia/Shanghai`。
 - 超过 5,000 次/年、或需要统计组织/私有仓库时，用本地 `codeyear scan`，没有这些 API 上限。
 
 ### 在线卡片服务

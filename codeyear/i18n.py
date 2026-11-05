@@ -56,6 +56,8 @@ EN = {
         "Cache public commit details in this directory for faster reruns",
     "当年没有提交时回退到上一年，适合跨年自动更新":
         "Fall back to the previous year when the requested year has no commits",
+    "时区（如 UTC+8 或 Asia/Shanghai；默认本机时区）":
+        "Timezone (e.g. UTC+8 or Asia/Shanghai; default local timezone)",
     # serve
     "监听地址，默认 127.0.0.1": "Listen address, default 127.0.0.1",
     "监听端口，默认 8000": "Listen port, default 8000",
@@ -199,6 +201,9 @@ EN = {
     "可添加多个目录": "Multiple folders allowed",
     "年份": "Year",
     "扫描层级": "Depth",
+    "卡片主题": "Card theme",
+    "保存默认": "Save defaults",
+    "已保存默认设置。": "Default settings saved.",
     "只统计我本人（{who}）": "Count only me ({who})",
     "未检测到 git 身份，将统计所有作者":
         "No git identity detected; counting all authors",
@@ -240,6 +245,7 @@ EN = {
     "失败：{message}": "Failed: {message}",
     "生成失败": "Generation failed",
     "无法打开": "Cannot open",
+    "无法保存": "Could not save",
     "无法启动图形界面: {exc}": "Could not start the GUI: {exc}",
 }
 

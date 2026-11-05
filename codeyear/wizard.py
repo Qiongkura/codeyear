@@ -15,6 +15,7 @@ from datetime import date
 from pathlib import Path
 
 from . import i18n
+from .config import load as load_config
 from .runner import detect_identity, discover, render, report_path, scan
 from .stats import fmt_human, fmt_int
 
@@ -33,8 +34,16 @@ def _yes(prompt: str, default: bool = True) -> bool:
     return value in {"y", "yes", "是"}
 
 
-def _choose_roots() -> list[Path]:
-    roots = [Path.cwd().resolve()]
+def _choose_roots(default_roots: list[str] | None = None) -> list[Path]:
+    roots: list[Path] = []
+    for raw in default_roots or []:
+        candidate = Path(raw).expanduser()
+        if candidate.is_dir():
+            resolved = candidate.resolve()
+            if resolved not in roots:
+                roots.append(resolved)
+    if not roots:
+        roots = [Path.cwd().resolve()]
     print(i18n.tr("选择要扫描的目录。默认是当前目录，可以继续添加。"))
     while True:
         print("\n" + i18n.tr("已选择："))
@@ -106,12 +115,14 @@ def _open(path: Path) -> None:
 
 def run() -> int:
     try:
-        roots = _choose_roots()
-        depth_raw = _ask("向下扫描层级（文件夹层数）", "6")
+        cfg = load_config()
+        roots = _choose_roots(cfg.get("roots"))
+        default_depth = int(cfg.get("max_depth", 6))
+        depth_raw = _ask("向下扫描层级（文件夹层数）", str(default_depth))
         try:
             depth = max(1, int(depth_raw))
         except ValueError:
-            depth = 6
+            depth = default_depth
 
         print("\n" + i18n.tr("正在查找 git 仓库…"))
         repos = discover(roots, depth)
@@ -120,49 +131,60 @@ def run() -> int:
             print(i18n.tr("没有找到仓库，换个目录试试。"))
             return 2
 
-        year_raw = _ask("统计年份", str(date.today().year))
+        default_year = int(cfg.get("year", date.today().year))
+        year_raw = _ask("统计年份", str(default_year))
         try:
             year = int(year_raw)
         except ValueError:
-            year = date.today().year
+            year = default_year
 
         identity = detect_identity()
-        aliases: list[str] = []
+        aliases: list[str] = list(cfg.get("aliases", []))
         if identity:
             email, name = identity
             label = f"{name} <{email}>" if name and email else (email or name)
+            only_me_default = not bool(cfg.get("all_authors", False))
             if not _yes(
-                i18n.tr("只统计你本人（{label}）?", label=label), True
+                i18n.tr("只统计你本人（{label}）?", label=label), only_me_default
             ):
                 identity = None
             else:
-                extra = _ask("旧邮箱/名字（逗号分隔，可空）", "")
+                default_aliases = ", ".join(aliases)
+                extra = _ask("旧邮箱/名字（逗号分隔，可空）", default_aliases)
                 aliases = [item.strip() for item in extra.split(",") if item.strip()]
         else:
             print(i18n.tr("未检测到 git 身份，将统计所有作者。"))
 
-        out_raw = _ask("输出目录", "codeyear-output")
+        out_raw = _ask("输出目录", str(cfg.get("out", "codeyear-output")))
         out_dir = Path(out_raw).expanduser().resolve()
         out_dir.mkdir(parents=True, exist_ok=True)
-        compare = _yes("同时统计去年，生成同比?", False)
-        all_branches = _yes("统计所有分支/tag?", False)
-        jobs_raw = _ask("并行扫描数", "1")
+        compare = _yes("同时统计去年，生成同比?", bool(cfg.get("compare", False)))
+        all_branches = _yes("统计所有分支/tag?", bool(cfg.get("all_branches", False)))
+        default_jobs = int(cfg.get("jobs", 1))
+        jobs_raw = _ask("并行扫描数", str(default_jobs))
         try:
             jobs = max(1, int(jobs_raw))
         except ValueError:
-            jobs = 1
-        open_after = _yes("完成后打开报告?", True)
+            jobs = default_jobs
+        open_after = _yes("完成后打开报告?", bool(cfg.get("open", True)))
 
         stats, warnings = scan(
             repos, roots, year, identity, aliases=aliases,
+            author=cfg.get("author"),
+            timeout=int(cfg.get("timeout", 300)),
             progress=_progress, jobs=jobs, compare=compare,
+            use_mailmap=not bool(cfg.get("no_mailmap", False)),
             all_branches=all_branches,
         )
         if stats.commit_count == 0:
             print("\n" + i18n.tr("{year} 年没有找到提交。", year=year))
             return 3
 
-        written = render(stats, out_dir, lang=i18n.get_lang())
+        written = render(
+            stats, out_dir,
+            card_theme=str(cfg.get("theme", "paper")),
+            lang=i18n.get_lang(),
+        )
 
         print()
         print(i18n.tr(
