@@ -109,6 +109,9 @@ codeyear github Qiongkura --year 2026 --out ./codeyear-github
 - **Scope:** only public repositories owned by the account (`type=owner`) and commits GitHub can associate with that login. Organization/collaborator repositories and commits from unlinked emails are not counted, and merge commits are excluded. Use local `scan` for the full history.
 - Requires network access; fetches up to 200 commit details by default (`--max-commits`).
 - Without a token it is capped at 30 commits and is easy to rate-limit; set `GITHUB_TOKEN` or pass `--token`.
+- For accounts with many public commits, `GITHUB_TOKEN` in Actions is usually limited to
+  1,000 requests/hour. Add a `CODEYEAR_TOKEN` (PAT) secret to the profile repo to avoid
+  truncated statistics.
 - Outputs the full report, poster, long image, cards, and `codeyear-2026-embed.md` for your profile README.
 - Card only: add `--card-only` to skip the report, poster, and long image.
 - Update the profile repo directly: add `--profile-repo ~/Qiongkura` (local only) or `--push-profile` (commit and push).
@@ -162,7 +165,9 @@ If you only have Cloudflare, expose the local service with a tunnel:
 > daily at 04:00 UTC by default; change the workflow `cron` to weekly (`0 4 * * 1`)
 > or monthly (`0 4 1 * *`). `--fallback-previous` keeps last year's card until the
 > new year has commits. The template installs the release wheel; bump
-> `CODEYEAR_VERSION` (currently `0.2.13`) when upgrading.
+> `CODEYEAR_VERSION` (currently `0.2.13`) when upgrading. For high-volume accounts,
+> add a `CODEYEAR_TOKEN` (PAT) secret to the profile repo; the template prefers it
+> and falls back to `GITHUB_TOKEN`, which is usually limited to 1,000 requests/hour.
 
 GitHub Action template: [docs/codeyear-card.yml](docs/codeyear-card.yml).
 

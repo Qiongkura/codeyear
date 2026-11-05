@@ -184,7 +184,7 @@ def _commits(
     if missing:
         if api.remaining is not None and api.remaining < len(missing) + 5:
             raise RuntimeError(i18n.tr(
-                "GitHub API 额度不足，请设置 GITHUB_TOKEN 后重试。"
+                "GitHub API 额度不足，请使用更高额度的 token（如 CODEYEAR_TOKEN）后重试。"
             ))
 
         def fetch_detail(entry: tuple[int, dict]):

@@ -44,17 +44,18 @@ jobs:
           CODEYEAR_VERSION: 0.2.13
 
       - name: Generate card and update README
+        # 提交很多时，加一个 CODEYEAR_TOKEN（PAT）可避免 GITHUB_TOKEN 的 1,000 次/小时限制
         run: >
           codeyear github ${{ github.repository_owner }}
           --year $(date +%Y)
           --fallback-previous
-          --max-commits 500
+          --max-commits 2000
           --card-only
           --out "$RUNNER_TEMP/codeyear"
           --cache-dir "$HOME/.cache/codeyear"
           --profile-repo .
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.CODEYEAR_TOKEN || secrets.GITHUB_TOKEN }}
           # 想要英文卡片就改成 en（同时决定 CLI 语言）
           CODEYEAR_LANG: zh
 

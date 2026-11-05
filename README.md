@@ -108,6 +108,8 @@ codeyear github Qiongkura --year 2026 --out ./codeyear-github
 - **口径**：只统计该账号名下的公开仓库（GitHub `type=owner`），以及 GitHub 能关联到该账号的提交；组织仓库、collaborator 仓库、未绑定 GitHub 账号的邮箱提交不计入，合并提交也不计入。需要完整历史请用本地 `scan`。
 - 需要网络；默认最多拉 200 条提交详情，可用 `--max-commits` 调整。
 - 没有 token 时最多 30 条，且容易触发 GitHub API 限流；建议设置 `GITHUB_TOKEN` 或传 `--token`。
+- 公开仓库提交很多时，`GITHUB_TOKEN` 在 Actions 里通常只有 1,000 次/小时额度；可在
+  Profile 仓库添加 `CODEYEAR_TOKEN`（PAT）并在 workflow 里使用，避免统计被截断。
 - 输出包含完整报告、海报、长图、卡片，以及 `codeyear-2026-embed.md`，可以直接粘到 Profile README。
 - 只想要卡片：加 `--card-only`，跳过报告、海报和长图。
 - 想直接更新 Profile 仓库：加 `--profile-repo ~/Qiongkura`（只写本地）或再加 `--push-profile`（联网推送）。
@@ -159,6 +161,9 @@ https://your-host/card.svg?username=Qiongkura&year=2026&lang=en
 > 更新；改 workflow 里的 `cron` 可切成每周一 `0 4 * * 1` 或每月 1 日 `0 4 1 * *`。
 > 跨年时如果新的一年还没有提交，`--fallback-previous` 会继续显示上一年的卡片。
 > 模板直接安装 Release 里的 wheel；升级时改 `CODEYEAR_VERSION`（当前 `0.2.13`）。
+> 提交量大的账号建议在 Profile 仓库添加 `CODEYEAR_TOKEN`（PAT）secret；模板会优先使用它，
+> 否则回退到 `GITHUB_TOKEN`。`GITHUB_TOKEN` 在 Actions 里通常只有 1,000 次/小时额度，
+> 超过这个量时提交详情会被截断。
 
 GitHub Action 自动更新模板：[docs/codeyear-card.yml](docs/codeyear-card.yml)。
 

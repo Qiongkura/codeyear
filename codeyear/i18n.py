@@ -153,8 +153,9 @@ EN = {
         "No public commits found for {login} in {year}.",
     "已达到 --max-commits 上限（{limit}）":
         "Reached the --max-commits limit ({limit})",
-    "GitHub API 额度不足，请设置 GITHUB_TOKEN 后重试。":
-        "GitHub API quota exhausted; set GITHUB_TOKEN and retry.",
+    "GitHub API 额度不足，请使用更高额度的 token（如 CODEYEAR_TOKEN）后重试。":
+        "GitHub API quota exhausted; use a higher-limit token "
+        "(e.g. CODEYEAR_TOKEN) and retry.",
     # wizard
     "选择要扫描的目录。默认是当前目录，可以继续添加。":
         "Choose folders to scan. The current directory is selected by default.",
