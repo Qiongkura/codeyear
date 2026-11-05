@@ -537,6 +537,34 @@ def test_public_mode_skips_merge_commits():
     assert [commit.hash for commit in commits] == ["a"]
 
 
+def test_public_mode_reads_beyond_one_thousand_commits():
+    from codeyear.github_public import _commits
+
+    class FakeAPI:
+        remaining = 100_000
+
+        def get(self, path, params=None):
+            if path.endswith("/commits"):
+                page = (params or {}).get("page", 1)
+                if page > 20:
+                    return []
+                return [{"sha": f"{page}-{index}"} for index in range(100)]
+            return {
+                "commit": {
+                    "author": {"date": "2026-01-02T10:00:00Z"},
+                    "message": "feat: keep",
+                },
+                "stats": {"additions": 1, "deletions": 0},
+                "files": [],
+                "parents": [{}],
+            }
+
+    commits = _commits(
+        FakeAPI(), {"full_name": "me/demo"}, "me", 2026, 1500, True,
+    )
+    assert len(commits) == 1500
+
+
 def test_server_cache_is_bounded(monkeypatch):
     from codeyear import server
 

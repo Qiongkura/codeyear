@@ -120,6 +120,14 @@ codeyear github Qiongkura --year 2026 --out ./codeyear-github
 - Card theme: `--theme paper|mono|forest|ocean`; [theme gallery](docs/themes.md).
 - The local `scan` command remains the default; your code is not uploaded.
 
+**Data limits in public mode**
+
+- Only public repositories owned by the account are scanned; organization, collaborator, and private repositories are excluded. Only commits GitHub can associate with the login count, and merges are skipped.
+- Each commit detail is one API request. `--max-commits` is a hard cap for that run (default 200; the profile Action template uses 5,000).
+- The built-in `GITHUB_TOKEN` in Actions is usually limited to 1,000 requests/hour/repository; a `CODEYEAR_TOKEN` (PAT) usually gets 5,000/hour.
+- Cached commit details are reused, so daily incremental updates are fast; the cache holds up to 5,000 details.
+- For more than 5,000 commits/year, or when you need organization/private repositories, use local `codeyear scan`, which has no such API limits.
+
 ### Online card service
 
 ```bash

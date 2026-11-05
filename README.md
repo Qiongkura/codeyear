@@ -118,6 +118,14 @@ codeyear github Qiongkura --year 2026 --out ./codeyear-github
 - 卡片主题：`--theme paper|mono|forest|ocean`；[主题预览](docs/themes.md)。
 - 本地 `scan` 仍是默认模式，代码不会上传。
 
+**公开模式的数据边界**
+
+- 只统计账号名下的公开仓库，组织仓库、collaborator 仓库、私有仓库不包含；只算 GitHub 能关联到该账号的提交，merge 也不计。
+- 每条 commit 详情是 1 次 API 请求，`--max-commits` 是本次运行的硬上限，默认 200；Profile Action 模板设为 5,000。
+- Actions 内置 `GITHUB_TOKEN` 通常只有 1,000 次/小时/仓库；添加 `CODEYEAR_TOKEN`（PAT）后通常有 5,000 次/小时。
+- 缓存会复用已拉取的 commit 详情，所以日常增量更新很快；缓存上限为 5,000 条。
+- 超过 5,000 次/年、或需要统计组织/私有仓库时，用本地 `codeyear scan`，没有这些 API 上限。
+
 ### 在线卡片服务
 
 ```bash

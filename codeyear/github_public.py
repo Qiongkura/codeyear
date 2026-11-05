@@ -159,7 +159,9 @@ def _commits(
     since = f"{year}-01-01T00:00:00Z"
     until = f"{year + 1}-01-01T00:00:00Z"
     listed: list[dict] = []
-    for page in range(1, 11):
+    # A busy repository can exceed 1,000 commits in one year; keep paging
+    # until the caller's budget is reached or GitHub runs out of pages.
+    for page in range(1, 101):
         data = api.get(f"/repos/{full}/commits", {
             "author": username, "since": since, "until": until,
             "per_page": 100, "page": page,
