@@ -102,9 +102,13 @@ def _commits(
         file_count = rng.randint(1, 6)
         changes = []
         for path, lang in rng.sample(files, k=min(file_count, len(files))):
+            f_lines = max(1, added // file_count + rng.randint(-8, 8))
+            f_del = max(0, deleted // file_count)
             changes.append(FileChange(
                 path=path, lang=lang,
-                lines=max(1, added // file_count + rng.randint(-8, 8)),
+                lines=f_lines,
+                added=max(0, f_lines - f_del),
+                deleted=f_del,
             ))
         commits.append(Commit(
             repo=repo,

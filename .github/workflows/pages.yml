@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "docs/**"
+      - "codeyear/__init__.py"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -32,6 +33,22 @@ jobs:
           # 首次运行会自动开启 Pages；如果仓库策略不允许，请在
           # Settings → Pages 里手动把 Source 设为 GitHub Actions。
           enablement: true
+
+      - name: Sync version.json
+        run: |
+          python3 - <<'PY'
+          import json, re
+          from pathlib import Path
+          init = Path("codeyear/__init__.py").read_text(encoding="utf-8")
+          m = re.search(r'__version__\s*=\s*"([^"]+)"', init)
+          ver = m.group(1) if m else "0.2.13"
+          base = f"https://github.com/Qiongkura/codeyear/releases/download/v{ver}"
+          Path("docs/version.json").write_text(json.dumps({
+              "version": ver,
+              "wheel_url": f"{base}/codeyear-{ver}-py3-none-any.whl",
+              "exe_url": f"{base}/CodeYear.exe",
+          }, indent=2) + "\n", encoding="utf-8")
+          PY
 
       - name: Upload demo
         uses: actions/upload-pages-artifact@v3

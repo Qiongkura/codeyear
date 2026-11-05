@@ -20,6 +20,7 @@ from .config import load as load_config
 from .config import save as save_config
 from .runner import detect_identity, discover, render, report_path, scan
 from .stats import fmt_int
+from .updater import check_update, cleanup_old_executable, perform_update
 
 PAPER = "#f5f2e9"
 PAPER2 = "#ece8dc"
@@ -44,6 +45,7 @@ class App:
         self.identity = detect_identity()
         self.written: list[tuple[str, Path]] = []
         self.html_path: Path | None = None
+        self.update_info: dict | None = None
         self.busy = False
 
         root.title(i18n.tr("CodeYear · 代码手账"))
@@ -59,6 +61,10 @@ class App:
                 text=i18n.tr("已添加，开始生成时会统计仓库数量")
             )
         self._poll()
+        if not os.environ.get("CODEYEAR_NO_UPDATE_CHECK"):
+            threading.Thread(
+                target=self._bg_check_update, args=(False,), daemon=True
+            ).start()
 
     def _style(self) -> None:
         style = ttk.Style()
@@ -154,6 +160,20 @@ class App:
             self._switch_lang,
         )
         self.lang_btn.pack(side="right", anchor="ne", pady=(4, 0))
+        has_upd = bool(self.update_info and self.update_info.get("has_update"))
+        upd_text = (
+            i18n.tr("发现新版 v{version}", version=self.update_info["latest"])
+            if has_upd and self.update_info
+            else i18n.tr("检查更新")
+        )
+        self.update_btn = ttk.Button(
+            header_top,
+            text=upd_text,
+            command=self._on_update_click,
+            style="Accent.TButton" if has_upd else "CY.TButton",
+            cursor="hand2",
+        )
+        self.update_btn.pack(side="right", anchor="ne", padx=(0, 8), pady=(4, 0))
         tk.Label(
             header, text=i18n.tr("选择目录，生成一份本地年度代码报告。"),
             bg=PAPER, fg=MUTED, font=("Microsoft YaHei", 10), anchor="w",
@@ -281,13 +301,28 @@ class App:
             advanced, i18n.tr("所有分支"), self.all_branches_var,
         )
         branches_box.pack(side="left", padx=(16, 0))
+        self.rolling_var = tk.BooleanVar(
+            value=bool(self.cfg.get("rolling", False))
+        )
+        rolling_box, self._rolling_draw = self._check(
+            advanced, i18n.tr("近 365 天"), self.rolling_var,
+        )
+        rolling_box.pack(side="left", padx=(16, 0))
         tk.Label(advanced, text=i18n.tr("旧邮箱/名字"), bg=PAPER, fg=MUTED,
-                 font=("Microsoft YaHei", 9)).pack(side="left", padx=(22, 6))
+                 font=("Microsoft YaHei", 9)).pack(side="left", padx=(18, 6))
         self.alias_var = tk.StringVar(
             value=", ".join(self.cfg.get("aliases", []))
         )
         ttk.Entry(
-            advanced, width=22, textvariable=self.alias_var, style="CY.TEntry",
+            advanced, width=14, textvariable=self.alias_var, style="CY.TEntry",
+        ).pack(side="left")
+        tk.Label(advanced, text=i18n.tr("排除仓库"), bg=PAPER, fg=MUTED,
+                 font=("Microsoft YaHei", 9)).pack(side="left", padx=(14, 6))
+        self.exclude_var = tk.StringVar(
+            value=", ".join(self.cfg.get("exclude", []))
+        )
+        ttk.Entry(
+            advanced, width=14, textvariable=self.exclude_var, style="CY.TEntry",
         ).pack(side="left")
 
         out_row = tk.Frame(body, bg=PAPER)
@@ -399,8 +434,10 @@ class App:
             "jobs": self.jobs_var.get(),
             "out": self.out_var.get(),
             "alias": self.alias_var.get(),
+            "exclude": self.exclude_var.get(),
             "compare": self.compare_var.get(),
             "branches": self.all_branches_var.get(),
+            "rolling": self.rolling_var.get(),
             "identity": self.identity_var.get(),
             "result": self.result.get("1.0", "end-1c"),
         }
@@ -418,12 +455,15 @@ class App:
         self.jobs_var.set(saved["jobs"])
         self.out_var.set(saved["out"])
         self.alias_var.set(saved["alias"])
+        self.exclude_var.set(saved["exclude"])
         self.compare_var.set(saved["compare"])
         self.all_branches_var.set(saved["branches"])
+        self.rolling_var.set(saved["rolling"])
         self.identity_var.set(saved["identity"])
         self._identity_draw()
         self._compare_draw()
         self._branches_draw()
+        self._rolling_draw()
         if self.roots:
             self.count_label.configure(
                 text=i18n.tr("已添加，开始生成时会统计仓库数量"))
@@ -450,15 +490,21 @@ class App:
             depth = int(self.depth_var.get())
         except ValueError:
             depth = 6
+        excludes = [
+            item.strip() for item in self.exclude_var.get().split(",")
+            if item.strip()
+        ]
         self.count_label.configure(text=i18n.tr("正在检查…"))
         threading.Thread(
-            target=self._count_work, args=(list(self.roots), depth),
+            target=self._count_work, args=(list(self.roots), depth, excludes),
             daemon=True,
         ).start()
 
-    def _count_work(self, roots, depth) -> None:
+    def _count_work(self, roots, depth, excludes=None) -> None:
         try:
-            self.queue.put(("checked", len(discover(roots, depth))))
+            self.queue.put((
+                "checked", len(discover(roots, depth, exclude=excludes))
+            ))
         except Exception as exc:  # pragma: no cover - UI path
             self.queue.put(("error", str(exc)))
 
@@ -484,6 +530,10 @@ class App:
             item.strip() for item in self.alias_var.get().split(",")
             if item.strip()
         ]
+        excludes = [
+            item.strip() for item in self.exclude_var.get().split(",")
+            if item.strip()
+        ]
         data = {
             "roots": [str(r) for r in self.roots],
             "year": year,
@@ -491,8 +541,10 @@ class App:
             "jobs": jobs,
             "compare": bool(self.compare_var.get()),
             "all_branches": bool(self.all_branches_var.get()),
+            "rolling": bool(self.rolling_var.get()),
             "all_authors": not bool(self.identity_var.get()),
             "aliases": aliases,
+            "exclude": excludes,
             "out": self.out_var.get().strip() or "codeyear-output",
             "theme": self.theme_var.get() or "paper",
         }
@@ -528,8 +580,11 @@ class App:
         identity = self.identity if self.identity_var.get() else None
         compare = self.compare_var.get()
         all_branches = self.all_branches_var.get()
+        rolling = self.rolling_var.get()
         aliases = [item.strip() for item in self.alias_var.get().split(",")
                    if item.strip()]
+        excludes = [item.strip() for item in self.exclude_var.get().split(",")
+                    if item.strip()]
 
         self._set_busy(True)
         self.written = []
@@ -540,14 +595,14 @@ class App:
         threading.Thread(
             target=self._work,
             args=(list(self.roots), depth, year, out_dir, identity,
-                  jobs, compare, aliases, all_branches),
+                  jobs, compare, aliases, all_branches, rolling, excludes),
             daemon=True,
         ).start()
 
     def _work(self, roots, depth, year, out_dir, identity, jobs, compare,
-              aliases, all_branches) -> None:
+              aliases, all_branches, rolling=False, excludes=None) -> None:
         try:
-            repos = discover(roots, depth)
+            repos = discover(roots, depth, exclude=excludes)
             if not repos:
                 raise RuntimeError(i18n.tr("没有找到 git 仓库。"))
             self.queue.put(("count", len(repos)))
@@ -562,6 +617,7 @@ class App:
                 progress=progress, jobs=jobs, compare=compare,
                 use_mailmap=not bool(self.cfg.get("no_mailmap", False)),
                 all_branches=all_branches,
+                rolling=rolling,
             )
             if stats.commit_count == 0:
                 raise RuntimeError(i18n.tr(
@@ -600,6 +656,12 @@ class App:
                     self._finish(stats, written, warnings, out_dir)
                 elif kind == "error":
                     self._fail(event[1])
+                elif kind == "update_checked":
+                    _, info, manual = event
+                    self._on_update_checked(info, manual)
+                elif kind == "update_applied":
+                    _, ok, msg, info = event
+                    self._on_update_applied(ok, msg, info)
         except queue.Empty:
             pass
         self.root.after(100, self._poll)
@@ -640,6 +702,82 @@ class App:
         self.start_btn.configure(state=state)
         if hasattr(self, "lang_btn"):
             self.lang_btn.configure(state=state)
+        if hasattr(self, "update_btn"):
+            self.update_btn.configure(state=state)
+
+    def _bg_check_update(self, manual: bool) -> None:
+        info = check_update(timeout=5.0 if manual else 2.5)
+        self.queue.put(("update_checked", info, manual))
+
+    def _on_update_click(self) -> None:
+        if self.busy:
+            return
+        if self.update_info and self.update_info.get("has_update"):
+            self._prompt_and_update(self.update_info)
+            return
+        self.status.configure(text=i18n.tr("正在检查更新…"))
+        threading.Thread(
+            target=self._bg_check_update, args=(True,), daemon=True
+        ).start()
+
+    def _on_update_checked(self, info: dict | None, manual: bool) -> None:
+        if info:
+            self.update_info = info
+        if info and info.get("has_update"):
+            if hasattr(self, "update_btn"):
+                self.update_btn.configure(
+                    text=i18n.tr("发现新版 v{version}", version=info["latest"]),
+                    style="Accent.TButton",
+                )
+            if manual:
+                self._prompt_and_update(info)
+            return
+        if manual:
+            if not info:
+                self.status.configure(
+                    text=i18n.tr("无法连接更新服务器，请检查网络。")
+                )
+            else:
+                self.status.configure(
+                    text=i18n.tr(
+                        "当前已是最新版本（v{version}）。",
+                        version=info["current"],
+                    )
+                )
+
+    def _prompt_and_update(self, info: dict) -> None:
+        yes = messagebox.askyesno(
+            i18n.tr("发现新版本"),
+            i18n.tr(
+                "发现新版本 v{latest}（当前 v{current}）。\n是否立即在软件内自动更新？",
+                latest=info["latest"],
+                current=info["current"],
+            ),
+        )
+        if not yes:
+            return
+        self._set_busy(True)
+        self.status.configure(text=i18n.tr("正在下载并更新…"))
+        threading.Thread(
+            target=self._bg_apply_update, args=(info,), daemon=True
+        ).start()
+
+    def _bg_apply_update(self, info: dict) -> None:
+        ok, msg = perform_update(info)
+        self.queue.put(("update_applied", ok, msg, info))
+
+    def _on_update_applied(self, ok: bool, msg: str, info: dict) -> None:
+        self._set_busy(False)
+        self.status.configure(text=msg)
+        if ok:
+            if hasattr(self, "update_btn"):
+                self.update_btn.configure(
+                    text=i18n.tr("检查更新"), style="CY.TButton"
+                )
+            self.update_info = {**info, "has_update": False}
+            messagebox.showinfo(i18n.tr("更新完成"), msg)
+        else:
+            webbrowser.open(info.get("url") or "https://github.com/Qiongkura/codeyear/releases")
 
     def _check(self, parent, text, variable, enabled=True):
         frame = tk.Frame(parent, bg=PAPER,
@@ -716,6 +854,7 @@ def _enable_dpi() -> None:
 
 
 def run() -> int:
+    cleanup_old_executable()
     i18n.set_lang(i18n.detect(sys.argv[1:]))
     _enable_dpi()
     try:

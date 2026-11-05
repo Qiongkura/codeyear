@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from collections import Counter
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import date, datetime, timedelta
 
 from .keywords import extract_keywords
@@ -91,6 +91,8 @@ class ReportStats:
     persona: Persona
     warnings: list[str]
     previous: dict | None = None
+    top_deleted_files: list[tuple[str, int]] = field(default_factory=list)
+    latest_night_commit: dict | None = None
 
     def as_dict(self) -> dict:
         data = asdict(self)
@@ -262,6 +264,7 @@ def build_stats(
     commits: list[Commit] = []
     lang_counter: Counter[str] = Counter()
     file_counter: Counter[str] = Counter()
+    deleted_file_counter: Counter[str] = Counter()
     repo_counter: Counter[str] = Counter()
     file_set: set[tuple[str, str]] = set()
 
@@ -352,6 +355,9 @@ def build_stats(
                 if is_code_language(change.lang):
                     display = f"{repo.name}/{change.path}" if multi_repo else change.path
                     file_counter[display] += change.lines
+                    del_lines = getattr(change, "deleted", 0)
+                    if del_lines > 0:
+                        deleted_file_counter[display] += del_lines
                     repo_files[repo.name][change.path] += change.lines
                 file_set.add((repo.name, change.path))
 
@@ -526,6 +532,26 @@ def build_stats(
         last_commit = {"date": lc2.dt.strftime("%Y.%m.%d %H:%M"), "repo": lc2.repo,
                        "subject": lc2.subject[:80]}
 
+    latest_night_commit = None
+    night_candidates = [
+        c for c in commits if c.dt.hour >= 22 or c.dt.hour <= 5
+    ]
+    if night_candidates:
+        nc = max(
+            night_candidates,
+            key=lambda c: (
+                (c.dt.hour + 24 if c.dt.hour <= 5 else c.dt.hour) * 60
+                + c.dt.minute,
+                c.dt,
+            ),
+        )
+        latest_night_commit = {
+            "time": nc.dt.strftime("%H:%M"),
+            "date": nc.dt.strftime("%Y.%m.%d"),
+            "repo": nc.repo,
+            "subject": nc.subject[:80],
+        }
+
     # A session is a run of commits with no gap longer than 2 hours.
     sessions = {"count": 0, "longest_minutes": 0, "longest_commits": 0,
                 "longest_start": "", "longest_end": "", "avg_minutes": 0}
@@ -605,6 +631,9 @@ def build_stats(
     )
     top_files = [
         (path, n) for path, n in file_counter.most_common(12)
+    ]
+    top_deleted_files = [
+        (path, n) for path, n in deleted_file_counter.most_common(12) if n > 0
     ]
     keywords = extract_keywords([c.subject for c in commits], top=14)
     commit_types = type_counter.most_common(8)
@@ -691,4 +720,6 @@ def build_stats(
         filtered_commits=filtered_commits,
         persona=persona,
         warnings=warnings,
+        top_deleted_files=top_deleted_files,
+        latest_night_commit=latest_night_commit,
     )

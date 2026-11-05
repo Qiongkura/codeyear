@@ -21,6 +21,7 @@ from .poster import render as render_poster
 from .poster import render_long
 from .runner import discover, report_path, scan
 from .stats import fmt_int
+from .updater import check_update, cleanup_old_executable, perform_update
 
 _NO_WINDOW = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
 
@@ -38,6 +39,9 @@ def _build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=False)
     sub.add_parser("gui", help="图形界面：点选目录、看进度、选输出位置")
     sub.add_parser("tui", help="终端交互向导：选目录、看进度、选输出位置")
+    updater = sub.add_parser("update", help="检查或安装最新版本")
+    updater.add_argument("--check", action="store_true",
+                         help="只检查是否有新版本，不安装")
     github = sub.add_parser("github", help="从公开 GitHub 账号生成（联网，仅公开仓库）")
     github.add_argument("username", help="GitHub 用户名")
     github.add_argument("--year", type=int, default=cfg.get("year", date.today().year),
@@ -77,6 +81,11 @@ def _build_parser() -> argparse.ArgumentParser:
                       help="要扫描的文件夹（可以多个，默认当前目录）")
     scan.add_argument("--year", type=int, default=cfg.get("year", date.today().year),
                       help="统计年份，默认今年")
+    scan.add_argument("--rolling", action="store_true",
+                      default=cfg.get("rolling", False),
+                      help="统计过去 365 天（滚动年度），而非自然年")
+    scan.add_argument("--exclude", action="append", default=cfg.get("exclude", []),
+                      help="排除指定仓库名或通配符（可重复或逗号分隔）")
     scan.add_argument("--out", default=cfg.get("out", "codeyear-output"),
                       help="输出目录，默认 ./codeyear-output")
     scan.add_argument("--author", default=cfg.get("author"),
@@ -155,10 +164,32 @@ def _detect_identity() -> tuple[str, str] | None:
 
 
 def main(argv: list[str] | None = None) -> int:
+    cleanup_old_executable()
     argv = list(sys.argv[1:] if argv is None else argv)
     i18n.set_lang(i18n.detect(argv))
     parser = _build_parser()
     args = parser.parse_args(argv)
+
+    if args.command == "update":
+        info = check_update(timeout=6.0)
+        if not info:
+            print(i18n.tr("无法连接更新服务器，请检查网络。"), file=sys.stderr)
+            return 1
+        if not info["has_update"]:
+            print(i18n.tr(
+                "当前已是最新版本（v{version}）。", version=info["current"]
+            ))
+            return 0
+        print(i18n.tr(
+            "发现新版本 v{latest}（当前 v{current}）: {url}",
+            latest=info["latest"], current=info["current"], url=info["url"],
+        ))
+        if args.check:
+            return 0
+        ok, msg = perform_update(info)
+        stream = sys.stdout if ok else sys.stderr
+        print(msg, file=stream)
+        return 0 if ok else 1
 
     if args.command in {None, "gui"}:
         try:
@@ -208,7 +239,7 @@ def main(argv: list[str] | None = None) -> int:
 
     roots = [Path(path).expanduser() for path in (args.path or ["."])]
     try:
-        repos = discover(roots, args.max_depth)
+        repos = discover(roots, args.max_depth, exclude=args.exclude)
     except (FileNotFoundError, NotADirectoryError) as exc:
         print(i18n.tr("错误: {exc}", exc=exc), file=sys.stderr)
         return 2
@@ -244,6 +275,7 @@ def main(argv: list[str] | None = None) -> int:
         jobs=max(1, args.jobs), progress=progress,
         compare=args.compare, use_mailmap=not args.no_mailmap,
         all_branches=args.all_branches,
+        rolling=args.rolling,
     )
 
     if (

@@ -51,10 +51,22 @@ pip install -r requirements.txt
 python -m codeyear scan ~/code --open
 ```
 
-Or run it in one line with uv (install [uv](https://docs.astral.sh/uv/) first):
+Or run it in one line without installing via uv (install [uv](https://docs.astral.sh/uv/) first):
 
 ```bash
+uvx --from "https://github.com/Qiongkura/codeyear/releases/download/v0.2.13/codeyear-0.2.13-py3-none-any.whl" codeyear scan ~/code --open
+# Or run straight from git:
 uvx --from git+https://github.com/Qiongkura/codeyear.git codeyear scan ~/code --open
+```
+
+Useful scan flags and in-app updates:
+
+```bash
+# Count the past 365 days (rolling year) and exclude scratch/forked repos
+codeyear scan ~/code --rolling --exclude "temp,*-demo" --open
+
+# Check for or install the latest release (the GUI also notifies in-app)
+codeyear update
 ```
 
 On Windows use a path such as `C:\code`. The report goes to `codeyear-output/`; `--open` opens the HTML.
@@ -438,7 +450,7 @@ Languages are mapped from file extensions. Lockfiles, build artifacts, images, a
 - [x] Paper-themed PNG poster
 - [x] Theme-aware GitHub profile card (light/dark, transparent)
 - [x] Year-over-year comparison (cover summary + data panel)
-- [ ] File-level deletions (most-deleted files)
+- [x] File-level refactoring leaderboard (most-deleted files)
 - [x] PyInstaller exe / desktop shell
 - [x] English README
 - [x] English HTML report
@@ -448,8 +460,9 @@ Languages are mapped from file extensions. Lockfiles, build artifacts, images, a
 - [x] Desktop GUI (Tkinter, double-clickable)
 - [x] Public GitHub mode (username in, report out)
 - [x] Public card service (Render / Docker / Cloudflare Tunnel)
-- [ ] Public Gitee mode
-- [x] Card themes (paper / mono / forest / ocean)
+- [x] Card themes (paper / mono / forest / ocean) with in-report live preview & SVG download
+- [x] Rolling 365-day window (`--rolling`) and repository exclusion (`--exclude`)
+- [x] In-app update check and one-click upgrade (`codeyear update` / GUI)
 - [x] Repository search and print styles
 - [x] Multi-root CLI
 - [x] pytest suite + GitHub Actions CI

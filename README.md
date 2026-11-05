@@ -50,10 +50,22 @@ pip install -r requirements.txt
 python -m codeyear scan ~/code --open
 ```
 
-或者用 uv 一行运行（需要先装 [uv](https://docs.astral.sh/uv/)）：
+或者用 uv 一行免安装运行（需要先装 [uv](https://docs.astral.sh/uv/)）：
 
 ```bash
+uvx --from "https://github.com/Qiongkura/codeyear/releases/download/v0.2.13/codeyear-0.2.13-py3-none-any.whl" codeyear scan ~/code --open
+# 或直接从源码运行：
 uvx --from git+https://github.com/Qiongkura/codeyear.git codeyear scan ~/code --open
+```
+
+常用扫描参数与软件内更新：
+
+```bash
+# 统计过去 365 天（年中复盘 / 入职一周年），排除练习或第三方仓库
+codeyear scan ~/code --rolling --exclude "temp,*-demo" --open
+
+# 检查或一键升级到最新版本（GUI 右上角也会自动提示新版）
+codeyear update
 ```
 
 Windows 把 `~/code` 换成 `C:\code` 之类的路径。报告会生成到 `codeyear-output/`，
@@ -454,7 +466,7 @@ git log --since=2026-01-01 --until=2027-01-01 \
 - [x] 年度之最 / 7×24 / 编码会话 / 季度语言 / 仓库墓园
 - [x] PNG 海报重绘为纸面主题
 - [x] 同比去年（封面摘要 + 数据分析面板）
-- [ ] 文件级删除量（被删最多的文件）
+- [x] 文件级重构榜（被删最多的文件）
 - [x] PyInstaller 打包 exe / 桌面壳
 - [x] English README
 - [x] 英文 HTML 报告
@@ -464,8 +476,9 @@ git log --since=2026-01-01 --until=2027-01-01 \
 - [x] 桌面 GUI（Tkinter，可双击）
 - [x] GitHub 公开数据模式（输入用户名即可生成）
 - [x] 在线卡片服务（Render / Docker / Cloudflare Tunnel）
-- [ ] Gitee 公开数据模式
-- [x] 卡片主题（paper / mono / forest / ocean）
+- [x] 卡片主题（paper / mono / forest / ocean）与报告内交互预览/下载
+- [x] 过去 365 天滚动统计（`--rolling`）与排除指定仓库（`--exclude`）
+- [x] 软件内自动检测新版与一键更新（`codeyear update` / GUI）
 - [x] 仓库搜索与打印样式
 - [x] 多目录 CLI
 - [x] pytest 测试 + GitHub Actions CI

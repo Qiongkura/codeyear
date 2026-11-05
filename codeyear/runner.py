@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import contextlib
+import fnmatch
 import json
 import os
 import subprocess
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import replace
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Callable
 
@@ -51,12 +54,48 @@ def detect_identity() -> tuple[str, str] | None:
     return None
 
 
-def discover(roots: list[Path], depth: int = 6) -> list[tuple[Path, Path]]:
+def is_excluded(
+    repo_path: Path, root: Path, patterns: list[str] | None
+) -> bool:
+    """Return True if *repo_path* matches any exclude pattern."""
+    if not patterns:
+        return False
+    rel = repo_path.name
+    with contextlib.suppress(ValueError):
+        rel_str = repo_path.relative_to(root).as_posix()
+        if rel_str != ".":
+            rel = rel_str
+    candidates = {
+        repo_path.name.lower(),
+        rel.lower(),
+        repo_path.as_posix().lower(),
+    }
+    for raw in patterns:
+        for part in str(raw).split(","):
+            pat = part.strip().lower()
+            if not pat:
+                continue
+            if any(
+                c == pat or fnmatch.fnmatch(c, pat) or pat in c.split("/")
+                for c in candidates
+            ):
+                return True
+    return False
+
+
+def discover(
+    roots: list[Path],
+    depth: int = 6,
+    *,
+    exclude: list[str] | None = None,
+) -> list[tuple[Path, Path]]:
     seen: set[Path] = set()
     found: list[tuple[Path, Path]] = []
     for root in roots:
         for repo in find_repos(root, max_depth=depth):
             resolved = repo.resolve()
+            if is_excluded(resolved, root, exclude):
+                continue
             if resolved not in seen:
                 seen.add(resolved)
                 found.append((resolved, root))
@@ -92,11 +131,26 @@ def scan(
     compare: bool = False,
     use_mailmap: bool = True,
     all_branches: bool = False,
+    rolling: bool = False,
 ) -> tuple[ReportStats, list[str]]:
     labels = _root_labels(roots)
     results: list[RepoResult] = []
     warnings: list[str] = []
     total = len(repos)
+
+    until_dt: datetime | None = None
+    since_dt: datetime | None = None
+    scan_since_dt: datetime | None = None
+    if rolling:
+        until_dt = datetime.now().replace(
+            hour=23, minute=59, second=59, microsecond=0
+        )
+        since_dt = (until_dt - timedelta(days=364)).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        scan_since_dt = (
+            (since_dt - timedelta(days=365)) if compare else since_dt
+        )
 
     def prepare(repo: Path, root: Path) -> RepoResult:
         kwargs: dict = {
@@ -105,7 +159,10 @@ def scan(
             "use_mailmap": use_mailmap,
             "all_branches": all_branches,
         }
-        if compare:
+        if rolling and scan_since_dt is not None and until_dt is not None:
+            kwargs["since_dt"] = scan_since_dt
+            kwargs["until_dt"] = until_dt
+        elif compare:
             kwargs["since_year"] = year - 1
         result = scan_repo(repo, root, year, **kwargs)
         if len(roots) > 1:
@@ -148,14 +205,26 @@ def scan(
 
     root_label = " + ".join(str(root) for root in roots)
     if compare:
-        current_results = [
-            replace(r, commits=[c for c in r.commits if c.dt.year == year])
-            for r in results
-        ]
-        prev_results = [
-            replace(r, commits=[c for c in r.commits if c.dt.year == year - 1])
-            for r in results
-        ]
+        if rolling and since_dt is not None:
+            current_results = [
+                replace(r, commits=[c for c in r.commits if c.dt >= since_dt])
+                for r in results
+            ]
+            prev_results = [
+                replace(r, commits=[c for c in r.commits if c.dt < since_dt])
+                for r in results
+            ]
+        else:
+            current_results = [
+                replace(r, commits=[c for c in r.commits if c.dt.year == year])
+                for r in results
+            ]
+            prev_results = [
+                replace(
+                    r, commits=[c for c in r.commits if c.dt.year == year - 1]
+                )
+                for r in results
+            ]
         stats = build_stats(
             year=year,
             root=root_label,

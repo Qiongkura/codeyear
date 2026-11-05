@@ -11,10 +11,13 @@ count-up numbers, a real commit ticker, and an index-table filter. Honors
 
 from __future__ import annotations
 
+import json
 from datetime import date, datetime, timedelta
 from html import escape
 from pathlib import Path
 
+from .card import THEMES as CARD_THEMES
+from .card import build_svg as build_card_svg
 from .stats import (
     ReportStats,
     fmt_human,
@@ -762,14 +765,20 @@ def build_records(stats: ReportStats) -> str:
             f"{escape(lc['repo'])} · {lc['date']}")
     add("最长的 commit", f"{len(stats.longest_subject)} <small>字符</small>",
         escape(stats.longest_subject[:90]))
+    if getattr(stats, "latest_night_commit", None):
+        nc = stats.latest_night_commit
+        add("最晚的一次熬夜", f"{escape(nc['time'])}",
+            f"{escape(nc['repo'])} · {escape(nc['date'])} · {escape(nc['subject'][:42])}")
 
     span = ""
     if stats.first_commit and stats.last_commit:
         fc, lc = stats.first_commit, stats.last_commit
+        fc_sub = f" · {escape(fc['subject'][:40])}" if fc.get("subject") else ""
+        lc_sub = f" · {escape(lc['subject'][:40])}" if lc.get("subject") else ""
         span = (
             f'<div class="year-span rv">'
-            f'<span>第一次提交 <b>{escape(fc["date"])}</b> · {escape(fc["repo"])}</span>'
-            f'<span>最后一次提交 <b>{escape(lc["date"])}</b> · {escape(lc["repo"])}</span>'
+            f'<span>第一次提交 <b>{escape(fc["date"])}</b> · {escape(fc["repo"])}{fc_sub}</span>'
+            f'<span>最后一次提交 <b>{escape(lc["date"])}</b> · {escape(lc["repo"])}{lc_sub}</span>'
             f'</div>'
         )
     return f'<div class="records">{"".join(cards)}</div>{span}'
@@ -1032,6 +1041,26 @@ def build_lifecycle(stats: ReportStats) -> str:
     )
 
 
+def build_deleted_files(stats: ReportStats) -> str:
+    rows_data = getattr(stats, "top_deleted_files", None) or []
+    if not rows_data:
+        return ""
+    max_del = max((n for _, n in rows_data), default=1) or 1
+    rows = "".join(
+        f'<div class="file-row"><span class="idx">{i:02d}</span>'
+        f'<span class="f-path">{escape(path)}</span>'
+        f'<div class="f-bar"><i style="width:{n / max_del * 100:.1f}%;background:var(--acc)"></i></div>'
+        f'<span class="f-num">-{fmt_int(n)}</span></div>'
+        for i, (path, n) in enumerate(rows_data[:8], 1)
+    )
+    return (
+        '<div class="num-panel rv span2">'
+        '<h3>文件级重构榜 <b>· 删除行数最多的文件</b></h3>'
+        f'{rows}'
+        '</div>'
+    )
+
+
 def build_dormant(stats: ReportStats) -> str:
     if not stats.dormant:
         return _panel("仓库墓园 <b>· 30 天没动</b>",
@@ -1278,9 +1307,148 @@ def build_numbers(stats: ReportStats) -> str:
         <h3>最常改的文件 <b>· 改动热区（完整路径）</b></h3>
         {file_rows}
       </div>
+      {build_deleted_files(stats)}
       {build_heatmap(stats)}
     </div>
     """
+
+
+def _theme_color_map(base_dict: dict, target_dict: dict) -> dict[str, str]:
+    mapping: dict[str, str] = {}
+    for k in ("ink", "ink2", "muted", "line", "accent", "bar"):
+        mapping[base_dict[k].lower()] = target_dict[k]
+    for src, dst in zip(base_dict["palette"], target_dict["palette"]):
+        mapping.setdefault(src.lower(), dst)
+    for src, dst in zip(base_dict["levels"], target_dict["levels"]):
+        mapping.setdefault(src.lower(), dst)
+    return mapping
+
+
+def build_card_preview_widget(stats: ReportStats, *, lang: str = "zh") -> str:
+    en = lang == "en"
+    base_light, base_dark = CARD_THEMES["paper"]
+    maps: dict[str, dict[str, dict[str, str]]] = {}
+    for t_name, (t_light, t_dark) in CARD_THEMES.items():
+        maps[t_name] = {
+            "light": _theme_color_map(base_light, t_light),
+            "dark": _theme_color_map(base_dark, t_dark),
+        }
+    svg_light = build_card_svg(stats, dark=False, theme="paper", lang=lang)
+    svg_dark = build_card_svg(stats, dark=True, theme="paper", lang=lang)
+    suffix = "-en" if en else ""
+    embed_snippet = escape(
+        "<picture>\n"
+        f'  <source media="(prefers-color-scheme: dark)" '
+        f'srcset="./codeyear-{stats.year}-card{suffix}-dark.svg">\n'
+        f'  <img src="./codeyear-{stats.year}-card{suffix}.svg" width="640" '
+        f'alt="CodeYear {stats.year}">\n'
+        "</picture>"
+    )
+    payload_json = json.dumps(
+        {
+            "year": stats.year,
+            "suffix": suffix,
+            "light": svg_light,
+            "dark": svg_dark,
+            "maps": maps,
+        },
+        ensure_ascii=False,
+    ).replace("</", "<\\/")
+
+    heading = "GitHub profile card" if en else "GitHub 主页卡片"
+    note = (
+        "Preview all 4 themes in light or dark mode, download the SVG directly, or paste the snippet into your profile README.md:"
+        if en
+        else "实时预览 4 套主题与浅色/深色效果，可直接下载当前 SVG，或粘贴下方代码到同名 Profile 仓库的 README.md："
+    )
+    theme_labels = (
+        [("paper", "Paper"), ("mono", "Mono"), ("forest", "Forest"), ("ocean", "Ocean")]
+        if en
+        else [("paper", "纸色 Paper"), ("mono", "黑白 Mono"), ("forest", "森林 Forest"), ("ocean", "海洋 Ocean")]
+    )
+    mode_labels = (
+        [("light", "Light"), ("dark", "Dark")]
+        if en
+        else [("light", "浅色"), ("dark", "深色")]
+    )
+    dl_label = "Download current SVG" if en else "下载当前卡片 SVG"
+    copy_label = "Copy embed snippet" if en else "复制嵌入代码"
+
+    t_btns = "".join(
+        f'<button class="filter{" on" if k == "paper" else ""}" type="button" data-card-theme="{k}">{lbl}</button>'
+        for k, lbl in theme_labels
+    )
+    m_btns = "".join(
+        f'<button class="filter{" on" if k == "light" else ""}" type="button" data-card-mode="{k}">{lbl}</button>'
+        for k, lbl in mode_labels
+    )
+    return f"""<!--CARD_WIDGET_START-->
+      <div class="sub-head" style="margin-top:24px">{heading}</div>
+      <p class="num-note" style="margin:6px 0 10px">{note}</p>
+      <div class="filters" style="margin:8px 0 10px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        {t_btns}
+        <span style="margin:0 4px;color:var(--line2)">|</span>
+        {m_btns}
+        <button class="filter" type="button" id="download-card-svg" style="margin-left:auto">{dl_label}</button>
+      </div>
+      <div id="card-preview-stage" style="border:1px solid var(--line);padding:16px;margin:0 0 12px;display:flex;justify-content:center;background:var(--paper);transition:background .18s">
+        <div id="card-preview-inner" style="width:100%;max-width:460px">{svg_light}</div>
+      </div>
+      <pre class="embed-code" id="embed-snippet" style="background:var(--paper2);border:1px solid var(--line);padding:12px;font-family:var(--mono);font-size:11.5px;overflow-x:auto;margin:0 0 8px">{embed_snippet}</pre>
+      <button class="filter" type="button" id="copy-embed" onclick="navigator.clipboard&&navigator.clipboard.writeText(document.getElementById('embed-snippet').textContent)">{copy_label}</button>
+      <script>
+      (function(){{
+        const data = {payload_json};
+        let curTheme = "paper", curMode = "light";
+        const stage = document.getElementById("card-preview-stage");
+        const inner = document.getElementById("card-preview-inner");
+        const dlBtn = document.getElementById("download-card-svg");
+        function currentSvg() {{
+          const raw = curMode === "dark" ? data.dark : data.light;
+          const cmap = (data.maps[curTheme] || data.maps.paper)[curMode];
+          return raw.replace(/#[0-9a-f]{{6}}/gi, m => cmap[m.toLowerCase()] || m);
+        }}
+        function updateView() {{
+          if (!inner || !stage) return;
+          const svg = currentSvg();
+          inner.innerHTML = svg;
+          const svgEl = inner.querySelector("svg");
+          if (svgEl) {{ svgEl.style.width = "100%"; svgEl.style.height = "auto"; }}
+          stage.style.background = curMode === "dark" ? "#141413" : "var(--paper)";
+        }}
+        document.querySelectorAll("[data-card-theme]").forEach(btn => {{
+          btn.addEventListener("click", () => {{
+            curTheme = btn.getAttribute("data-card-theme") || "paper";
+            document.querySelectorAll("[data-card-theme]").forEach(b => b.classList.toggle("on", b === btn));
+            updateView();
+          }});
+        }});
+        document.querySelectorAll("[data-card-mode]").forEach(btn => {{
+          btn.addEventListener("click", () => {{
+            curMode = btn.getAttribute("data-card-mode") || "light";
+            document.querySelectorAll("[data-card-mode]").forEach(b => b.classList.toggle("on", b === btn));
+            updateView();
+          }});
+        }});
+        if (dlBtn) {{
+          dlBtn.addEventListener("click", () => {{
+            const blob = new Blob([currentSvg()], {{type: "image/svg+xml;charset=utf-8"}});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            const darkPart = curMode === "dark" ? "-dark" : "";
+            const themePart = curTheme === "paper" ? "" : "-" + curTheme;
+            a.href = url;
+            a.download = "codeyear-" + data.year + "-card" + data.suffix + themePart + darkPart + ".svg";
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+          }});
+        }}
+        updateView();
+      }})();
+      </script>
+      <!--CARD_WIDGET_END-->"""
 
 
 def build_about(stats: ReportStats) -> str:
@@ -1306,14 +1474,7 @@ def build_about(stats: ReportStats) -> str:
         "尤其是加了 --no-merges 的时候。" if not public
         else "尤其是只读公开数据的时候。"
     )
-    embed_snippet = escape(
-        "<picture>\n"
-        f'  <source media="(prefers-color-scheme: dark)" '
-        f'srcset="./codeyear-{stats.year}-card-dark.svg">\n'
-        f'  <img src="./codeyear-{stats.year}-card.svg" width="640" '
-        f'alt="CodeYear {stats.year}">\n'
-        "</picture>"
-    )
+    card_widget = build_card_preview_widget(stats, lang="zh")
     return f"""
     <div class="about rv">
       <ul>
@@ -1324,10 +1485,7 @@ def build_about(stats: ReportStats) -> str:
         <li>时间取 author date；跨时区协作时以提交者本地时间为准。</li>
         <li>「自有代码」= 非空行；已剔除第三方库、生成工程与二进制。</li>
       </ul>
-      <div class="sub-head" style="margin-top:24px">GitHub 主页卡片</div>
-      <p class="num-note" style="margin:6px 0 8px">将生成的 SVG 卡片放入你的同名 Profile 仓库，粘贴以下代码到 README.md：</p>
-      <pre class="embed-code" id="embed-snippet" style="background:var(--paper2);border:1px solid var(--line);padding:12px;font-family:var(--mono);font-size:11.5px;overflow-x:auto;margin:0 0 8px">{embed_snippet}</pre>
-      <button class="filter" type="button" id="copy-embed" onclick="navigator.clipboard&&navigator.clipboard.writeText(document.getElementById('embed-snippet').textContent)">复制嵌入代码</button>
+      {card_widget}
     </div>
     <div class="quote rv">「git 不会说谎——<em style="font-style:normal;color:var(--acc)">{quote_tail}</em>」
       <small>CODEYEAR · {stats.generated_at}</small>

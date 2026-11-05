@@ -36,6 +36,8 @@ class FileChange:
     path: str
     lang: str
     lines: int
+    added: int = 0
+    deleted: int = 0
 
 
 @dataclass
@@ -126,11 +128,23 @@ def _build_log_cmd(
     author: str | None,
     *,
     since_year: int | None = None,
+    since_dt: datetime | None = None,
+    until_dt: datetime | None = None,
     trust_repo: bool,
     use_mailmap: bool = True,
     all_branches: bool = False,
 ) -> list[str]:
     start_year = since_year if since_year is not None else year
+    since_s = (
+        since_dt.strftime("%Y-%m-%dT%H:%M:%S")
+        if since_dt is not None
+        else f"{start_year}-01-01T00:00:00"
+    )
+    until_s = (
+        until_dt.strftime("%Y-%m-%dT%H:%M:%S")
+        if until_dt is not None
+        else f"{year + 1}-01-01T00:00:00"
+    )
     cmd = ["git", "-c", "core.quotepath=false"]
     if trust_repo:
         # Some repos are copies/backups owned by another Windows account.
@@ -143,8 +157,8 @@ def _build_log_cmd(
     cmd += [
         "-C", str(repo_path),
         "log",
-        f"--since={start_year}-01-01T00:00:00",
-        f"--until={year + 1}-01-01T00:00:00",
+        f"--since={since_s}",
+        f"--until={until_s}",
         "--date=format:%Y-%m-%dT%H:%M:%S",
         f"--pretty=format:%x1e%H%x1f%ad%x1f{email_fmt}%x1f{name_fmt}%x1f%s",
         "--numstat",
@@ -336,6 +350,8 @@ def scan_repo(
     year: int,
     *,
     since_year: int | None = None,
+    since_dt: datetime | None = None,
+    until_dt: datetime | None = None,
     author: str | None = None,
     timeout: int = 300,
     use_mailmap: bool = True,
@@ -350,6 +366,8 @@ def scan_repo(
         cmd = _build_log_cmd(
             repo_path, year, author,
             since_year=since_year,
+            since_dt=since_dt,
+            until_dt=until_dt,
             trust_repo=trust_repo, use_mailmap=use_mailmap,
             all_branches=all_branches,
         )
@@ -418,7 +436,10 @@ def scan_repo(
             dt = datetime.strptime(date_s, "%Y-%m-%dT%H:%M:%S")
         except ValueError:
             continue
-        if not (start_year <= dt.year <= year):
+        if since_dt is not None and until_dt is not None:
+            if not (since_dt <= dt <= until_dt):
+                continue
+        elif not (start_year <= dt.year <= year):
             continue
 
         added_total = 0
@@ -442,7 +463,15 @@ def scan_repo(
             lang = language_for(path)
             if lang is None:
                 continue
-            changes.append(FileChange(path=path, lang=lang, lines=added + deleted))
+            changes.append(
+                FileChange(
+                    path=path,
+                    lang=lang,
+                    lines=added + deleted,
+                    added=added,
+                    deleted=deleted,
+                )
+            )
 
         result.commits.append(
             Commit(

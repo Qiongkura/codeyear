@@ -125,7 +125,7 @@ def run() -> int:
             depth = default_depth
 
         print("\n" + i18n.tr("正在查找 git 仓库…"))
-        repos = discover(roots, depth)
+        repos = discover(roots, depth, exclude=cfg.get("exclude"))
         print(i18n.tr("找到 {count} 个 git 仓库。", count=len(repos)))
         if not repos:
             print(i18n.tr("没有找到仓库，换个目录试试。"))
@@ -175,6 +175,7 @@ def run() -> int:
             progress=_progress, jobs=jobs, compare=compare,
             use_mailmap=not bool(cfg.get("no_mailmap", False)),
             all_branches=all_branches,
+            rolling=bool(cfg.get("rolling", False)),
         )
         if stats.commit_count == 0:
             print("\n" + i18n.tr("{year} 年没有找到提交。", year=year))

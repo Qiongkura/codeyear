@@ -31,6 +31,8 @@ SCHEMA = {
     "max_commits": int,
     "open": bool,
     "tz": str,
+    "exclude": list,
+    "rolling": bool,
 }
 
 

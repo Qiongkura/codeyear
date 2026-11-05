@@ -1407,3 +1407,111 @@ def test_report_contains_profile_card_embed_snippet():
     en = to_english(html, stats)
     assert "GitHub profile card" in en
     assert "Copy embed snippet" in en
+    assert 'id="card-preview-stage"' in en
+    assert 'id="download-card-svg"' in en
+
+
+def test_updater_check_and_atomic_replace(tmp_path, monkeypatch):
+    import hashlib
+
+    from codeyear import updater
+
+    assert updater.parse_version("v0.2.14") > updater.parse_version("0.2.13")
+    assert updater.parse_version("0.2.13") == (0, 2, 13)
+
+    monkeypatch.setattr(
+        updater,
+        "_fetch_json",
+        lambda url, timeout: {"version": "0.2.99", "notes": "fast update"},
+    )
+    info = updater.check_update("0.2.13")
+    assert info is not None
+    assert info["has_update"] is True
+    assert info["latest"] == "0.2.99"
+    assert info["wheel_url"].endswith("codeyear-0.2.99-py3-none-any.whl")
+
+    exe = tmp_path / "CodeYear.exe"
+    tmp_new = tmp_path / "CodeYear.exe.tmp"
+    exe.write_bytes(b"old-binary")
+    payload = b"new-binary-v0.2.99"
+    tmp_new.write_bytes(payload)
+    digest = hashlib.sha256(payload).hexdigest()
+    sums = f"{digest}  CodeYear.exe\n"
+    assert updater.verify_sha256(tmp_new, "CodeYear.exe", sums) is True
+    assert updater.verify_sha256(tmp_new, "CodeYear.exe", "0" * 64 + "  CodeYear.exe") is False
+
+    updater.replace_running_executable(tmp_new, exe)
+    assert exe.read_bytes() == payload
+    assert (tmp_path / "CodeYear.exe.old").read_bytes() == b"old-binary"
+    assert updater.cleanup_old_executable(exe) is True
+    assert not (tmp_path / "CodeYear.exe.old").exists()
+
+
+def test_discover_exclude_and_rolling_scan(tmp_path):
+    from datetime import timedelta
+
+    from codeyear.runner import discover, scan
+
+    keep = tmp_path / "keep-project"
+    ignored = tmp_path / "ignored-demo"
+    env_k = _init_repo(keep)
+    env_i = _init_repo(ignored)
+    recent_dt = (datetime.now() - timedelta(days=5)).strftime("%Y-%m-%dT12:00:00")
+    _commit(keep, "main.py", "feat: recent work", recent_dt, env_k)
+    _commit(ignored, "ignore.py", "chore: scratch", recent_dt, env_i)
+
+    repos = discover([tmp_path], exclude=["ignored-*"])
+    assert [r[0].name for r in repos] == ["keep-project"]
+
+    stats, warnings = scan(
+        repos, [tmp_path], datetime.now().year, None, rolling=True, compare=True
+    )
+    assert not warnings
+    assert stats.commit_count == 1
+    assert stats.previous is not None
+
+
+def test_file_deletion_leaderboard_and_latest_night_commit():
+    from codeyear.report_theme import decorate, to_english
+
+    repo = RepoResult(
+        path=Path("demo"),
+        name="demo",
+        commits=[
+            Commit(
+                repo="demo",
+                hash="1" * 40,
+                dt=datetime(2026, 3, 15, 3, 45),
+                subject="refactor: trim legacy parser",
+                added=10,
+                deleted=140,
+                files=1,
+                author_email="me@example.com",
+                author_name="Me",
+                changes=[
+                    FileChange(
+                        "src/legacy.py", "Python", 150, added=10, deleted=140
+                    )
+                ],
+            )
+        ],
+        total_commits=1,
+    )
+    stats = build_stats(
+        year=2026,
+        root="/tmp",
+        repos=[repo],
+        identity=("me@example.com", "Me"),
+    )
+    assert stats.top_deleted_files == [("src/legacy.py", 140)]
+    assert stats.latest_night_commit is not None
+    assert stats.latest_night_commit["time"] == "03:45"
+
+    html = decorate(build_html(stats), stats)
+    assert "文件级重构榜" in html
+    assert "最晚的一次熬夜" in html
+    assert "src/legacy.py" in html
+
+    en = to_english(html, stats)
+    assert "Most refactored files" in en
+    assert "Latest night commit" in en

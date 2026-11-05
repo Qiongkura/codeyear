@@ -298,9 +298,13 @@ def _commits(
             lang = language_for(path)
             if lang is None:
                 continue
+            f_add = int(file.get("additions", 0))
+            f_del = int(file.get("deletions", 0))
             changes.append(FileChange(
                 path=path, lang=lang,
-                lines=int(file.get("additions", 0)) + int(file.get("deletions", 0)),
+                lines=f_add + f_del,
+                added=f_add,
+                deleted=f_del,
             ))
         commits.append(Commit(
             repo=full,

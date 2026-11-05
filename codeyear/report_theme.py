@@ -451,6 +451,9 @@ EN_MAP = {
     "· 约定式提交": "· conventional commits",
     "· 口头禅": "· catchphrases",
     "最常改的文件": "Most edited files",
+    "最晚的一次熬夜": "Latest night commit",
+    "文件级重构榜": "Most refactored files",
+    "· 删除行数最多的文件": "· by lines deleted",
     "2026 活跃热力图": "2026 activity",
     "少 → 多 · 框出今天": "Less → more · today outlined",
     "关于本报告": "About this report",
@@ -825,7 +828,19 @@ def decorate(source: str, stats: ReportStats) -> str:
 
 
 def to_english(source: str, stats: ReportStats) -> str:
+    from .html_report import build_card_preview_widget
+
     year = stats.year
+    placeholder = "<!--__CODEYEAR_CARD_WIDGET_EN__-->"
+    has_widget = "<!--CARD_WIDGET_START-->" in source
+    if has_widget:
+        source = re.sub(
+            r"<!--CARD_WIDGET_START-->.*?<!--CARD_WIDGET_END-->",
+            placeholder,
+            source,
+            count=1,
+            flags=re.S,
+        )
     html = re.sub(
         r'<p class="lede">.*?</p>',
         f'<p class="lede">{_en_human(stats.lines_changed)} lines of code, '
@@ -840,6 +855,10 @@ def to_english(source: str, stats: ReportStats) -> str:
                   '<meta name="description" content="CodeYear annual code report '
                   '- a local-first year in review.">', html)
     html = translate_html(html)
+    if has_widget:
+        html = html.replace(
+            placeholder, build_card_preview_widget(stats, lang="en"), 1
+        )
     persona = stats.persona
     title_en = getattr(persona, "title_en", persona.title)
     summary_en = getattr(persona, "summary_en", persona.subtitle)

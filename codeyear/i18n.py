@@ -26,6 +26,9 @@ EN = {
         "Desktop GUI: pick folders, watch progress, choose output",
     "终端交互向导：选目录、看进度、选输出位置":
         "Terminal wizard: pick folders, watch progress, choose output",
+    "检查或安装最新版本": "Check for or install the latest release",
+    "只检查是否有新版本，不安装":
+        "Only check whether an update is available",
     "从公开 GitHub 账号生成（联网，仅公开仓库）":
         "Generate from a public GitHub account (network, public repos only)",
     "启动公开 GitHub 卡片 HTTP 服务":
@@ -66,6 +69,10 @@ EN = {
     "要扫描的文件夹（可以多个，默认当前目录）":
         "Folders to scan (multiple allowed; default current directory)",
     "统计年份，默认今年": "Year to report, default current year",
+    "统计过去 365 天（滚动年度），而非自然年":
+        "Count the past 365 days (rolling year) instead of a calendar year",
+    "排除指定仓库名或通配符（可重复或逗号分隔）":
+        "Exclude repositories by name or glob (repeatable or comma-separated)",
     "输出目录，默认 ./codeyear-output":
         "Output directory, default ./codeyear-output",
     "只统计匹配的 git author（--author 参数）":
@@ -247,6 +254,29 @@ EN = {
     "无法打开": "Cannot open",
     "无法保存": "Could not save",
     "无法启动图形界面: {exc}": "Could not start the GUI: {exc}",
+    "检查更新": "Check update",
+    "发现新版 v{version}": "Update v{version}",
+    "正在检查更新…": "Checking for updates…",
+    "正在下载并更新…": "Downloading and installing update…",
+    "发现新版本": "Update available",
+    "发现新版本 v{latest}（当前 v{current}）。\n是否立即在软件内自动更新？":
+        "Version v{latest} is available (current v{current}).\n"
+        "Update in-app now?",
+    "更新完成": "Update complete",
+    "近 365 天": "Last 365d",
+    "排除仓库": "Exclude",
+    "无法连接更新服务器，请检查网络。":
+        "Could not reach the update server; check your connection.",
+    "当前已是最新版本（v{version}）。":
+        "Already on the latest version (v{version}).",
+    "发现新版本 v{latest}（当前 v{current}）: {url}":
+        "New version v{latest} available (current v{current}): {url}",
+    "安装包 SHA256 校验未通过，已取消更新。":
+        "Update package failed SHA256 verification; cancelled.",
+    "已更新到 v{version}，重新打开软件即可生效。":
+        "Updated to v{version}. Restart CodeYear to use the new version.",
+    "已更新到 v{version}。": "Updated to v{version}.",
+    "更新失败: {exc}": "Update failed: {exc}",
 }
 
 
