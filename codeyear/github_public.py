@@ -27,9 +27,13 @@ from .scanner import Commit, FileChange, RepoResult
 from .stats import ReportStats, build_stats, fmt_human, fmt_int
 
 API = "https://api.github.com"
-DETAIL_WORKERS = 4
+DETAIL_WORKERS = 8
 CACHE_VERSION = 1
 CACHE_MAX = 5000
+
+
+def default_cache_dir() -> Path:
+    return Path.home() / ".cache" / "codeyear"
 
 _OFFSET_RE = re.compile(
     r"^(?:UTC|GMT)?\s*([+-])\s*(\d{1,2})(?::?(\d{2}))?$", re.I
@@ -457,13 +461,15 @@ def run(
     push_profile: bool = False,
     fallback_previous: bool = False,
     cache_dir: str | Path | None = None,
+    no_cache: bool = False,
     lang: str = "zh",
     tz: str | None = None,
 ) -> int:
     cache_path = None
-    if cache_dir:
+    if not no_cache:
+        effective_dir = Path(cache_dir) if cache_dir else default_cache_dir()
         safe_name = re.sub(r"[^a-z0-9_.-]", "_", username.lower())
-        cache_path = Path(cache_dir) / f"github-{safe_name}.json"
+        cache_path = effective_dir / f"github-{safe_name}.json"
     try:
         stats, warnings, login = fetch_stats(
             username, year, token=token, max_commits=max_commits,

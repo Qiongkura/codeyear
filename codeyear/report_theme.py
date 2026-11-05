@@ -585,7 +585,10 @@ EN_PATTERNS = [
      r"Weekend \1%; late night (22:00–05:00) \2%."),
 ]
 
-_block_re = re.compile(r"<(style|script)\b.*?</\1>", re.S | re.I)
+_block_re = re.compile(
+    r"<(style|script)\b.*?</\1>|<([a-z0-9]+)\b[^>]*\bdata-raw\b[^>]*>.*?</\2>",
+    re.S | re.I,
+)
 
 
 def _translate_core(core: str) -> str | None:

@@ -33,6 +33,9 @@ SCHEMA = {
     "tz": str,
     "exclude": list,
     "rolling": bool,
+    "github_user": str,
+    "profile_repo": str,
+    "push_profile": bool,
 }
 
 

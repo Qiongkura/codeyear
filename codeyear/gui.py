@@ -6,6 +6,7 @@ import contextlib
 import ctypes
 import os
 import queue
+import re
 import sys
 import threading
 import tkinter as tk
@@ -326,7 +327,7 @@ class App:
         ).pack(side="left")
 
         out_row = tk.Frame(body, bg=PAPER)
-        out_row.pack(fill="x", pady=(0, 14))
+        out_row.pack(fill="x", pady=(0, 8))
         tk.Label(out_row, text=i18n.tr("输出目录"), bg=PAPER, fg=MUTED,
                  font=("Microsoft YaHei", 9)).pack(side="left", padx=(0, 8))
         self.out_var = tk.StringVar(
@@ -337,6 +338,38 @@ class App:
         ).pack(side="left", fill="x", expand=True)
         self._button(out_row, i18n.tr("选择…"), self._choose_output).pack(
             side="left", padx=(8, 0))
+
+        gh_row = tk.Frame(body, bg=PAPER)
+        gh_row.pack(fill="x", pady=(0, 14))
+        tk.Label(
+            gh_row, text=i18n.tr("GitHub 账号（留空扫本地）"),
+            bg=PAPER, fg=MUTED, font=("Microsoft YaHei", 9),
+        ).pack(side="left", padx=(0, 6))
+        self.github_var = tk.StringVar(
+            value=str(self.cfg.get("github_user", ""))
+        )
+        ttk.Entry(
+            gh_row, width=14, textvariable=self.github_var, style="CY.TEntry",
+        ).pack(side="left")
+        tk.Label(
+            gh_row, text=i18n.tr("Profile 仓库"),
+            bg=PAPER, fg=MUTED, font=("Microsoft YaHei", 9),
+        ).pack(side="left", padx=(16, 6))
+        self.profile_var = tk.StringVar(
+            value=str(self.cfg.get("profile_repo", ""))
+        )
+        ttk.Entry(
+            gh_row, textvariable=self.profile_var, style="CY.TEntry",
+        ).pack(side="left", fill="x", expand=True)
+        self._button(gh_row, i18n.tr("选择…"), self._choose_profile).pack(
+            side="left", padx=(6, 10))
+        self.push_profile_var = tk.BooleanVar(
+            value=bool(self.cfg.get("push_profile", False))
+        )
+        push_box, self._push_draw = self._check(
+            gh_row, i18n.tr("推送"), self.push_profile_var,
+        )
+        push_box.pack(side="left")
 
         # ---- actions -------------------------------------------------
         actions = tk.Frame(body, bg=PAPER)
@@ -435,6 +468,9 @@ class App:
             "out": self.out_var.get(),
             "alias": self.alias_var.get(),
             "exclude": self.exclude_var.get(),
+            "github": self.github_var.get(),
+            "profile": self.profile_var.get(),
+            "push": self.push_profile_var.get(),
             "compare": self.compare_var.get(),
             "branches": self.all_branches_var.get(),
             "rolling": self.rolling_var.get(),
@@ -456,6 +492,9 @@ class App:
         self.out_var.set(saved["out"])
         self.alias_var.set(saved["alias"])
         self.exclude_var.set(saved["exclude"])
+        self.github_var.set(saved["github"])
+        self.profile_var.set(saved["profile"])
+        self.push_profile_var.set(saved["push"])
         self.compare_var.set(saved["compare"])
         self.all_branches_var.set(saved["branches"])
         self.rolling_var.set(saved["rolling"])
@@ -464,6 +503,7 @@ class App:
         self._compare_draw()
         self._branches_draw()
         self._rolling_draw()
+        self._push_draw()
         if self.roots:
             self.count_label.configure(
                 text=i18n.tr("已添加，开始生成时会统计仓库数量"))
@@ -515,6 +555,14 @@ class App:
         if path:
             self.out_var.set(path)
 
+    def _choose_profile(self) -> None:
+        path = filedialog.askdirectory(
+            parent=self.root, title=i18n.tr("选择 Profile 仓库目录"),
+            mustexist=True,
+        )
+        if path:
+            self.profile_var.set(path)
+
     def _save_defaults(self) -> None:
         try:
             year = int(self.year_var.get())
@@ -545,6 +593,9 @@ class App:
             "all_authors": not bool(self.identity_var.get()),
             "aliases": aliases,
             "exclude": excludes,
+            "github_user": self.github_var.get().strip(),
+            "profile_repo": self.profile_var.get().strip(),
+            "push_profile": bool(self.push_profile_var.get()),
             "out": self.out_var.get().strip() or "codeyear-output",
             "theme": self.theme_var.get() or "paper",
         }
@@ -560,7 +611,8 @@ class App:
     def _start(self) -> None:
         if self.busy:
             return
-        if not self.roots:
+        github_user = self.github_var.get().strip()
+        if not self.roots and not github_user:
             messagebox.showwarning(
                 i18n.tr("没有目录"),
                 i18n.tr("请先添加至少一个要扫描的目录。"),
@@ -585,50 +637,85 @@ class App:
                    if item.strip()]
         excludes = [item.strip() for item in self.exclude_var.get().split(",")
                     if item.strip()]
+        profile_repo = self.profile_var.get().strip() or None
+        push_profile = bool(self.push_profile_var.get())
 
         self._set_busy(True)
         self.written = []
         self.html_path = None
         self.progress.configure(value=0, maximum=1)
-        self.status.configure(text=i18n.tr("正在查找 git 仓库…"))
+        self.status.configure(
+            text=i18n.tr("正在拉取公开 GitHub 数据…")
+            if github_user
+            else i18n.tr("正在查找 git 仓库…")
+        )
         self._set_result("")
         threading.Thread(
             target=self._work,
             args=(list(self.roots), depth, year, out_dir, identity,
-                  jobs, compare, aliases, all_branches, rolling, excludes),
+                  jobs, compare, aliases, all_branches, rolling, excludes,
+                  github_user, profile_repo, push_profile),
             daemon=True,
         ).start()
 
     def _work(self, roots, depth, year, out_dir, identity, jobs, compare,
-              aliases, all_branches, rolling=False, excludes=None) -> None:
+              aliases, all_branches, rolling=False, excludes=None,
+              github_user="", profile_repo=None, push_profile=False) -> None:
         try:
-            repos = discover(roots, depth, exclude=excludes)
-            if not repos:
-                raise RuntimeError(i18n.tr("没有找到 git 仓库。"))
-            self.queue.put(("count", len(repos)))
+            if github_user:
+                from .github_public import default_cache_dir, fetch_stats
 
-            def progress(done, total, name):
-                self.queue.put(("progress", done, total, name))
+                safe_name = re.sub(r"[^a-z0-9_.-]", "_", github_user.lower())
+                cache_path = default_cache_dir() / f"github-{safe_name}.json"
+                stats, warnings, _login = fetch_stats(
+                    github_user,
+                    year,
+                    max_commits=int(self.cfg.get("max_commits", 500)),
+                    quiet=True,
+                    cache_path=cache_path,
+                    tz=self.cfg.get("tz"),
+                )
+            else:
+                repos = discover(roots, depth, exclude=excludes)
+                if not repos:
+                    raise RuntimeError(i18n.tr("没有找到 git 仓库。"))
+                self.queue.put(("count", len(repos)))
 
-            stats, warnings = scan(
-                repos, roots, year, identity, aliases=aliases,
-                author=self.cfg.get("author"),
-                timeout=int(self.cfg.get("timeout", 300)),
-                progress=progress, jobs=jobs, compare=compare,
-                use_mailmap=not bool(self.cfg.get("no_mailmap", False)),
-                all_branches=all_branches,
-                rolling=rolling,
-            )
-            if stats.commit_count == 0:
-                raise RuntimeError(i18n.tr(
-                    "{year} 年没有找到提交。", year=year,
-                ))
+                def progress(done, total, name):
+                    self.queue.put(("progress", done, total, name))
+
+                stats, warnings = scan(
+                    repos, roots, year, identity, aliases=aliases,
+                    author=self.cfg.get("author"),
+                    timeout=int(self.cfg.get("timeout", 300)),
+                    progress=progress, jobs=jobs, compare=compare,
+                    use_mailmap=not bool(self.cfg.get("no_mailmap", False)),
+                    all_branches=all_branches,
+                    rolling=rolling,
+                )
+                if stats.commit_count == 0:
+                    raise RuntimeError(i18n.tr(
+                        "{year} 年没有找到提交。", year=year,
+                    ))
             theme = self.theme_var.get() or str(self.cfg.get("theme", "paper"))
             written = render(
                 stats, out_dir,
                 card_theme=theme,
                 lang=i18n.get_lang(),
             )
+            if profile_repo:
+                from .profile import update_profile
+
+                cards = dict(written)
+                if i18n.get_lang() == "en":
+                    light, dark = cards.get("CARD-EN"), cards.get("CARD-DARK-EN")
+                else:
+                    light, dark = cards.get("CARD"), cards.get("CARD-DARK")
+                if light and dark:
+                    repo_p, _changed, _pushed = update_profile(
+                        profile_repo, stats.year, light, dark, push=push_profile,
+                    )
+                    written.append(("PROFILE", repo_p))
             self.queue.put(("done", stats, written, warnings, out_dir))
         except Exception as exc:  # pragma: no cover - UI path
             self.queue.put(("error", str(exc)))

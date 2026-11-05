@@ -574,10 +574,12 @@ def build_archives(stats: ReportStats) -> str:
             for lang, n in repo["langs"]
         )
         recents = "".join(
-            f'<div><b>{escape(r["date"])}</b>{escape(r["subject"])}</div>'
+            f'<div><b>{escape(r["date"])}</b><span data-raw>{escape(r["subject"])}</span></div>'
             for r in repo.get("recent", [])
         )
-        readme = escape(repo["readme"]) if repo.get("readme") else "（这个仓库的 README 还没写简介）"
+        has_readme = bool(repo.get("readme"))
+        readme = escape(repo["readme"]) if has_readme else "（这个仓库的 README 还没写简介）"
+        readme_raw = " data-raw" if has_readme else ""
         top_file = repo.get("top_file")
         facts = [
             f'首次提交 {repo["first"]} → 最近提交 {repo["last"]}',
@@ -610,8 +612,8 @@ def build_archives(stats: ReportStats) -> str:
               <span class="case-no">№ {i + 1:02d}</span>
               <span class="stamp{' sleep' if not active else ''}"><i></i>{stamp}</span>
             </div>
-            <h3>{name_html}</h3>
-            <p class="readme-quote">{readme}</p>
+            <h3 data-raw>{name_html}</h3>
+            <p class="readme-quote"{readme_raw}>{readme}</p>
             <ul class="how">{how}</ul>
             {link}
           </div>
@@ -651,14 +653,15 @@ def build_table(stats: ReportStats) -> str:
         url = _web_url(repo.get("remote") or "")
         if url:
             name = f'<a href="{escape(url)}" target="_blank" rel="noopener">{name} ↗</a>'
-        readme = escape(repo["readme"]) if repo.get("readme") else "（README 没写简介）"
-        none_cls = "" if repo.get("readme") else ' class="t-desc none"'
+        has_readme = bool(repo.get("readme"))
+        readme = escape(repo["readme"]) if has_readme else "（README 没写简介）"
+        none_cls = ' data-raw' if has_readme else ' class="t-desc none"'
         hot = ' class="t-status hot"' if active else ""
         stack = " · ".join(escape(str(lang)) for lang, _ in repo["langs"])
         rows.append(
             f'<tr data-cat="{cat_of(repo)}">'
             f'<td class="t-no">{i:02d}</td>'
-            f'<td class="t-name">{name}</td>'
+            f'<td class="t-name" data-raw>{name}</td>'
             f'<td class="t-desc"{none_cls}>{readme}</td>'
             f'<td class="t-stack">{stack}</td>'
             f'<td class="t-loc">{fmt_human(repo["lines"])}</td>'
@@ -764,7 +767,7 @@ def build_records(stats: ReportStats) -> str:
         add("最大单次提交", f"{fmt_int(lc['lines'])} <small>行</small>",
             f"{escape(lc['repo'])} · {lc['date']}")
     add("最长的 commit", f"{len(stats.longest_subject)} <small>字符</small>",
-        escape(stats.longest_subject[:90]))
+        f'<span data-raw>{escape(stats.longest_subject[:90])}</span>')
     if getattr(stats, "latest_night_commit", None):
         nc = stats.latest_night_commit
         add("最晚的一次熬夜", f"{escape(nc['time'])}",

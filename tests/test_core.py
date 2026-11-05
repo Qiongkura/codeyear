@@ -1515,3 +1515,61 @@ def test_file_deletion_leaderboard_and_latest_night_commit():
     en = to_english(html, stats)
     assert "Most refactored files" in en
     assert "Latest night commit" in en
+
+
+def test_english_translation_preserves_user_raw_data():
+    from codeyear.report_theme import decorate, to_english
+
+    repo = RepoResult(
+        path=Path("提交"),
+        name="提交",
+        readme_line="包含 1.5万 字与活跃功能",
+        commits=[
+            Commit(
+                repo="提交",
+                hash="2" * 40,
+                dt=datetime(2026, 4, 1, 14, 0),
+                subject="feat: 写入 2.5万 条记录并保持活跃",
+                added=50,
+                deleted=10,
+                files=1,
+                author_email="me@example.com",
+                author_name="Me",
+                changes=[
+                    FileChange("main.py", "Python", 60, added=50, deleted=10)
+                ],
+            )
+        ],
+        total_commits=1,
+    )
+    stats = build_stats(
+        year=2026,
+        root="/tmp",
+        repos=[repo],
+        identity=("me@example.com", "Me"),
+    )
+    en = to_english(decorate(build_html(stats), stats), stats)
+    assert "包含 1.5万 字与活跃功能" in en
+    assert "feat: 写入 2.5万 条记录并保持活跃" in en
+    assert "<h3 data-raw>提交</h3>" in en
+
+
+def test_poster_thread_local_language_and_github_cache_defaults():
+    import threading
+
+    from codeyear import github_public, poster
+
+    poster._set_lang("zh")
+    seen_in_worker = []
+
+    def worker():
+        poster._set_lang("en")
+        seen_in_worker.append(poster._get_lang())
+
+    t = threading.Thread(target=worker)
+    t.start()
+    t.join(timeout=5)
+    assert seen_in_worker == ["en"]
+    assert poster._get_lang() == "zh"
+    assert github_public.DETAIL_WORKERS == 8
+    assert github_public.default_cache_dir().name == "codeyear"

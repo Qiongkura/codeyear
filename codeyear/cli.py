@@ -66,6 +66,8 @@ def _build_parser() -> argparse.ArgumentParser:
                         help="更新后提交并推送 Profile 仓库（联网）；需同时指定 --profile-repo")
     github.add_argument("--cache-dir", default=None,
                         help="缓存公开 commit 详情到该目录，重复运行更快")
+    github.add_argument("--no-cache", action="store_true",
+                        help="禁用公开 commit 详情本地缓存")
     github.add_argument("--fallback-previous", action="store_true",
                         help="当年没有提交时回退到上一年，适合跨年自动更新")
     github.add_argument("--tz", default=cfg.get("tz"),
@@ -220,6 +222,7 @@ def main(argv: list[str] | None = None) -> int:
             push_profile=args.push_profile,
             fallback_previous=args.fallback_previous,
             cache_dir=args.cache_dir,
+            no_cache=args.no_cache,
             lang=i18n.get_lang(),
             tz=args.tz,
         )

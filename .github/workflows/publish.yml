@@ -1,14 +1,8 @@
 name: Publish to PyPI
 
 on:
-  # 先在 PyPI 配置 trusted publisher：
-  #   owner: Qiongkura
-  #   repository: codeyear
-  #   workflow: publish.yml
-  #   environment: pypi
-  # 配置好后取消下面三行注释即可在发布 Release 时自动上传。
-  # release:
-  #   types: [published]
+  release:
+    types: [published]
   workflow_dispatch:
 
 permissions:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import re
+import threading
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -60,17 +61,25 @@ _FONT_PATHS: dict[str, list[str]] = {
 }
 _FONT_CACHE: dict[tuple[int, str], ImageFont.FreeTypeFont] = {}
 
-# Rendering is synchronous, so a module-level language keeps the drawing
-# helpers readable without threading ``lang`` through every call.
-_LANG = "zh"
+# Thread-local language state keeps the drawing helpers readable while
+# remaining safe for concurrent multi-thread rendering.
+_STATE = threading.local()
 _MONTHS = [
     "Jan", "Feb", "Mar", "Apr", "May", "Jun",
     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ]
 
 
+def _get_lang() -> str:
+    return getattr(_STATE, "lang", "zh")
+
+
+def _set_lang(lang: str) -> None:
+    _STATE.lang = "en" if lang == "en" else "zh"
+
+
 def _t(zh: str, en: str) -> str:
-    return en if _LANG == "en" else zh
+    return en if _get_lang() == "en" else zh
 
 
 
@@ -160,7 +169,7 @@ def _wrap(draw: ImageDraw.ImageDraw, text: str, font, max_width: float, max_line
 
 
 def _big(n: int) -> str:
-    if _LANG == "en":
+    if _get_lang() == "en":
         if n >= 1_000_000:
             return f"{n / 1_000_000:.1f}m"
         if n >= 10_000:
@@ -174,7 +183,7 @@ def _big(n: int) -> str:
 
 
 def _signed(insertions: int, deletions: int) -> str:
-    if _LANG == "en":
+    if _get_lang() == "en":
         if max(insertions, deletions) >= 10_000:
             return f"+{insertions / 1000:.0f}k / -{deletions / 1000:.0f}k"
         return f"+{insertions:,} / -{deletions:,}"
@@ -283,14 +292,14 @@ def _header(draw: ImageDraw.ImageDraw, stats: ReportStats) -> None:
 def _persona(draw: ImageDraw.ImageDraw, stats: ReportStats) -> None:
     _label(draw, (M, 322), "YOUR CODING YEAR")
     title = _ellipsize(
-        draw, stats.persona.title_en if _LANG == "en" else stats.persona.title,
-        _font(42, "serif" if _LANG == "en" else "serifcn"), W - 2 * M,
+        draw, stats.persona.title_en if _get_lang() == "en" else stats.persona.title,
+        _font(42, "serif" if _get_lang() == "en" else "serifcn"), W - 2 * M,
     )
     draw.text((M - 2, 338), title,
-              font=_font(42, "serif" if _LANG == "en" else "serifcn"), fill=INK)
+              font=_font(42, "serif" if _get_lang() == "en" else "serifcn"), fill=INK)
 
     body = _font(15, "sans")
-    text = stats.persona.subtitle_en if _LANG == "en" else stats.persona.subtitle
+    text = stats.persona.subtitle_en if _get_lang() == "en" else stats.persona.subtitle
     lines = _wrap(draw, text, body, W - 2 * M, 2)
     for i, line in enumerate(lines):
         draw.text((M, 402 + i * 24), line, font=body, fill=INK2)
@@ -298,7 +307,7 @@ def _persona(draw: ImageDraw.ImageDraw, stats: ReportStats) -> None:
 
 def _stats(draw: ImageDraw.ImageDraw, stats: ReportStats) -> None:
     _rule(draw, 476)
-    if _LANG == "en":
+    if _get_lang() == "en":
         labels = ["COMMITS", "LINES", "ACTIVE", "STREAK", "TOTAL"]
         subs = [
             f"{stats.repo_count} repos with commits",
@@ -430,7 +439,7 @@ def _languages(draw: ImageDraw.ImageDraw, stats: ReportStats) -> None:
     for i, (name, value) in enumerate(rows):
         y = 1048 + i * 25
         draw.rectangle((M, y + 2, M + 8, y + 10), fill=palette[i % len(palette)])
-        label = "Other" if _LANG == "en" and name == "其他" else name
+        label = "Other" if _get_lang() == "en" and name == "其他" else name
         _draw_text(draw, (M + 18, y + 6), _ellipsize(draw, label, _font(11, "sans"), 300),
                    _font(11, "sans"), INK2, anchor="lm", cjk_font=_font(11, "sans"))
         draw.text((M + 500, y + 6), f"{value / total * 100:.0f}%", font=_font(10, "mono"),
@@ -507,7 +516,7 @@ def _closing(draw: ImageDraw.ImageDraw, stats: ReportStats) -> None:
     quote = _t("「代码不会说谎，git 尤其不会。」",
                "“Code doesn’t lie. Git especially doesn’t.”")
     draw.text((M, 1424), quote,
-              font=_font(24, "serif" if _LANG == "en" else "serifcn"), fill=INK)
+              font=_font(24, "serif" if _get_lang() == "en" else "serifcn"), fill=INK)
     sub = _t(
         f"LOCAL ONLY · 生成于 {stats.generated_at} · 代码从未离开这台电脑",
         f"LOCAL ONLY · generated {stats.generated_at} · code never left this machine",
@@ -530,8 +539,7 @@ def _closing(draw: ImageDraw.ImageDraw, stats: ReportStats) -> None:
 
 
 def render(stats: ReportStats, out_path: str | Path, *, lang: str = "zh") -> Path:
-    global _LANG
-    _LANG = "en" if lang == "en" else "zh"
+    _set_lang(lang)
     img = Image.new("RGB", (W * SCALE, H * SCALE), PAPER)
     draw = _ScaledDraw(ImageDraw.Draw(img), SCALE)
 
@@ -568,8 +576,8 @@ LONG_H = 4000
 def _long_title(draw: ImageDraw.ImageDraw, y: int, no: str, cn: str, en: str) -> int:
     _rule(draw, y - 18)
     draw.text((M, y), f"{no} / {en}", font=_font(9, "mono"), fill=ACCENT)
-    heading = en if _LANG == "en" else cn
-    heading_font = "serif" if _LANG == "en" else "serifcn"
+    heading = en if _get_lang() == "en" else cn
+    heading_font = "serif" if _get_lang() == "en" else "serifcn"
     _draw_text(draw, (M, y + 16), heading, _font(26, heading_font), INK,
                cjk_font=_font(26, "serifcn"))
     return y + 54
@@ -592,17 +600,17 @@ def _long_header(draw: ImageDraw.ImageDraw, stats: ReportStats, y: int) -> int:
         _draw_text(draw, (M, y + 176), _ellipsize(draw, scope, _font(10, "mono"), W - 2 * M),
                    _font(10, "mono"), MUTED, cjk_font=_font(10, "sans"))
 
-    title = stats.persona.title_en if _LANG == "en" else stats.persona.title
-    title_font = "serif" if _LANG == "en" else "serifcn"
+    title = stats.persona.title_en if _get_lang() == "en" else stats.persona.title
+    title_font = "serif" if _get_lang() == "en" else "serifcn"
     _draw_text(draw, (M, y + 196), title, _font(34, title_font), INK,
                cjk_font=_font(34, "serifcn"))
-    subtitle = stats.persona.subtitle_en if _LANG == "en" else stats.persona.subtitle
+    subtitle = stats.persona.subtitle_en if _get_lang() == "en" else stats.persona.subtitle
     lines = _wrap(draw, subtitle, _font(14, "sans"), W - 2 * M, 2)
     for i, line in enumerate(lines):
         draw.text((M, y + 242 + i * 22), line, font=_font(14, "sans"), fill=INK2)
 
     _rule(draw, y + 300)
-    if _LANG == "en":
+    if _get_lang() == "en":
         labels = ["COMMITS", "LINES", "ACTIVE", "STREAK", "TOTAL"]
         subs = [f"{stats.repo_count} repos with commits",
                 _signed(stats.insertions, stats.deletions),
@@ -779,7 +787,7 @@ def _long_lang_files(draw: ImageDraw.ImageDraw, stats: ReportStats, y: int) -> i
     for i, (name, value) in enumerate(rows):
         yy = y0 + 46 + i * 21
         draw.rectangle((M, yy + 2, M + 8, yy + 10), fill=palette[i % len(palette)])
-        label = "Other" if _LANG == "en" and name == "其他" else name
+        label = "Other" if _get_lang() == "en" and name == "其他" else name
         _draw_text(draw, (M + 16, yy + 6), label, _font(10, "sans"), INK2,
                    anchor="lm", cjk_font=_font(10, "sans"))
         draw.text((M + 500, yy + 6), f"{value / total * 100:.0f}%",
@@ -931,8 +939,7 @@ def _long_heatmap(draw: ImageDraw.ImageDraw, stats: ReportStats, y: int) -> int:
 
 
 def render_long(stats: ReportStats, out_path: str | Path, *, lang: str = "zh") -> Path:
-    global _LANG
-    _LANG = "en" if lang == "en" else "zh"
+    _set_lang(lang)
     img = Image.new("RGB", (LONG_W * SCALE, LONG_H * SCALE), PAPER)
     draw = _ScaledDraw(ImageDraw.Draw(img), SCALE)
     for x in range(0, LONG_W, 48):
@@ -952,7 +959,7 @@ def render_long(stats: ReportStats, out_path: str | Path, *, lang: str = "zh") -
 
     draw.text((M, y + 24), _t("「代码不会说谎，git 尤其不会。」",
                               "“Code doesn’t lie. Git especially doesn’t.”"),
-              font=_font(22, "serif" if _LANG == "en" else "serifcn"), fill=INK)
+              font=_font(22, "serif" if _get_lang() == "en" else "serifcn"), fill=INK)
     sub = _t(
         f"LOCAL ONLY · 生成于 {stats.generated_at} · 代码从未离开这台电脑",
         f"LOCAL ONLY · generated {stats.generated_at} · code never left this machine",

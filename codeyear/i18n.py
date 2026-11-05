@@ -57,6 +57,8 @@ EN = {
         "requires --profile-repo",
     "缓存公开 commit 详情到该目录，重复运行更快":
         "Cache public commit details in this directory for faster reruns",
+    "禁用公开 commit 详情本地缓存":
+        "Disable local caching of public commit details",
     "当年没有提交时回退到上一年，适合跨年自动更新":
         "Fall back to the previous year when the requested year has no commits",
     "时区（如 UTC+8 或 Asia/Shanghai；默认本机时区）":
@@ -265,6 +267,11 @@ EN = {
     "更新完成": "Update complete",
     "近 365 天": "Last 365d",
     "排除仓库": "Exclude",
+    "GitHub 账号（留空扫本地）": "GitHub user (optional)",
+    "Profile 仓库": "Profile repo",
+    "推送": "Push",
+    "选择 Profile 仓库目录": "Choose profile repository folder",
+    "正在拉取公开 GitHub 数据…": "Fetching public GitHub data…",
     "无法连接更新服务器，请检查网络。":
         "Could not reach the update server; check your connection.",
     "当前已是最新版本（v{version}）。":
