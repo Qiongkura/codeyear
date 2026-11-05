@@ -34,7 +34,7 @@ codeyear
 Or install the wheel from the release:
 
 ```bash
-pip install https://github.com/Qiongkura/codeyear/releases/download/v0.2.13/codeyear-0.2.13-py3-none-any.whl
+pip install https://github.com/Qiongkura/codeyear/releases/download/v0.2.14/codeyear-0.2.14-py3-none-any.whl
 ```
 
 > The exe is unsigned; Windows SmartScreen may warn. Click “More info → Run anyway”.
@@ -54,7 +54,7 @@ python -m codeyear scan ~/code --open
 Or run it in one line without installing via uv (install [uv](https://docs.astral.sh/uv/) first):
 
 ```bash
-uvx --from "https://github.com/Qiongkura/codeyear/releases/download/v0.2.13/codeyear-0.2.13-py3-none-any.whl" codeyear scan ~/code --open
+uvx --from "https://github.com/Qiongkura/codeyear/releases/download/v0.2.14/codeyear-0.2.14-py3-none-any.whl" codeyear scan ~/code --open
 # Or run straight from git:
 uvx --from git+https://github.com/Qiongkura/codeyear.git codeyear scan ~/code --open
 ```
@@ -189,7 +189,7 @@ If you only have Cloudflare, expose the local service with a tunnel:
 > daily at 04:00 UTC by default; change the workflow `cron` to weekly (`0 4 * * 1`)
 > or monthly (`0 4 1 * *`). `--fallback-previous` keeps last year's card until the
 > new year has commits. The template installs the release wheel; bump
-> `CODEYEAR_VERSION` (currently `0.2.13`) when upgrading. For high-volume accounts,
+> `CODEYEAR_VERSION` (currently `0.2.14`) when upgrading. For high-volume accounts,
 > add a `CODEYEAR_TOKEN` (PAT) secret to the profile repo; the template prefers it
 > and falls back to `GITHUB_TOKEN`, which is usually limited to 1,000 requests/hour.
 

@@ -33,7 +33,7 @@ codeyear
 也可以从 Release 下载 wheel：
 
 ```bash
-pip install https://github.com/Qiongkura/codeyear/releases/download/v0.2.13/codeyear-0.2.13-py3-none-any.whl
+pip install https://github.com/Qiongkura/codeyear/releases/download/v0.2.14/codeyear-0.2.14-py3-none-any.whl
 ```
 
 > exe 未做代码签名，Windows SmartScreen 可能提示；点「更多信息 → 仍要运行」。
@@ -53,7 +53,7 @@ python -m codeyear scan ~/code --open
 或者用 uv 一行免安装运行（需要先装 [uv](https://docs.astral.sh/uv/)）：
 
 ```bash
-uvx --from "https://github.com/Qiongkura/codeyear/releases/download/v0.2.13/codeyear-0.2.13-py3-none-any.whl" codeyear scan ~/code --open
+uvx --from "https://github.com/Qiongkura/codeyear/releases/download/v0.2.14/codeyear-0.2.14-py3-none-any.whl" codeyear scan ~/code --open
 # 或直接从源码运行：
 uvx --from git+https://github.com/Qiongkura/codeyear.git codeyear scan ~/code --open
 ```
@@ -184,7 +184,7 @@ https://your-host/card.svg?username=Qiongkura&year=2026&lang=en
 > 文件名绕过 GitHub 的图片缓存；无需手动粘贴 embed 片段。模板默认每天 04:00 UTC
 > 更新；改 workflow 里的 `cron` 可切成每周一 `0 4 * * 1` 或每月 1 日 `0 4 1 * *`。
 > 跨年时如果新的一年还没有提交，`--fallback-previous` 会继续显示上一年的卡片。
-> 模板直接安装 Release 里的 wheel；升级时改 `CODEYEAR_VERSION`（当前 `0.2.13`）。
+> 模板直接安装 Release 里的 wheel；升级时改 `CODEYEAR_VERSION`（当前 `0.2.14`）。
 > 提交量大的账号建议在 Profile 仓库添加 `CODEYEAR_TOKEN`（PAT）secret；模板会优先使用它，
 > 否则回退到 `GITHUB_TOKEN`。`GITHUB_TOKEN` 在 Actions 里通常只有 1,000 次/小时额度，
 > 超过这个量时提交详情会被截断。
