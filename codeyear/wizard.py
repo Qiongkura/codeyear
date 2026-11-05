@@ -15,7 +15,7 @@ from datetime import date
 from pathlib import Path
 
 from . import i18n
-from .runner import detect_identity, discover, render, scan
+from .runner import detect_identity, discover, render, report_path, scan
 from .stats import fmt_human, fmt_int
 
 
@@ -162,7 +162,7 @@ def run() -> int:
             print("\n" + i18n.tr("{year} 年没有找到提交。", year=year))
             return 3
 
-        written = render(stats, out_dir)
+        written = render(stats, out_dir, lang=i18n.get_lang())
 
         print()
         print(i18n.tr(
@@ -189,7 +189,9 @@ def run() -> int:
                 print(f"  - {warning}")
 
         if open_after:
-            _open(next(path for label, path in written if label == "HTML"))
+            target = report_path(written, lang=i18n.get_lang())
+            if target:
+                _open(target)
         return 0
     except KeyboardInterrupt:
         print("\n" + i18n.tr("已取消。"))

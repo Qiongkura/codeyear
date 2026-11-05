@@ -66,7 +66,12 @@ def _dt(value: str | None) -> datetime | None:
     if not value:
         return None
     try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00")).replace(tzinfo=None)
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        # GitHub timestamps are UTC. Convert to the machine's local timezone
+        # so hour-of-day and late-night statistics match the local report.
+        if parsed.tzinfo is not None:
+            parsed = parsed.astimezone().replace(tzinfo=None)
+        return parsed
     except ValueError:
         return None
 
@@ -156,8 +161,10 @@ def _commits(
     cache: dict | None = None,
 ) -> list[Commit]:
     full = repo["full_name"]
-    since = f"{year}-01-01T00:00:00Z"
-    until = f"{year + 1}-01-01T00:00:00Z"
+    # Pad the UTC window by a day on each side; actual filtering below uses
+    # the local year, so commits near midnight in non-UTC zones are kept.
+    since = f"{year - 1}-12-31T00:00:00Z"
+    until = f"{year + 1}-01-02T00:00:00Z"
     listed: list[dict] = []
     # A busy repository can exceed 1,000 commits in one year; keep paging
     # until the caller's budget is reached or GitHub runs out of pages.

@@ -577,6 +577,41 @@ def test_server_cache_is_bounded(monkeypatch):
     assert len(server.CACHE) <= server.CACHE_MAX
 
 
+def test_server_collapses_concurrent_misses(monkeypatch):
+    import threading
+    import time
+
+    from codeyear import server
+
+    calls = 0
+    calls_lock = threading.Lock()
+
+    def fake_fetch(*args, **kwargs):
+        nonlocal calls
+        with calls_lock:
+            calls += 1
+        time.sleep(0.1)
+        return object(), [], "me"
+
+    monkeypatch.setattr(server, "fetch_stats", fake_fetch)
+    server.CACHE.clear()
+    server.KEY_LOCKS.clear()
+    barrier = threading.Barrier(2)
+    results = []
+
+    def worker():
+        barrier.wait()
+        results.append(server._cached_stats("me", 2026, None, 10))
+
+    threads = [threading.Thread(target=worker) for _ in range(2)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=5)
+    assert calls == 1
+    assert len(results) == 2 and results[0] is results[1]
+
+
 def test_server_rate_limit():
     from codeyear import server
 
@@ -1207,6 +1242,32 @@ def test_persona_variety():
     assert "longest streak" in persona.summary_en.lower()
     assert "window.Fixes" not in persona.summary_en
     assert "window. Fixes" in persona.summary_en
+
+
+def test_public_card_marks_github_source():
+    from dataclasses import replace
+
+    stats = replace(_stats(), root="https://github.com/me")
+    svg = build_svg(stats)
+    assert "PUBLIC · GITHUB" in svg
+    assert "LOCAL ONLY" not in svg
+
+
+def test_dormant_uses_year_end_for_past_reports():
+    repo = RepoResult(
+        path=Path("demo"), name="demo",
+        commits=[Commit(
+            repo="demo", hash="c" * 40, dt=datetime(2024, 12, 1, 10, 0),
+            subject="feat: old", added=1, deleted=0, files=1,
+            author_email="me@example.com", author_name="Me", changes=[],
+        )],
+        total_commits=1,
+    )
+    stats = build_stats(
+        year=2024, root="/tmp", repos=[repo],
+        identity=("me@example.com", "Me"),
+    )
+    assert stats.dormant == []
 
 
 def test_persona_block_translated():

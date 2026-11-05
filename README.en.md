@@ -126,6 +126,8 @@ codeyear github Qiongkura --year 2026 --out ./codeyear-github
 - Each commit detail is one API request. `--max-commits` is a hard cap for that run (default 200; the profile Action template uses 5,000).
 - The built-in `GITHUB_TOKEN` in Actions is usually limited to 1,000 requests/hour/repository; a `CODEYEAR_TOKEN` (PAT) usually gets 5,000/hour.
 - Cached commit details are reused, so daily incremental updates are fast; the cache holds up to 5,000 details.
+- Public-mode commit times are converted to the machine's local timezone, so late-night
+  statistics depend on `TZ`. The profile template defaults to `TZ=Asia/Shanghai`; change it for your timezone.
 - For more than 5,000 commits/year, or when you need organization/private repositories, use local `codeyear scan`, which has no such API limits.
 
 ### Online card service

@@ -58,6 +58,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.CODEYEAR_TOKEN || secrets.GITHUB_TOKEN }}
           # 想要英文卡片就改成 en（同时决定 CLI 语言）
           CODEYEAR_LANG: zh
+          # 影响“深夜/作息”统计，按你的时区改
+          TZ: Asia/Shanghai
 
       - name: Commit and push
         run: |

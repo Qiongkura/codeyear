@@ -310,8 +310,6 @@ def build_stats(
     selected: list[tuple[RepoResult, list[Commit]]] = []
     seen_hashes: set[str] = set()
     for repo in ordered:
-        if repo.warning:
-            warnings.append(f"{repo.name}: {repo.warning}")
         unique: list[Commit] = []
         for commit in repo.commits:
             if commit.hash in seen_hashes:
@@ -584,6 +582,9 @@ def build_stats(
         language_quarters.append({"q": f"Q{i + 1}", "rows": rows})
 
     today_date = datetime.now().date()
+    # For a past year, measure dormancy from that year's end, not from today.
+    if year < today_date.year:
+        today_date = date(year, 12, 31)
     dormant: list[dict] = []
     for repo in repo_details:
         try:

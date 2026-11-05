@@ -512,11 +512,18 @@ def _closing(draw: ImageDraw.ImageDraw, stats: ReportStats) -> None:
         f"LOCAL ONLY · 生成于 {stats.generated_at} · 代码从未离开这台电脑",
         f"LOCAL ONLY · generated {stats.generated_at} · code never left this machine",
     )
+    footer_label = "LOCAL-FIRST · NO DATA UPLOADED"
+    if stats.public_source:
+        sub = _t(
+            f"PUBLIC DATA · 生成于 {stats.generated_at} · 仅使用公开 GitHub 数据",
+            f"PUBLIC DATA · generated {stats.generated_at} · public GitHub data only",
+        )
+        footer_label = "PUBLIC DATA · GITHUB"
     _draw_text(draw, (M, 1468), sub, _font(10, "mono"), MUTED,
                cjk_font=_font(10, "sans"))
 
     _rule(draw, 1520)
-    draw.text((M, 1534), "LOCAL-FIRST · NO DATA UPLOADED",
+    draw.text((M, 1534), footer_label,
               font=_font(9, "mono"), fill=MUTED)
     draw.text((W - M, 1534), f"CODEYEAR · {stats.year}",
               font=_font(9, "mono"), fill=MUTED, anchor="ra")
@@ -946,12 +953,21 @@ def render_long(stats: ReportStats, out_path: str | Path, *, lang: str = "zh") -
     draw.text((M, y + 24), _t("「代码不会说谎，git 尤其不会。」",
                               "“Code doesn’t lie. Git especially doesn’t.”"),
               font=_font(22, "serif" if _LANG == "en" else "serifcn"), fill=INK)
-    _draw_text(draw, (M, y + 62), _t(
+    sub = _t(
         f"LOCAL ONLY · 生成于 {stats.generated_at} · 代码从未离开这台电脑",
         f"LOCAL ONLY · generated {stats.generated_at} · code never left this machine",
-    ), _font(9, "mono"), MUTED, cjk_font=_font(9, "sans"))
+    )
+    footer_label = "LOCAL-FIRST · NO DATA UPLOADED"
+    if stats.public_source:
+        sub = _t(
+            f"PUBLIC DATA · 生成于 {stats.generated_at} · 仅使用公开 GitHub 数据",
+            f"PUBLIC DATA · generated {stats.generated_at} · public GitHub data only",
+        )
+        footer_label = "PUBLIC DATA · GITHUB"
+    _draw_text(draw, (M, y + 62), sub,
+               _font(9, "mono"), MUTED, cjk_font=_font(9, "sans"))
     _rule(draw, y + 100)
-    draw.text((M, y + 112), "LOCAL-FIRST · NO DATA UPLOADED",
+    draw.text((M, y + 112), footer_label,
               font=_font(9, "mono"), fill=MUTED)
     draw.text((W - M, y + 112), f"CODEYEAR · {stats.year}",
               font=_font(9, "mono"), fill=MUTED, anchor="ra")

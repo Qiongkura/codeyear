@@ -447,10 +447,27 @@ def build_svg(stats: ReportStats, *, dark: bool = False,
 
     peak_share = peak / max(stats.commit_count, 1)
     burst_num, burst_unit = f"{peak_share * 100:.0f}", "%"
-    burst_sub = t(
-        f"{peak_month} 月贡献了全年近一半提交",
-        f"{MONTHS[peak_month - 1]} produced nearly half the year's commits",
-    )
+    peak_label = MONTHS[peak_month - 1]
+    if peak_share >= 0.5:
+        burst_sub = t(
+            f"{peak_month} 月占了全年 {peak_share:.0%} 的提交",
+            f"{peak_label} accounted for {peak_share:.0%} of the year",
+        )
+    elif peak_share >= 0.3:
+        burst_sub = t(
+            f"{peak_month} 月最忙，占全年 {peak_share:.0%}",
+            f"{peak_label} was busiest at {peak_share:.0%}",
+        )
+    elif peak_share >= 0.18:
+        burst_sub = t(
+            f"{peak_month} 月提交最多，占 {peak_share:.0%}",
+            f"{peak_label} had the most commits ({peak_share:.0%})",
+        )
+    else:
+        burst_sub = t(
+            f"全年分布比较平均，{peak_month} 月最多",
+            f"Fairly even across the year; {peak_label} was slightly ahead",
+        )
 
     top2 = sum(repo["commits"] for repo in stats.repo_details[:2])
     top2_share = top2 / max(stats.commit_count, 1)
@@ -465,10 +482,24 @@ def build_svg(stats: ReportStats, *, dark: bool = False,
     mid_share = msg_map.get("40–80", 0) / msg_total
     avg_subject = stats.avg_subject_len
     msg_num, msg_unit = str(avg_subject), t("字", "chars")
-    msg_sub = t(
-        f"说明较详细 · {mid_share:.0%} 在 40–80 字",
-        f"Detailed · {mid_share:.0%} at 40–80 chars",
-    )
+    if avg_subject >= 50:
+        msg_kind = t("说明很长", "Very detailed")
+    elif avg_subject >= 30:
+        msg_kind = t("说明较详细", "Detailed")
+    elif avg_subject >= 15:
+        msg_kind = t("长度适中", "Medium-length")
+    else:
+        msg_kind = t("标题偏短", "Short subjects")
+    if mid_share >= 0.15:
+        msg_sub = t(
+            f"{msg_kind} · {mid_share:.0%} 在 40–80 字",
+            f"{msg_kind} · {mid_share:.0%} at 40–80 chars",
+        )
+    else:
+        msg_sub = t(
+            f"{msg_kind} · 平均 {avg_subject} 字",
+            f"{msg_kind} · avg {avg_subject} chars",
+        )
 
     insights = [
         (t("主攻项目 / MAIN PROJECT", "MAIN PROJECT"),
@@ -639,13 +670,21 @@ def build_svg(stats: ReportStats, *, dark: bool = False,
         f"生成于 {stats.generated_at.replace('-', '.')}",
         f"Generated {stats.generated_at.replace('-', '.')}",
     )
+    if stats.public_source:
+        source_line = t(
+            f"CODEYEAR · {stats.year} · 公开 GitHub 数据",
+            f"CODEYEAR · {stats.year} · public GitHub data",
+        )
+        source_badge = "PUBLIC · GITHUB"
+    else:
+        source_line = f"CODEYEAR · {stats.year} · generated locally · no data uploaded"
+        source_badge = "LOCAL ONLY"
     footer = [
         _rule(1202, c["line"]),
         _text(M, 1218, meta_line, 10, c["muted"]),
         _text(RIGHT, 1218, right_footer, 10, c["muted"], anchor="end"),
-        _text(M, 1236, f"CODEYEAR · {stats.year} · generated locally · no data uploaded",
-              9.5, c["muted"]),
-        _text(RIGHT, 1236, "LOCAL ONLY", 9.5, c["accent"], anchor="end", spacing=1),
+        _text(M, 1236, source_line, 9.5, c["muted"]),
+        _text(RIGHT, 1236, source_badge, 9.5, c["accent"], anchor="end", spacing=1),
     ]
 
     label = f"{owner} · CodeYear {stats.year} · {title}" if owner else (

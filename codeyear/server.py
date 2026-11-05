@@ -22,6 +22,8 @@ from .github_public import fetch_stats
 USERNAME_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$")
 CACHE: OrderedDict[tuple[str, int, int], tuple[float, object]] = OrderedDict()
 CACHE_LOCK = threading.Lock()
+KEY_LOCKS: dict[tuple[str, int, int], threading.Lock] = {}
+KEY_LOCKS_GUARD = threading.Lock()
 CACHE_TTL = 3600
 CACHE_MAX = 128
 RATE: dict[str, tuple[float, int]] = {}
@@ -57,14 +59,32 @@ def _cached_stats(username: str, year: int, token: str | None, max_commits: int)
             return item[1]
         if item:
             CACHE.pop(key, None)
-    stats, _warnings, _login = fetch_stats(
-        username, year, token=token, max_commits=max_commits, quiet=True,
-    )
-    with CACHE_LOCK:
-        CACHE[key] = (time.time(), stats)
-        CACHE.move_to_end(key)
-        while len(CACHE) > CACHE_MAX:
-            CACHE.popitem(last=False)
+
+    # Collapse concurrent misses for the same card. README <picture> blocks
+    # request both light and dark cards at once, which would otherwise trigger
+    # two full GitHub fetches.
+    with KEY_LOCKS_GUARD:
+        key_lock = KEY_LOCKS.setdefault(key, threading.Lock())
+    with key_lock:
+        now = time.time()
+        with CACHE_LOCK:
+            item = CACHE.get(key)
+            if item and now - item[0] < CACHE_TTL:
+                CACHE.move_to_end(key)
+                return item[1]
+        stats, _warnings, _login = fetch_stats(
+            username, year, token=token, max_commits=max_commits, quiet=True,
+        )
+        with CACHE_LOCK:
+            CACHE[key] = (time.time(), stats)
+            CACHE.move_to_end(key)
+            while len(CACHE) > CACHE_MAX:
+                CACHE.popitem(last=False)
+        with KEY_LOCKS_GUARD:
+            if len(KEY_LOCKS) > CACHE_MAX * 2:
+                for old_key in list(KEY_LOCKS):
+                    if old_key != key and not KEY_LOCKS[old_key].locked():
+                        KEY_LOCKS.pop(old_key, None)
     return stats
 
 
