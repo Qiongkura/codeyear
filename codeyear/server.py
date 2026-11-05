@@ -228,6 +228,7 @@ pre{white-space:pre-wrap;word-break:break-all;background:#ece8dc;padding:14px;
       <option value="ocean">海洋</option>
     </select>
     <select id="mode"><option value="light">浅色</option><option value="dark">深色</option></select>
+    <select id="lang"><option value="zh">中文</option><option value="en">English</option></select>
     <button onclick="loadCard()">生成</button>
   </div>
 
@@ -246,9 +247,11 @@ function loadCard() {
   const year = document.getElementById("year").value || "__YEAR__";
   const theme = document.getElementById("theme").value;
   const mode = document.getElementById("mode").value;
+  const lang = document.getElementById("lang").value;
   const base = location.origin;
   const name = mode === "dark" ? "card-dark.svg" : "card.svg";
-  const qs = `username=${encodeURIComponent(user)}&year=${year}&theme=${theme}`;
+  const langPart = lang === "en" ? "&lang=en" : "";
+  const qs = `username=${encodeURIComponent(user)}&year=${year}&theme=${theme}${langPart}`;
   const url = `${base}/${name}?${qs}`;
   document.getElementById("card").src = url + "&t=" + Date.now();
   current = `<picture>

@@ -269,7 +269,11 @@ def _commits(
             ))
 
         def fetch_detail(entry: tuple[int, dict]):
-            return api.get(f"/repos/{full}/commits/{entry[1]['sha']}")
+            idx, item = entry
+            detail = api.get(f"/repos/{full}/commits/{item['sha']}")
+            if cache is not None and detail:
+                cache[keys[idx]] = detail
+            return detail
 
         # Commit details are independent; a small pool cuts wall time without
         # changing the request count or adding dependencies.
@@ -277,8 +281,6 @@ def _commits(
             fetched = list(pool.map(fetch_detail, missing))
         for (index, _item), detail in zip(missing, fetched):
             details[index] = detail
-            if cache is not None and detail:
-                cache[keys[index]] = detail
 
     commits: list[Commit] = []
     for item, detail in zip(items, details):

@@ -10,7 +10,14 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
-from .stats import ReportStats, fmt_int, fmt_signed_pair, language_breakdown, parse_daily
+from .stats import (
+    ReportStats,
+    date_window,
+    fmt_int,
+    fmt_signed_pair,
+    language_breakdown,
+    parse_daily,
+)
 
 W, H = 1200, 1600
 M = 64
@@ -476,8 +483,7 @@ def _heatmap(draw: ImageDraw.ImageDraw, stats: ReportStats) -> None:
     ))
 
     daily = parse_daily(stats.daily)
-    start = date(stats.year, 1, 1)
-    end = date(stats.year, 12, 31)
+    start, end = date_window(stats)
     grid_start = start - timedelta(days=start.weekday())
     grid_end = end + timedelta(days=6 - end.weekday())
     cols = (grid_end - grid_start).days // 7 + 1
@@ -900,8 +906,7 @@ def _long_churn_dormant(draw: ImageDraw.ImageDraw, stats: ReportStats, y: int) -
 def _long_heatmap(draw: ImageDraw.ImageDraw, stats: ReportStats, y: int) -> int:
     y0 = _long_title(draw, y, "08", "全年热力图", "CONTRIBUTION")
     daily = parse_daily(stats.daily)
-    start = date(stats.year, 1, 1)
-    end = date(stats.year, 12, 31)
+    start, end = date_window(stats)
     grid_start = start - timedelta(days=start.weekday())
     grid_end = end + timedelta(days=6 - end.weekday())
     cols = (grid_end - grid_start).days // 7 + 1

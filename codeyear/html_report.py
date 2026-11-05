@@ -20,6 +20,7 @@ from .card import THEMES as CARD_THEMES
 from .card import build_svg as build_card_svg
 from .stats import (
     ReportStats,
+    date_window,
     fmt_human,
     fmt_int,
     language_breakdown,
@@ -687,8 +688,7 @@ def build_table(stats: ReportStats) -> str:
 
 def build_heatmap(stats: ReportStats) -> str:
     daily = parse_daily(stats.daily)
-    start = date(stats.year, 1, 1)
-    end = date(stats.year, 12, 31)
+    start, end = date_window(stats)
     grid_start = start - timedelta(days=start.weekday())
     grid_end = end + timedelta(days=6 - end.weekday())
     today = date.today()
@@ -998,8 +998,7 @@ def build_language_quarters(stats: ReportStats) -> str:
 
 
 def build_lifecycle(stats: ReportStats) -> str:
-    start = date(stats.year, 1, 1)
-    end = date(stats.year, 12, 31)
+    start, end = date_window(stats)
     span_days = max((end - start).days, 1)
     ordered = sorted(stats.repo_details, key=lambda r: (r["first"], -r["commits"]))[:10]
 
@@ -1017,8 +1016,8 @@ def build_lifecycle(stats: ReportStats) -> str:
             last = datetime.strptime(repo["last"], "%Y.%m.%d").date()
         except ValueError:
             continue
-        left = (first - start).days / span_days * 100
-        width = (last - first).days / span_days * 100
+        left = max(0.0, min(100.0, (first - start).days / span_days * 100))
+        width = max(0.0, min(100.0 - left, (last - first).days / span_days * 100))
         _stamp, active = _stamp_for(repo["last"], stats.generated_at, stats.year)
         hot = " hot" if active else ""
         if (last - first).days == 0:

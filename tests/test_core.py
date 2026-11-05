@@ -1573,3 +1573,50 @@ def test_poster_thread_local_language_and_github_cache_defaults():
     assert poster._get_lang() == "zh"
     assert github_public.DETAIL_WORKERS == 8
     assert github_public.default_cache_dir().name == "codeyear"
+
+
+def test_rolling_cross_year_heatmap_and_lifecycle_window():
+    from codeyear.stats import date_window
+
+    repo = RepoResult(
+        path=Path("demo"),
+        name="demo",
+        commits=[
+            Commit(
+                repo="demo",
+                hash="a1" * 20,
+                dt=datetime(2025, 11, 20, 10, 0),
+                subject="feat: late 2025",
+                added=20,
+                deleted=2,
+                files=1,
+                author_email="me@example.com",
+                author_name="Me",
+                changes=[FileChange("a.py", "Python", 22, added=20, deleted=2)],
+            ),
+            Commit(
+                repo="demo",
+                hash="b2" * 20,
+                dt=datetime(2026, 2, 10, 15, 0),
+                subject="feat: early 2026",
+                added=30,
+                deleted=5,
+                files=1,
+                author_email="me@example.com",
+                author_name="Me",
+                changes=[FileChange("a.py", "Python", 35, added=30, deleted=5)],
+            ),
+        ],
+        total_commits=2,
+    )
+    stats = build_stats(
+        year=2026,
+        root="/tmp",
+        repos=[repo],
+        identity=("me@example.com", "Me"),
+    )
+    start, end = date_window(stats)
+    assert start <= datetime(2025, 11, 20).date() <= end
+    html = build_html(stats)
+    assert "2025-11-20 · 1 次提交" in html
+    assert 'style="left:-' not in html

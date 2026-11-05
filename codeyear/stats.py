@@ -177,6 +177,17 @@ def parse_daily(daily: dict[str, int]) -> dict[date, int]:
     return {date.fromisoformat(k): v for k, v in daily.items()}
 
 
+def date_window(stats: ReportStats) -> tuple[date, date]:
+    """Return the (start, end) date range for heatmaps and lifecycle charts."""
+    if stats.first_dt and stats.first_dt.year < stats.year:
+        end = max(
+            date.today(),
+            stats.last_dt.date() if stats.last_dt else date.today(),
+        )
+        return end - timedelta(days=364), end
+    return date(stats.year, 1, 1), date(stats.year, 12, 31)
+
+
 def _commit_type(subject: str) -> str | None:
     m = _CONV_RE.match(subject)
     if m:

@@ -8,6 +8,7 @@ from pathlib import Path
 
 from .stats import (
     ReportStats,
+    date_window,
     fmt_human,
     fmt_int,
     fmt_signed_pair,
@@ -205,8 +206,7 @@ def _metric(x: float, y: float, number: str, unit: str, c: dict,
 def _heatmap(stats: ReportStats, c: dict, x0: float, y0: float,
              cell: float = 9, gap: float = 2) -> str:
     daily = parse_daily(stats.daily)
-    start = date(stats.year, 1, 1)
-    end = date(stats.year, 12, 31)
+    start, end = date_window(stats)
     grid_start = start - timedelta(days=start.weekday())
     grid_end = end + timedelta(days=6 - end.weekday())
 
