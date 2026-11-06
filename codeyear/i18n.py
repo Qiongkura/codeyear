@@ -85,6 +85,7 @@ EN = {
         "Extra author email/name, repeatable; for old commits",
     "忽略仓库里的 .mailmap（默认自动使用）":
         "Ignore the repository's .mailmap (used automatically by default)",
+    "使用仓库里的 .mailmap": "Use the repository's .mailmap",
     "统计所有本地分支/tag 的提交（默认只看当前分支）":
         "Include every local branch/tag (default: current branch only)",
     "统计所有作者的提交（默认只统计你本人，按 git user.name / user.email 识别）":
@@ -272,6 +273,13 @@ EN = {
     "推送": "Push",
     "选择 Profile 仓库目录": "Choose profile repository folder",
     "正在拉取公开 GitHub 数据…": "Fetching public GitHub data…",
+    "公开统计有警告时退出，避免自动更新不完整的卡片":
+        "Exit on public-data warnings to prevent incomplete automatic updates",
+    "已取消自动更新；请先处理上述警告。":
+        "Automatic update cancelled; resolve the warnings first.",
+    "公开统计可能不完整：": "Public statistics may be incomplete:",
+    "已取消推送 Profile；请先处理上述警告。":
+        "Profile push cancelled; resolve the warnings first.",
     "无法连接更新服务器，请检查网络。":
         "Could not reach the update server; check your connection.",
     "当前已是最新版本（v{version}）。":
@@ -336,7 +344,13 @@ def localize_parser(parser: argparse.ArgumentParser) -> None:
         parser.description = tr(parser.description)
     for action in parser._actions:
         if action.help:
-            action.help = tr(action.help)
+            # Python 3.9/3.10 BooleanOptionalAction appends its default to
+            # the help text during construction; translate the base string.
+            suffix = " (default: %(default)s)"
+            if isinstance(action, argparse.BooleanOptionalAction) and action.help.endswith(suffix):
+                action.help = tr(action.help[:-len(suffix)]) + suffix
+            else:
+                action.help = tr(action.help)
         if isinstance(action, argparse._SubParsersAction):
             for choice in action._choices_actions:
                 if choice.help:

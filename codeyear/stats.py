@@ -545,13 +545,13 @@ def build_stats(
 
     latest_night_commit = None
     night_candidates = [
-        c for c in commits if c.dt.hour >= 22 or c.dt.hour <= 5
+        c for c in commits if c.dt.hour >= 22 or c.dt.hour <= 4
     ]
     if night_candidates:
         nc = max(
             night_candidates,
             key=lambda c: (
-                (c.dt.hour + 24 if c.dt.hour <= 5 else c.dt.hour) * 60
+                (c.dt.hour + 24 if c.dt.hour <= 4 else c.dt.hour) * 60
                 + c.dt.minute,
                 c.dt,
             ),

@@ -256,7 +256,7 @@ By default it counts only commits authored by you (matching git `user.name` / `u
 
 ## Install and outputs
 
-The command above only installs Pillow. To install CodeYear as a global command:
+The command above installs Pillow and packaging. To install CodeYear as a global command:
 
 ```bash
 pip install -e .
@@ -403,12 +403,22 @@ Put common defaults in `~/.codeyear.json` (or point `CODEYEAR_CONFIG` at a file)
 Supported keys: `roots / year / out / author / all_authors / aliases / compare /
 fallback_previous / all_branches / no_mailmap / jobs / max_depth / timeout /
 theme / max_commits / open`. Explicit CLI flags win; missing files and invalid
-field types are ignored.
+field types are ignored. For config-backed booleans, use the opposite flag to
+override a saved value for one invocation. On `scan`, the pairs are
+`--rolling` / `--no-rolling`, `--compare` / `--no-compare`,
+`--fallback-previous` / `--no-fallback-previous`, `--all-branches` /
+`--no-all-branches`, `--all-authors` / `--no-all-authors`, `--no-mailmap` /
+`--mailmap`, and `--open` / `--no-open`. On `github`, `--open` /
+`--no-open` overrides `open`. If both forms are supplied, the last one wins.
+For example, `codeyear scan . --mailmap --no-compare` enables mailmap and
+turns off comparison even if the configuration says otherwise.
 
 ## Privacy
 
-- The default `scan` mode runs entirely locally with **no network requests**.
-- `github`, `serve`, and `--push-profile` are optional network features; they only read public GitHub data or push cards, and never upload local code.
+- CLI `scan` runs locally without network requests unless `--push-profile` is enabled.
+- The GUI checks for updates online at startup; set `CODEYEAR_NO_UPDATE_CHECK=1` to disable the automatic check.
+- `github`, `serve`, and `--push-profile` are optional network features. Pushing sends the card and profile README, including the data they contain.
+- Before pushing, the local HEAD must match the remote upstream, the index must be clean, and the README and card files must have no uncommitted changes. Public-data warnings cancel `--push-profile`; `github --require-complete` also fails on warnings for separate automation.
 - The local mode reads only `git log`, `git tag`, the first line of each repository README, and `git remote`; no other workspace files.
 - Output files are ignored by `.gitignore` by default.
 - Local reports say `LOCAL ONLY · no data uploaded` in the footer; public-mode reports label their public data source.

@@ -11,7 +11,6 @@ import os
 import re
 import shutil
 import subprocess
-import time
 from pathlib import Path
 
 _NO_WINDOW = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
@@ -29,18 +28,51 @@ def _git(repo: Path, *args: str) -> subprocess.CompletedProcess:
     )
 
 
-def _push(repo: Path) -> None:
-    """Push, rebasing once if another workflow committed in the meantime."""
-    last: subprocess.CompletedProcess | None = None
-    for attempt in range(3):
-        result = _git(repo, "push")
-        if result.returncode == 0:
-            return
-        last = result
-        if attempt < 2:
-            _git(repo, "pull", "--rebase")
-            time.sleep(2)
-    raise RuntimeError(((last.stderr if last else "") or "git push failed").strip())
+def _push_target(repo: Path) -> tuple[str, str, str]:
+    """Verify the remote branch exactly matches HEAD before modifying anything."""
+    branch = _git(repo, "symbolic-ref", "--quiet", "--short", "HEAD")
+    if branch.returncode != 0 or not branch.stdout.strip():
+        raise RuntimeError("Cannot push profile: HEAD must be on a branch with an upstream")
+    name = branch.stdout.strip()
+    remote = _git(repo, "config", "--get", f"branch.{name}.remote")
+    merge = _git(repo, "config", "--get-all", f"branch.{name}.merge")
+    remote_name = remote.stdout.strip()
+    refs = merge.stdout.splitlines()
+    if (remote.returncode != 0 or not remote_name or remote_name == "."
+            or merge.returncode != 0 or len(refs) != 1
+            or not refs[0].startswith("refs/heads/")):
+        raise RuntimeError("Cannot push profile: configure a single remote upstream branch")
+    head = _git(repo, "rev-parse", "--verify", "HEAD")
+    if head.returncode != 0:
+        raise RuntimeError("Cannot push profile: no existing HEAD commit")
+    # Use this exact push URL and branch explicitly, regardless of push.default
+    # or remote.pushDefault. Multiple push URLs cannot be checked atomically.
+    urls = _git(repo, "remote", "get-url", "--push", "--all", remote_name)
+    if urls.returncode != 0 or len(urls.stdout.splitlines()) != 1:
+        raise RuntimeError("Cannot push profile: configure exactly one push URL")
+    url = urls.stdout.strip()
+    remote_ref = _git(repo, "ls-remote", "--exit-code", "--refs", url, refs[0])
+    lines = remote_ref.stdout.splitlines()
+    if remote_ref.returncode != 0 or len(lines) != 1:
+        raise RuntimeError("Cannot push profile: cannot verify the remote upstream branch")
+    fields = lines[0].split()
+    if len(fields) != 2 or fields[1] != refs[0] or fields[0] != head.stdout.strip():
+        raise RuntimeError("Cannot push profile: local HEAD differs from remote upstream; "
+                           "resolve existing unpushed or incoming commits first")
+    return url, refs[0], fields[0]
+
+
+def _push(repo: Path, url: str, ref: str, old_head: str) -> None:
+    """Push only our commit, if the verified remote ref has not changed."""
+    commit = _git(repo, "rev-parse", "--verify", "HEAD")
+    parents = _git(repo, "rev-list", "--parents", "-n", "1", "HEAD")
+    parts = parents.stdout.split()
+    if (commit.returncode != 0 or parents.returncode != 0 or len(parts) != 2
+            or parts[0] != commit.stdout.strip() or parts[1] != old_head):
+        raise RuntimeError("Cannot push profile: HEAD changed since verification")
+    result = _git(repo, "push", url, f"{parts[0]}:{ref}")
+    if result.returncode != 0:
+        raise RuntimeError((result.stderr or "git push failed").strip())
 
 
 def _latest_version(directory: Path, year: int) -> tuple[int, Path | None]:
@@ -86,6 +118,24 @@ def update_profile(
     repo = Path(repo_path).expanduser().resolve()
     if not (repo / ".git").exists():
         raise FileNotFoundError(f"不是 git 仓库: {repo}")
+
+    if push:
+        # A normal git commit includes the entire index, not just paths we add.
+        # Refuse before modifying files so existing staged work cannot be pushed.
+        staged = _git(repo, "diff", "--cached", "--quiet")
+        if staged.returncode == 1:
+            raise RuntimeError("Cannot push profile with existing staged changes")
+        if staged.returncode != 0:
+            raise RuntimeError((staged.stderr or "git diff failed").strip())
+        dirty = _git(
+            repo, "status", "--porcelain", "--untracked-files=all", "--",
+            "README.md", ":(glob)**/codeyear-*.svg",
+        )
+        if dirty.returncode != 0:
+            raise RuntimeError((dirty.stderr or "git status failed").strip())
+        if dirty.stdout.strip():
+            raise RuntimeError("Cannot push profile with existing README or card changes")
+        push_target = _push_target(repo)
 
     light = Path(light_card)
     dark = Path(dark_card)
@@ -167,14 +217,18 @@ def update_profile(
     if push:
         # -A is required so the old versioned files removed above are staged
         # as deletions too; glob magic covers cards in nested asset folders.
-        _git(repo, "add", "-A", "README.md", ":(glob)**/codeyear-*.svg")
+        added = _git(repo, "add", "-A", "README.md", ":(glob)**/codeyear-*.svg")
+        if added.returncode != 0:
+            raise RuntimeError((added.stderr or "git add failed").strip())
         staged = _git(repo, "diff", "--cached", "--name-only")
+        if staged.returncode != 0:
+            raise RuntimeError((staged.stderr or "git diff failed").strip())
         if staged.stdout.strip():
             commit = _git(
                 repo, "commit", "-m", f"Update CodeYear {year} card to v{version}"
             )
             if commit.returncode != 0:
                 raise RuntimeError((commit.stderr or "git commit failed").strip())
-            _push(repo)
+            _push(repo, *push_target)
             pushed = True
     return repo, True, pushed

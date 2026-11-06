@@ -697,6 +697,12 @@ class App:
                     raise RuntimeError(i18n.tr(
                         "{year} 年没有找到提交。", year=year,
                     ))
+            if github_user and profile_repo and push_profile and warnings:
+                raise RuntimeError(
+                    i18n.tr("公开统计可能不完整：") + "\n"
+                    + "\n".join(warnings) + "\n"
+                    + i18n.tr("已取消推送 Profile；请先处理上述警告。")
+                )
             theme = self.theme_var.get() or str(self.cfg.get("theme", "paper"))
             written = render(
                 stats, out_dir,

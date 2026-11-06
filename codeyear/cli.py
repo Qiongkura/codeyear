@@ -52,12 +52,14 @@ def _build_parser() -> argparse.ArgumentParser:
     github.add_argument("--max-commits", type=int, default=cfg.get("max_commits", 200),
                         help="最多拉取多少条提交（无 token 时自动限制为 30）")
     github.add_argument("--include-forks", action="store_true", help="包含 fork 仓库")
-    github.add_argument("--open", action="store_true", default=cfg.get("open", False),
-                        help="生成后打开报告")
+    github.add_argument("--open", action=argparse.BooleanOptionalAction,
+                        default=cfg.get("open", False), help="生成后打开报告")
     github.add_argument("--quiet", action="store_true", help="不打印扫描进度")
     github.add_argument("--theme", choices=sorted(THEMES),
                         default=cfg.get("theme", "paper"),
                         help="卡片主题：paper / mono / forest / ocean")
+    github.add_argument("--require-complete", action="store_true",
+                        help="公开统计有警告时退出，避免自动更新不完整的卡片")
     github.add_argument("--card-only", action="store_true",
                         help="只生成主页卡片和 embed 片段，不生成完整报告")
     github.add_argument("--profile-repo", default=None,
@@ -83,7 +85,7 @@ def _build_parser() -> argparse.ArgumentParser:
                       help="要扫描的文件夹（可以多个，默认当前目录）")
     scan.add_argument("--year", type=int, default=cfg.get("year", date.today().year),
                       help="统计年份，默认今年")
-    scan.add_argument("--rolling", action="store_true",
+    scan.add_argument("--rolling", action=argparse.BooleanOptionalAction,
                       default=cfg.get("rolling", False),
                       help="统计过去 365 天（滚动年度），而非自然年")
     scan.add_argument("--exclude", action="append", default=cfg.get("exclude", []),
@@ -92,10 +94,10 @@ def _build_parser() -> argparse.ArgumentParser:
                       help="输出目录，默认 ./codeyear-output")
     scan.add_argument("--author", default=cfg.get("author"),
                       help="只统计匹配的 git author（--author 参数）")
-    scan.add_argument("--compare", action="store_true",
+    scan.add_argument("--compare", action=argparse.BooleanOptionalAction,
                       default=cfg.get("compare", False),
                       help="同时扫描去年，在报告里生成同比数据")
-    scan.add_argument("--fallback-previous", action="store_true",
+    scan.add_argument("--fallback-previous", action=argparse.BooleanOptionalAction,
                       default=cfg.get("fallback_previous", False),
                       help="当年没有提交时回退到上一年，适合跨年自动更新")
     scan.add_argument("--alias", action="append", default=cfg.get("aliases", []),
@@ -103,10 +105,12 @@ def _build_parser() -> argparse.ArgumentParser:
     scan.add_argument("--no-mailmap", action="store_true",
                       default=cfg.get("no_mailmap", False),
                       help="忽略仓库里的 .mailmap（默认自动使用）")
-    scan.add_argument("--all-branches", action="store_true",
+    scan.add_argument("--mailmap", dest="no_mailmap", action="store_false",
+                      help="使用仓库里的 .mailmap")
+    scan.add_argument("--all-branches", action=argparse.BooleanOptionalAction,
                       default=cfg.get("all_branches", False),
                       help="统计所有本地分支/tag 的提交（默认只看当前分支）")
-    scan.add_argument("--all-authors", action="store_true",
+    scan.add_argument("--all-authors", action=argparse.BooleanOptionalAction,
                       default=cfg.get("all_authors", False),
                       help="统计所有作者的提交（默认只统计你本人，按 git user.name / user.email 识别）")
     scan.add_argument("--max-depth", type=int, default=cfg.get("max_depth", 6),
@@ -126,7 +130,7 @@ def _build_parser() -> argparse.ArgumentParser:
                       help="本地 GitHub Profile 仓库路径；只写入本地，不联网")
     scan.add_argument("--push-profile", action="store_true",
                       help="更新后提交并推送 Profile 仓库（联网）；需同时指定 --profile-repo")
-    scan.add_argument("--open", action="store_true", default=cfg.get("open", False),
+    scan.add_argument("--open", action=argparse.BooleanOptionalAction, default=cfg.get("open", False),
                       help="生成后自动打开报告")
     scan.add_argument("--quiet", action="store_true", help="不打印扫描进度")
     i18n.localize_parser(parser)
@@ -224,7 +228,7 @@ def main(argv: list[str] | None = None) -> int:
             cache_dir=args.cache_dir,
             no_cache=args.no_cache,
             lang=i18n.get_lang(),
-            tz=args.tz,
+            tz=args.tz, require_complete=args.require_complete,
         )
     if args.command == "serve":
         from .server import serve

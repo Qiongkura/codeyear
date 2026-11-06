@@ -8,8 +8,8 @@
 **简体中文** | [English](README.en.md) · [中文简介](docs/intro.zh.md)
 
 > 扫描你本地的 git 仓库，生成一份**只属于你**的年度代码手账：中英双语 HTML 报告、
-> 2400×3200 海报、完整长图，以及 GitHub 主页卡片。默认只读本地 git，不登录、不上传；
-> 公开 GitHub 模式是可选联网功能。
+> 2400×3200 海报、完整长图，以及 GitHub 主页卡片。CLI 本地扫描默认不联网、不上传；
+> GUI 默认会联网检查更新，公开 GitHub 模式和推送是可选联网功能。
 
 ![CodeYear 报告预览](docs/report-preview.png)
 
@@ -80,7 +80,8 @@ codeyear
 ```
 
 会打开桌面窗口：添加多个目录、检查仓库数量、看进度条、选输出位置，完成后直接打开报告。
-Windows 也可以在仓库根目录双击 `CodeYear.cmd`。
+Windows 也可以在仓库根目录双击 `CodeYear.cmd`。GUI 默认启动时联网检查版本更新；
+设置环境变量 `CODEYEAR_NO_UPDATE_CHECK=1` 可关闭自动检查（手动检查仍可联网）。
 
 需要 Tkinter；Windows/macOS 的 Python 自带，Linux 装 `python3-tk`。安装后也可以运行 `codeyear-gui`。
 
@@ -254,7 +255,7 @@ CodeYear 是给开发者做的「年度报告」。官方的 Wrapped 通常只�
 
 ## 安装与输出
 
-上面的命令只会安装 Pillow。想把 CodeYear 安装成全局命令：
+上面的命令会安装 Pillow 和版本比较所需的 packaging。想把 CodeYear 安装成全局命令：
 
 ```bash
 pip install -e .
@@ -332,6 +333,12 @@ codeyear github Qiongkura --year 2026 --card-only \
 且只包含卡片 SVG 和 Profile README，报告和 JSON 不会上传。每次更新会写入
 `codeyear-2026-card-vN.svg` 并重写 README，同时清掉旧版本文件；跨年时也会把 README
 里上一年的引用替换成新一年的卡片。
+
+推送前会联网核对当前分支对应的远端上游分支：本地 HEAD 必须与远端完全一致，
+否则拒绝修改 Profile 或提交，避免把已有未推送提交一起发出去；没有上游、远端分支
+无法验证、存在已暂存修改或 README/卡片已有未提交修改时也会拒绝。请先自行处理并
+同步提交，再重试。推送只指定该上游分支，远端并发更新可能导致推送失败，需手动同步。
+源码版公开数据获取出现不完整警告时，`--push-profile` 也会取消，需先处理警告。
 
 私有仓库要定时更新，可以用 Windows 任务计划、cron 或 self-hosted runner：
 [定时更新私有项目卡片](docs/schedule.md)。
@@ -417,12 +424,15 @@ codeyear scan D:\code --year 2026 --compare
 支持 `roots / year / out / author / all_authors / aliases / compare /
 fallback_previous / all_branches / no_mailmap / jobs / max_depth / timeout /
 theme / max_commits / open`。命令行显式参数优先于配置文件；文件不存在或字段
-类型不对时会自动忽略。
+类型不对时会自动忽略。布尔参数可用反向开关临时覆盖，例如 `--no-compare`、
+`--no-rolling`、`--no-open`；使用 `--mailmap` 可覆盖配置中的 `no_mailmap`。
+公开模式的 `--require-complete` 会在数据警告时退出，可用于单独提交卡片的自动化脚本。
 
 ## 隐私
 
-- 默认 `scan` 模式所有统计都在本地完成，**没有任何网络请求**。
-- `github` 公开模式、`serve` 在线服务和 `--push-profile` 是可选联网功能；它们只读取公开 GitHub 数据或推送卡片，不会上传本地代码。
+- CLI `scan` 默认只在本地统计，不发网络请求；显式启用 `--push-profile` 例外。
+- GUI 默认联网检查更新；设置 `CODEYEAR_NO_UPDATE_CHECK=1` 可禁用自动检查。
+- `github` 公开模式、`serve` 在线服务和 `--push-profile` 是可选联网功能；推送会发送卡片和 Profile README，以及这些内容包含的数据。
 - 本地模式只读 `git log`、`git tag`、仓库根目录 README 的第一行和 `git remote`；不读取其它工作区文件。
 - 输出文件默认忽略在 `.gitignore` 里。
 - 本地报告页脚标注 `LOCAL ONLY · 数据未上传`；公开模式报告会标注公开数据来源。

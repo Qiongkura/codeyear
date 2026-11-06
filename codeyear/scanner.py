@@ -187,12 +187,24 @@ def _readme_line(repo_path: Path) -> str | None:
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
+        fence = None
         for raw in text.splitlines():
             line = raw.strip()
-            if not line or line.startswith("<") or line.startswith("!"):
+            marker = re.match(r"^(`{3,}|~{3,})", line)
+            if marker:
+                token = marker.group(1)
+                if fence is None:
+                    fence = token
+                elif token[0] == fence[0] and len(token) >= len(fence):
+                    fence = None
                 continue
-            line = re.sub(r"[\\#>*`_\[\]()]","", line).strip()
-            line = re.sub(r"\s+", " ", line)
+            if fence or not line or line.startswith("<"):
+                continue
+            line = re.sub(r"^\s*(?:#{1,6}\s+|>\s*)+", "", line).strip()
+            line = re.sub(r"\[!\[[^]]*\]\([^)]*\)\]\([^)]*\)", "", line)
+            line = re.sub(r"!\[[^]]*\]\([^)]*\)", "", line)
+            line = re.sub(r"\[([^]]+)\]\([^)]*\)", r"\1", line)
+            line = re.sub(r"\s+", " ", line).strip()
             if len(line) >= 6:
                 return line[:110]
     return None

@@ -22,6 +22,8 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+from packaging.version import InvalidVersion, Version
+
 from . import __version__, i18n
 
 VERSION_JSON_URL = "https://qiongkura.github.io/codeyear/version.json"
@@ -34,10 +36,23 @@ _NO_WINDOW = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
 
 
 def parse_version(version: str) -> tuple[int, ...]:
-    """Convert ``'v0.2.14'`` or ``'0.2.14'`` into a comparable int tuple."""
+    """Return the historical numeric fallback representation of a version.
+
+    This helper remains tuple-shaped for callers that used the old public
+    behavior.  Update decisions use :mod:`packaging` below so prereleases and
+    post/dev releases follow PEP 440 rather than losing their ordering.
+    """
     cleaned = (version or "").strip().lstrip("vV")
     parts = re.findall(r"\d+", cleaned)
     return tuple(int(p) for p in parts) if parts else (0,)
+
+
+def _version_is_newer(latest: str, current: str) -> bool:
+    """Compare PEP 440 versions; reject invalid version metadata."""
+    try:
+        return Version(latest.strip()) > Version(current.strip())
+    except (InvalidVersion, AttributeError):
+        return False
 
 
 def is_frozen() -> bool:
@@ -85,7 +100,7 @@ def _build_release_info(
     return {
         "current": current.strip().lstrip("vV"),
         "latest": clean_latest,
-        "has_update": parse_version(clean_latest) > parse_version(current),
+        "has_update": _version_is_newer(clean_latest, current),
         "url": f"{RELEASE_BASE}/tag/{tag}",
         "exe_url": f"{dl_base}/CodeYear.exe",
         "wheel_url": f"{dl_base}/codeyear-{clean_latest}-py3-none-any.whl",
@@ -202,7 +217,7 @@ def perform_update(
                 sums_text = _download_bytes(
                     info["sums_url"], timeout=15.0
                 ).decode("utf-8", errors="replace")
-            if sums_text and not verify_sha256(
+            if not verify_sha256(
                 tmp_path, "CodeYear.exe", sums_text
             ):
                 tmp_path.unlink(missing_ok=True)

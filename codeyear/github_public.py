@@ -32,6 +32,12 @@ CACHE_VERSION = 1
 CACHE_MAX = 5000
 
 
+class _IncompleteList(list):
+    """List result carrying an API pagination-cap marker."""
+
+    truncated: bool = False
+
+
 def default_cache_dir() -> Path:
     return Path.home() / ".cache" / "codeyear"
 
@@ -138,6 +144,10 @@ def _dt(
         return None
 
 
+class NoPublicCommitsError(RuntimeError):
+    """The requested year contains no public commits."""
+
+
 class GitHubAPI:
     def __init__(self, token: str | None = None) -> None:
         self.token = token or os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
@@ -198,7 +208,7 @@ def _repos(
     tz: str | tzinfo | None = None,
 ) -> list[dict]:
     target_tz = _parse_tz(tz)
-    repos: list[dict] = []
+    repos = _IncompleteList()
     for page in range(1, 11):
         data = api.get(f"/users/{username}/repos", {
             "type": "owner", "sort": "pushed", "direction": "desc",
@@ -217,6 +227,8 @@ def _repos(
             repos.append(repo)
         if len(data) < 100:
             break
+    else:
+        repos.truncated = True
     return repos
 
 
@@ -237,7 +249,7 @@ def _commits(
     # the local year, so commits near midnight in non-UTC zones are kept.
     since = f"{year - 1}-12-31T00:00:00Z"
     until = f"{year + 1}-01-02T00:00:00Z"
-    listed: list[dict] = []
+    listed = _IncompleteList()
     # A busy repository can exceed 1,000 commits in one year; keep paging
     # until the caller's budget is reached or GitHub runs out of pages.
     for page in range(1, 101):
@@ -250,6 +262,8 @@ def _commits(
         listed.extend(data)
         if len(data) < 100 or len(listed) >= limit:
             break
+    else:
+        listed.truncated = True
 
     items = listed[:limit]
     keys = [f"{full}@{item['sha']}" for item in items]
@@ -380,19 +394,21 @@ def fetch_stats(
         if not quiet:
             print(f"CodeYear · github.com/{login} · {year}", file=sys.stderr)
         repos = _repos(api, login, since, include_forks, tz=target_tz)
+        if getattr(repos, "truncated", False):
+            warnings = [i18n.tr(
+                "公开仓库超过分页上限，统计可能不完整。"
+            )]
+        else:
+            warnings = []
     except RuntimeError as exc:
         raise RuntimeError(i18n.tr(
             "GitHub API 错误: {exc}", exc=exc,
         )) from exc
 
     results: list[RepoResult] = []
-    warnings: list[str] = []
     total = 0
     for index, repo in enumerate(repos, 1):
         if total >= max_commits:
-            warnings.append(i18n.tr(
-                "已达到 --max-commits 上限（{limit}）", limit=max_commits,
-            ))
             break
         full = repo["full_name"]
         if not quiet:
@@ -408,6 +424,10 @@ def fetch_stats(
         if not commits:
             continue
         total += len(commits)
+        if total >= max_commits:
+            warnings.append(i18n.tr(
+                "已达到 --max-commits 上限（{limit}）", limit=max_commits,
+            ))
         try:
             repo_total = _total_commits(api, full, login)
         except RuntimeError as exc:
@@ -427,7 +447,9 @@ def fetch_stats(
 
     if not results:
         _save_cache(cache_path, cache)
-        raise RuntimeError(i18n.tr(
+        if warnings:
+            raise RuntimeError(warnings[-1])
+        raise NoPublicCommitsError(i18n.tr(
             "{login} 在 {year} 年没有找到公开提交。", login=login, year=year,
         ))
 
@@ -441,7 +463,9 @@ def fetch_stats(
         identity=(login, display_name),
     )
     if stats.commit_count == 0:
-        raise RuntimeError(i18n.tr(
+        if warnings:
+            raise RuntimeError(warnings[-1])
+        raise NoPublicCommitsError(i18n.tr(
             "{login} 在 {year} 年没有找到公开提交。", login=login, year=year,
         ))
     return stats, warnings, login
@@ -466,6 +490,7 @@ def run(
     no_cache: bool = False,
     lang: str = "zh",
     tz: str | None = None,
+    require_complete: bool = False,
 ) -> int:
     cache_path = None
     if not no_cache:
@@ -473,26 +498,41 @@ def run(
         safe_name = re.sub(r"[^a-z0-9_.-]", "_", username.lower())
         cache_path = effective_dir / f"github-{safe_name}.json"
     try:
-        stats, warnings, login = fetch_stats(
-            username, year, token=token, max_commits=max_commits,
-            include_forks=include_forks, quiet=quiet,
-            cache_path=cache_path, tz=tz,
-        )
-        if (
-            fallback_previous
-            and not stats.commit_count
-            and year == datetime.now().year
-        ):
-            previous, prev_warnings, login = fetch_stats(
+        try:
+            stats, warnings, login = fetch_stats(
+                username, year, token=token, max_commits=max_commits,
+                include_forks=include_forks, quiet=quiet,
+                cache_path=cache_path, tz=tz,
+            )
+        except NoPublicCommitsError:
+            if not fallback_previous or year != datetime.now().year:
+                raise
+            stats, warnings, login = fetch_stats(
                 username, year - 1, token=token, max_commits=max_commits,
                 include_forks=include_forks, quiet=quiet,
                 cache_path=cache_path, tz=tz,
             )
-            if previous.commit_count:
-                stats, warnings = previous, prev_warnings
+        else:
+            if (fallback_previous and not stats.commit_count
+                    and year == datetime.now().year):
+                previous, prev_warnings, login = fetch_stats(
+                    username, year - 1, token=token, max_commits=max_commits,
+                    include_forks=include_forks, quiet=quiet,
+                    cache_path=cache_path, tz=tz,
+                )
+                if previous.commit_count:
+                    stats, warnings = previous, prev_warnings
     except RuntimeError as exc:
         print(str(exc), file=sys.stderr)
         return 1
+
+    if warnings and (profile_repo or require_complete):
+        print(i18n.tr("公开统计可能不完整："), file=sys.stderr)
+        for warning in warnings:
+            print(f"  - {warning}", file=sys.stderr)
+        if push_profile or require_complete:
+            print(i18n.tr("已取消自动更新；请先处理上述警告。"), file=sys.stderr)
+            return 1
 
     year = stats.year
     out = Path(out_dir)
