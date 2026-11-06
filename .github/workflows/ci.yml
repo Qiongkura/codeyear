@@ -10,7 +10,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest]
+        # Ubuntu 26.04 runners do not provide Python 3.9 in the tool cache.
+        os: [ubuntu-24.04]
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
         include:
           - os: windows-latest
