@@ -165,6 +165,8 @@ EN = {
         "No public commits found for {login} in {year}.",
     "已达到 --max-commits 上限（{limit}）":
         "Reached the --max-commits limit ({limit})",
+    "{repo} 的提交数据可能不完整（分页、数量上限或详情缺失）。":
+        "Commit data for {repo} may be incomplete (pagination, limit, or missing details).",
     "GitHub API 额度不足，请使用更高额度的 token（如 CODEYEAR_TOKEN）后重试。":
         "GitHub API quota exhausted; use a higher-limit token "
         "(e.g. CODEYEAR_TOKEN) and retry.",

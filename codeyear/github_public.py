@@ -260,7 +260,20 @@ def _commits(
         if not data:
             break
         listed.extend(data)
-        if len(data) < 100 or len(listed) >= limit:
+        if len(data) < 100:
+            break
+        if len(listed) >= limit:
+            # At an exact page boundary, completeness cannot be inferred from
+            # a full page alone. Probe for another entry rather than warn on a
+            # repository whose history ends exactly at the limit.
+            if len(listed) == limit and page < 100:
+                extra = api.get(f"/repos/{full}/commits", {
+                    "author": username, "since": since, "until": until,
+                    "per_page": 100, "page": page + 1,
+                })
+                listed.truncated = bool(extra)
+            else:
+                listed.truncated = True
             break
     else:
         listed.truncated = True
@@ -296,9 +309,13 @@ def _commits(
         for (index, _item), detail in zip(missing, fetched):
             details[index] = detail
 
-    commits: list[Commit] = []
+    commits = _IncompleteList()
+    # The list endpoint may have more entries than the detail budget, or may
+    # hit our page cap. Preserve that fact even when filtering removes merges.
+    commits.truncated = listed.truncated or len(listed) > limit
     for item, detail in zip(items, details):
         if not detail:
+            commits.truncated = True
             continue
         # Match the local scanner's --no-merges behavior.
         if len(detail.get("parents") or []) > 1:
@@ -307,7 +324,10 @@ def _commits(
         dt = _dt(author_date, tz=target_tz)
         if dt is None:
             dt = _dt((item.get("commit") or {}).get("author", {}).get("date"), tz=target_tz)
-        if dt is None or dt.year != year:
+        if dt is None:
+            commits.truncated = True
+            continue
+        if dt.year != year:
             continue
         message = ((detail.get("commit") or {}).get("message") or "").splitlines()
         subject = message[0].strip() if message else ""
@@ -421,6 +441,10 @@ def fetch_stats(
         except RuntimeError as exc:
             warnings.append(str(exc))
             break
+        if getattr(commits, "truncated", False):
+            warnings.append(i18n.tr(
+                "{repo} 的提交数据可能不完整（分页、数量上限或详情缺失）。", repo=full,
+            ))
         if not commits:
             continue
         total += len(commits)
