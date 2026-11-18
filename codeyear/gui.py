@@ -239,9 +239,10 @@ class App:
         self.depth_var = tk.StringVar(
             value=str(self.cfg.get("max_depth", 6))
         )
-        ttk.Entry(
+        self.depth_entry = ttk.Entry(
             options, width=6, textvariable=self.depth_var, style="CY.TEntry",
-        ).grid(row=1, column=1, sticky="w", padx=(22, 0), pady=(2, 0))
+        )
+        self.depth_entry.grid(row=1, column=1, sticky="w", padx=(22, 0), pady=(2, 0))
 
         tk.Label(options, text=i18n.tr("卡片主题"), bg=PAPER, fg=MUTED,
                  font=("Microsoft YaHei", 9)).grid(
@@ -285,9 +286,10 @@ class App:
         self.jobs_var = tk.StringVar(
             value=str(self.cfg.get("jobs", 1))
         )
-        ttk.Entry(
+        self.jobs_entry = ttk.Entry(
             advanced, width=4, textvariable=self.jobs_var, style="CY.TEntry",
-        ).pack(side="left", padx=(6, 20))
+        )
+        self.jobs_entry.pack(side="left", padx=(6, 20))
         self.compare_var = tk.BooleanVar(
             value=bool(self.cfg.get("compare", False))
         )
@@ -314,17 +316,19 @@ class App:
         self.alias_var = tk.StringVar(
             value=", ".join(self.cfg.get("aliases", []))
         )
-        ttk.Entry(
+        self.alias_entry = ttk.Entry(
             advanced, width=14, textvariable=self.alias_var, style="CY.TEntry",
-        ).pack(side="left")
+        )
+        self.alias_entry.pack(side="left")
         tk.Label(advanced, text=i18n.tr("排除仓库"), bg=PAPER, fg=MUTED,
                  font=("Microsoft YaHei", 9)).pack(side="left", padx=(14, 6))
         self.exclude_var = tk.StringVar(
             value=", ".join(self.cfg.get("exclude", []))
         )
-        ttk.Entry(
+        self.exclude_entry = ttk.Entry(
             advanced, width=14, textvariable=self.exclude_var, style="CY.TEntry",
-        ).pack(side="left")
+        )
+        self.exclude_entry.pack(side="left")
 
         out_row = tk.Frame(body, bg=PAPER)
         out_row.pack(fill="x", pady=(0, 8))
@@ -422,6 +426,23 @@ class App:
             command=self.result.yview)
         rscroll.pack(side="right", fill="y")
         self.result.configure(yscrollcommand=rscroll.set, state="disabled")
+        self.github_var.trace_add("write", lambda *_args: self._sync_mode())
+        self._sync_mode()
+
+    def _sync_mode(self) -> None:
+        gh_mode = bool(self.github_var.get().strip())
+        local_state = "disabled" if (gh_mode or self.busy) else "normal"
+        for entry in (
+            self.depth_entry, self.jobs_entry,
+            self.alias_entry, self.exclude_entry,
+        ):
+            entry.configure(state=local_state)
+        self._local_checks_disabled = gh_mode
+        for redraw in (
+            self._identity_draw, self._compare_draw,
+            self._branches_draw, self._rolling_draw,
+        ):
+            redraw()
 
     def _button(self, parent, text, command):
         return ttk.Button(
@@ -598,6 +619,7 @@ class App:
             "push_profile": bool(self.push_profile_var.get()),
             "out": self.out_var.get().strip() or "codeyear-output",
             "theme": self.theme_var.get() or "paper",
+            "lang": i18n.get_lang(),
         }
         try:
             save_config(data)
@@ -797,6 +819,8 @@ class App:
             self.lang_btn.configure(state=state)
         if hasattr(self, "update_btn"):
             self.update_btn.configure(state=state)
+        if hasattr(self, "depth_entry"):
+            self._sync_mode()
 
     def _bg_check_update(self, manual: bool) -> None:
         info = check_update(timeout=5.0 if manual else 2.5)
@@ -889,9 +913,18 @@ class App:
         )
         label.pack(side="left")
 
+        def is_disabled() -> bool:
+            if not enabled:
+                return True
+            return bool(
+                getattr(self, "_local_checks_disabled", False)
+                and variable is not getattr(self, "push_profile_var", None)
+            )
+
         def draw() -> None:
             canvas.delete("all")
-            if not enabled:
+            label.configure(fg=MUTED if is_disabled() else INK)
+            if is_disabled():
                 canvas.create_rectangle(1, 1, 15, 15, outline=LINE, fill=PAPER2)
                 return
             if variable.get():
@@ -904,7 +937,7 @@ class App:
                 canvas.create_rectangle(1, 1, 15, 15, outline=LINE, fill="white")
 
         def toggle(_event=None) -> None:
-            if not enabled or self.busy:
+            if is_disabled() or self.busy:
                 return
             variable.set(not variable.get())
             draw()
@@ -948,7 +981,14 @@ def _enable_dpi() -> None:
 
 def run() -> int:
     cleanup_old_executable()
-    i18n.set_lang(i18n.detect(sys.argv[1:]))
+    argv = sys.argv[1:]
+    has_explicit_lang = (
+        "--lang" in argv
+        or any(a.startswith("--lang=") for a in argv)
+        or bool(os.environ.get("CODEYEAR_LANG"))
+    )
+    cfg_lang = load_config().get("lang") if not has_explicit_lang else None
+    i18n.set_lang(cfg_lang or i18n.detect(argv))
     _enable_dpi()
     try:
         root = tk.Tk()

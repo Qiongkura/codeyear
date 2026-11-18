@@ -455,6 +455,7 @@ EN_MAP = {
     "文件级重构榜": "Most refactored files",
     "· 删除行数最多的文件": "· by lines deleted",
     "2026 活跃热力图": "2026 activity",
+    "近 365 天活跃热力图": "Last 365 days activity",
     "少 → 多 · 框出今天": "Less → more · today outlined",
     "关于本报告": "About this report",
     "GitHub 主页卡片": "GitHub profile card",
@@ -480,6 +481,8 @@ EN_MAP = {
     "这份报告没有上传任何东西": "this report uploaded nothing",
     "只统计 2026 年的提交；合并提交（--no-merges）不计入。":
         "Only commits from 2026 are counted; merge commits (--no-merges) are excluded.",
+    "只统计过去 365 天的提交；合并提交（--no-merges）不计入。":
+        "Only commits from the past 365 days are counted; merge commits (--no-merges) are excluded.",
     "同一项目出现在多个目录时只保留提交最多的一个；同一 commit 只计一次。":
         "Copies of the same project collapse into one; each commit is counted once.",
     "时间取 author date；跨时区协作时以提交者本地时间为准。":
@@ -520,6 +523,8 @@ EN_MAP = {
     "· commit message 里的口头禅": "· phrases in commit messages",
     "· 建设 vs 重构": "· building vs refactoring",
     "· 2026 活跃区间": "· 2026 active span",
+    "· 近 365 天活跃区间": "· Last 365d active span",
+    "· 每个仓库过去 365 天活跃的时间段": "· active span per repo over the past 365 days",
     "· 改动热区（完整路径）": "· full paths",
 }
 
@@ -546,6 +551,8 @@ EN_PATTERNS = [
     (r"数据来源：(.*) · (\d+) 个仓库", r"Source: \1 · \2 repositories"),
     (r"只统计 (\d{4}) 年的提交；合并提交不计入。",
      r"Only \1 commits are counted; merge commits are excluded."),
+    (r"只统计 (\d{4}) 年的提交；合并提交（--no-merges）不计入。",
+     r"Only commits from \1 are counted; merge commits (--no-merges) are excluded."),
     (r"扫描目录：(.*) · (\d+) 个仓库", r"Scan roots: \1 · \2 repositories"),
     (r"38\.2\s*万\s*行代码，53 个活跃日，10 个仓库。",
      r"382k lines of code, 53 active days, 10 repositories."),
@@ -693,6 +700,7 @@ CAPTIONS = [
     (r"· 平均 \d+ 字符", "· 提交说明一般写多长"),
     ("· 建设 vs 重构", "· 写了多少、删了多少"),
     (r"· \d{4} 活跃区间", "· 每个仓库今年活跃的时间段"),
+    ("· 近 365 天活跃区间", "· 每个仓库过去 365 天活跃的时间段"),
     (r"· \d+ 个仓库超过 30 天没动", "· 超过 30 天没动的仓库"),
     ("· 改动热区（完整路径）", "· 每个文件改了多少行"),
     (r"· \d+ 个活跃日", "· 哪天有提交"),

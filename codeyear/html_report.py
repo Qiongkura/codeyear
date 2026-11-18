@@ -25,6 +25,7 @@ from .stats import (
     fmt_int,
     language_breakdown,
     parse_daily,
+    window_months,
 )
 
 CSS = r"""
@@ -722,11 +723,12 @@ def build_heatmap(stats: ReportStats) -> str:
             cells.append(f'<span class="cell {cls}"></span>')
         cursor += timedelta(days=1)
 
-    months = "".join(f"<span>{m:02d}</span>" for m in range(1, 13))
+    months = "".join(f"<span>{lbl}</span>" for _, lbl in window_months(stats))
     legend = "".join(f'<span class="cell l{i}"></span>' for i in range(5))
+    heat_title = "近 365 天活跃热力图" if getattr(stats, "rolling", False) else f"{stats.year} 活跃热力图"
     return f"""
     <div class="num-panel heat-panel rv span2">
-      <h3>{stats.year} 活跃热力图 <b>· {stats.active_days} 个活跃日</b></h3>
+      <h3>{heat_title} <b>· {stats.active_days} 个活跃日</b></h3>
       <div class="heat-wrap">
         <div class="months">{months}</div>
         <div class="heat" role="img" aria-label="全年提交热力图">{''.join(cells)}</div>
@@ -765,23 +767,24 @@ def build_records(stats: ReportStats) -> str:
     if stats.largest_commit:
         lc = stats.largest_commit
         add("最大单次提交", f"{fmt_int(lc['lines'])} <small>行</small>",
-            f"{escape(lc['repo'])} · {lc['date']}")
+            f'<span data-raw>{escape(lc["repo"])}</span> · {lc["date"]}')
     add("最长的 commit", f"{len(stats.longest_subject)} <small>字符</small>",
         f'<span data-raw>{escape(stats.longest_subject[:90])}</span>')
     if getattr(stats, "latest_night_commit", None):
         nc = stats.latest_night_commit
         add("最晚的一次熬夜", f"{escape(nc['time'])}",
-            f"{escape(nc['repo'])} · {escape(nc['date'])} · {escape(nc['subject'][:42])}")
+            f'<span data-raw>{escape(nc["repo"])}</span> · {escape(nc["date"])} · '
+            f'<span data-raw>{escape(nc["subject"][:42])}</span>')
 
     span = ""
     if stats.first_commit and stats.last_commit:
         fc, lc = stats.first_commit, stats.last_commit
-        fc_sub = f" · {escape(fc['subject'][:40])}" if fc.get("subject") else ""
-        lc_sub = f" · {escape(lc['subject'][:40])}" if lc.get("subject") else ""
+        fc_sub = f' · <span data-raw>{escape(fc["subject"][:40])}</span>' if fc.get("subject") else ""
+        lc_sub = f' · <span data-raw>{escape(lc["subject"][:40])}</span>' if lc.get("subject") else ""
         span = (
             f'<div class="year-span rv">'
-            f'<span>第一次提交 <b>{escape(fc["date"])}</b> · {escape(fc["repo"])}{fc_sub}</span>'
-            f'<span>最后一次提交 <b>{escape(lc["date"])}</b> · {escape(lc["repo"])}{lc_sub}</span>'
+            f'<span>第一次提交 <b>{escape(fc["date"])}</b> · <span data-raw>{escape(fc["repo"])}</span>{fc_sub}</span>'
+            f'<span>最后一次提交 <b>{escape(lc["date"])}</b> · <span data-raw>{escape(lc["repo"])}</span>{lc_sub}</span>'
             f'</div>'
         )
     return f'<div class="records">{"".join(cards)}</div>{span}'
@@ -1002,7 +1005,7 @@ def build_lifecycle(stats: ReportStats) -> str:
     span_days = max((end - start).days, 1)
     ordered = sorted(stats.repo_details, key=lambda r: (r["first"], -r["commits"]))[:10]
 
-    months = "".join(f"<span>{m:02d}</span>" for m in range(1, 13))
+    months = "".join(f"<span>{lbl}</span>" for _, lbl in window_months(stats))
     head = (
         f'<div class="lc-months"><span></span>'
         f'<div class="lc-month-ticks">{months}</div>'
@@ -1036,8 +1039,9 @@ def build_lifecycle(stats: ReportStats) -> str:
             f'{bar}</div>'
             f'<span class="lc-date">{dates}</span></div>'
         )
+    span_title = "近 365 天活跃区间" if getattr(stats, "rolling", False) else f"{stats.year} 活跃区间"
     return _panel(
-        f"仓库生命周期 <b>· {stats.year} 活跃区间</b>",
+        f"仓库生命周期 <b>· {span_title}</b>",
         f'<div class="lc-chart">{head}{"".join(rows)}</div>',
         span=True,
     )
@@ -1049,11 +1053,11 @@ def build_deleted_files(stats: ReportStats) -> str:
         return ""
     max_del = max((n for _, n in rows_data), default=1) or 1
     rows = "".join(
-        f'<div class="file-row"><span class="idx">{i:02d}</span>'
-        f'<span class="f-path">{escape(path)}</span>'
-        f'<div class="f-bar"><i style="width:{n / max_del * 100:.1f}%;background:var(--acc)"></i></div>'
-        f'<span class="f-num">-{fmt_int(n)}</span></div>'
-        for i, (path, n) in enumerate(rows_data[:8], 1)
+        f'<div class="file-line"><div class="file-path" data-raw>{escape(path)}</div>'
+        f'<div class="file-meta"><div class="bar-track">'
+        f'<i style="width:{n / max_del * 100:.1f}%;background:var(--acc)"></i></div>'
+        f'<span class="bar-val">-{fmt_human(n)}</span></div></div>'
+        for path, n in rows_data[:8]
     )
     return (
         '<div class="num-panel rv span2">'
@@ -1270,7 +1274,7 @@ def build_numbers(stats: ReportStats) -> str:
 
     max_file = max((n for _, n in stats.top_files), default=1)
     file_rows = "".join(
-        f'<div class="file-line"><div class="file-path">{escape(path)}</div>'
+        f'<div class="file-line"><div class="file-path" data-raw>{escape(path)}</div>'
         f'<div class="file-meta"><div class="bar-track">'
         f'<i style="width:{n / max_file * 100:.1f}%"></i></div>'
         f'<span class="bar-val">{fmt_human(n)}</span></div></div>'
@@ -1315,28 +1319,46 @@ def build_numbers(stats: ReportStats) -> str:
     """
 
 
-def _theme_color_map(base_dict: dict, target_dict: dict) -> dict[str, str]:
+_SLOT_PALETTE = {
+    "ink": "#010001",
+    "ink2": "#010002",
+    "muted": "#010003",
+    "line": "#010004",
+    "accent": "#010005",
+    "bar": "#010006",
+    "palette": ["#010007", "#010008", "#010009", "#01000a", "#01000b"],
+    "levels": ["#01000c", "#01000d", "#01000e", "#01000f", "#010010"],
+}
+
+
+def _slot_map(target_dict: dict) -> dict[str, str]:
     mapping: dict[str, str] = {}
     for k in ("ink", "ink2", "muted", "line", "accent", "bar"):
-        mapping[base_dict[k].lower()] = target_dict[k]
-    for src, dst in zip(base_dict["palette"], target_dict["palette"]):
-        mapping.setdefault(src.lower(), dst)
-    for src, dst in zip(base_dict["levels"], target_dict["levels"]):
-        mapping.setdefault(src.lower(), dst)
+        mapping[_SLOT_PALETTE[k]] = target_dict[k]
+    for tok, dst in zip(_SLOT_PALETTE["palette"], target_dict["palette"]):
+        mapping[tok] = dst
+    for tok, dst in zip(_SLOT_PALETTE["levels"], target_dict["levels"]):
+        mapping[tok] = dst
     return mapping
 
 
 def build_card_preview_widget(stats: ReportStats, *, lang: str = "zh") -> str:
     en = lang == "en"
-    base_light, base_dark = CARD_THEMES["paper"]
     maps: dict[str, dict[str, dict[str, str]]] = {}
     for t_name, (t_light, t_dark) in CARD_THEMES.items():
         maps[t_name] = {
-            "light": _theme_color_map(base_light, t_light),
-            "dark": _theme_color_map(base_dark, t_dark),
+            "light": _slot_map(t_light),
+            "dark": _slot_map(t_dark),
         }
-    svg_light = build_card_svg(stats, dark=False, theme="paper", lang=lang)
-    svg_dark = build_card_svg(stats, dark=True, theme="paper", lang=lang)
+    svg_initial = build_card_svg(stats, dark=False, theme="paper", lang=lang)
+    svg_light = build_card_svg(
+        stats, dark=False, lang=lang,
+        palette_override={**_SLOT_PALETTE, "empty_opacity": "0.12"},
+    )
+    svg_dark = build_card_svg(
+        stats, dark=True, lang=lang,
+        palette_override={**_SLOT_PALETTE, "empty_opacity": "0.2"},
+    )
     suffix = "-en" if en else ""
     embed_snippet = escape(
         "<picture>\n"
@@ -1394,7 +1416,7 @@ def build_card_preview_widget(stats: ReportStats, *, lang: str = "zh") -> str:
         <button class="filter" type="button" id="download-card-svg" style="margin-left:auto">{dl_label}</button>
       </div>
       <div id="card-preview-stage" style="border:1px solid var(--line);padding:16px;margin:0 0 12px;display:flex;justify-content:center;background:var(--paper);transition:background .18s">
-        <div id="card-preview-inner" style="width:100%;max-width:460px">{svg_light}</div>
+        <div id="card-preview-inner" style="width:100%;max-width:460px">{svg_initial}</div>
       </div>
       <pre class="embed-code" id="embed-snippet" style="background:var(--paper2);border:1px solid var(--line);padding:12px;font-family:var(--mono);font-size:11.5px;overflow-x:auto;margin:0 0 8px">{embed_snippet}</pre>
       <button class="filter" type="button" id="copy-embed" onclick="navigator.clipboard&&navigator.clipboard.writeText(document.getElementById('embed-snippet').textContent)">{copy_label}</button>
@@ -1408,7 +1430,7 @@ def build_card_preview_widget(stats: ReportStats, *, lang: str = "zh") -> str:
         function currentSvg() {{
           const raw = curMode === "dark" ? data.dark : data.light;
           const cmap = (data.maps[curTheme] || data.maps.paper)[curMode];
-          return raw.replace(/#[0-9a-f]{{6}}/gi, m => cmap[m.toLowerCase()] || m);
+          return raw.replace(/#0100[01][0-9a-f]/gi, m => cmap[m.toLowerCase()] || m);
         }}
         function updateView() {{
           if (!inner || !stage) return;
@@ -1438,9 +1460,8 @@ def build_card_preview_widget(stats: ReportStats, *, lang: str = "zh") -> str:
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             const darkPart = curMode === "dark" ? "-dark" : "";
-            const themePart = curTheme === "paper" ? "" : "-" + curTheme;
             a.href = url;
-            a.download = "codeyear-" + data.year + "-card" + data.suffix + themePart + darkPart + ".svg";
+            a.download = "codeyear-" + data.year + "-card" + data.suffix + darkPart + ".svg";
             document.body.appendChild(a);
             a.click();
             a.remove();
@@ -1471,7 +1492,11 @@ def build_about(stats: ReportStats) -> str:
             )
         else:
             identity_line = "未检测到 git 身份，统计了所有作者的提交（可用 --all-authors 显式开启）。"
-        merge_line = f"只统计 {stats.year} 年的提交；合并提交（--no-merges）不计入。"
+        merge_line = (
+            "只统计过去 365 天的提交；合并提交（--no-merges）不计入。"
+            if getattr(stats, "rolling", False)
+            else f"只统计 {stats.year} 年的提交；合并提交（--no-merges）不计入。"
+        )
     quote_tail = (
         "尤其是加了 --no-merges 的时候。" if not public
         else "尤其是只读公开数据的时候。"

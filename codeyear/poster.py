@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import re
 import threading
-from datetime import date, timedelta
+from datetime import timedelta
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
@@ -17,6 +17,8 @@ from .stats import (
     fmt_signed_pair,
     language_breakdown,
     parse_daily,
+    window_days,
+    window_months,
 )
 
 W, H = 1200, 1600
@@ -319,7 +321,7 @@ def _stats(draw: ImageDraw.ImageDraw, stats: ReportStats) -> None:
         subs = [
             f"{stats.repo_count} repos with commits",
             _signed(stats.insertions, stats.deletions),
-            f"{stats.active_days / (366 if _is_leap(stats.year) else 365):.0%} of the year",
+            f"{stats.active_days / window_days(stats):.0%} of the year",
             f"{stats.current_streak}-day current streak",
             "all-time",
         ]
@@ -329,7 +331,7 @@ def _stats(draw: ImageDraw.ImageDraw, stats: ReportStats) -> None:
         subs = [
             f"{stats.repo_count} 个有提交的仓库",
             _signed(stats.insertions, stats.deletions),
-            f"占全年 {stats.active_days / (366 if _is_leap(stats.year) else 365):.0%}",
+            f"占全年 {stats.active_days / window_days(stats):.0%}",
             f"当前 {stats.current_streak} 天",
             "仓库全历史",
         ]
@@ -351,10 +353,6 @@ def _stats(draw: ImageDraw.ImageDraw, stats: ReportStats) -> None:
                    _ellipsize(draw, sub, _font(10, "mono"), col_w - 18),
                    _font(10, "mono"), MUTED, cjk_font=_font(10, "sans"))
     _rule(draw, 590)
-
-
-def _is_leap(year: int) -> bool:
-    return year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
 
 
 def _monthly(draw: ImageDraw.ImageDraw, stats: ReportStats) -> None:
@@ -492,9 +490,9 @@ def _heatmap(draw: ImageDraw.ImageDraw, stats: ReportStats) -> None:
     x0 = (W - (cols * cell + (cols - 1) * gap)) // 2
     y0 = 1266
 
-    for month in range(1, 13):
-        col = (date(stats.year, month, 1) - grid_start).days // 7
-        draw.text((x0 + col * (cell + gap), 1246), f"{month:02d}",
+    for m_date, m_label in window_months(stats):
+        col = (m_date - grid_start).days // 7
+        draw.text((x0 + col * (cell + gap), 1246), m_label,
                   font=_font(8, "mono"), fill=MUTED)
 
     for col in range(cols):
@@ -620,7 +618,7 @@ def _long_header(draw: ImageDraw.ImageDraw, stats: ReportStats, y: int) -> int:
         labels = ["COMMITS", "LINES", "ACTIVE", "STREAK", "TOTAL"]
         subs = [f"{stats.repo_count} repos with commits",
                 _signed(stats.insertions, stats.deletions),
-                f"{stats.active_days / (366 if _is_leap(stats.year) else 365):.0%} of the year",
+                f"{stats.active_days / window_days(stats):.0%} of the year",
                 f"{stats.current_streak}-day current streak",
                 "all-time"]
     else:
@@ -628,7 +626,7 @@ def _long_header(draw: ImageDraw.ImageDraw, stats: ReportStats, y: int) -> int:
                   "STREAK / 最长连续", "TOTAL / 累计"]
         subs = [f"{stats.repo_count} 个有提交的仓库",
                 _signed(stats.insertions, stats.deletions),
-                f"占全年 {stats.active_days / (366 if _is_leap(stats.year) else 365):.0%}",
+                f"占全年 {stats.active_days / window_days(stats):.0%}",
                 f"当前 {stats.current_streak} 天",
                 "仓库全历史"]
     values = [f"{stats.commit_count:,}", _big(stats.lines_changed),
@@ -913,9 +911,9 @@ def _long_heatmap(draw: ImageDraw.ImageDraw, stats: ReportStats, y: int) -> int:
     cell, gap = 14, 4
     x0 = (W - (cols * cell + (cols - 1) * gap)) // 2
     y0 += 18
-    for month in range(1, 13):
-        col = (date(stats.year, month, 1) - grid_start).days // 7
-        draw.text((x0 + col * (cell + gap), y0 - 16), f"{month:02d}",
+    for m_date, m_label in window_months(stats):
+        col = (m_date - grid_start).days // 7
+        draw.text((x0 + col * (cell + gap), y0 - 16), m_label,
                   font=_font(8, "mono"), fill=MUTED)
     for col in range(cols):
         for row in range(7):

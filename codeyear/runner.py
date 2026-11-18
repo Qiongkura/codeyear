@@ -232,6 +232,14 @@ def scan(
             warnings=warnings,
             identity=identity,
             aliases=aliases,
+            rolling=rolling,
+            since_dt=since_dt,
+            until_dt=until_dt,
+        )
+        prev_until = (
+            (since_dt - timedelta(seconds=1))
+            if rolling and since_dt is not None
+            else None
         )
         previous = build_stats(
             year=year - 1,
@@ -240,6 +248,9 @@ def scan(
             warnings=[],
             identity=identity,
             aliases=aliases,
+            rolling=rolling,
+            since_dt=scan_since_dt if rolling else None,
+            until_dt=prev_until,
         )
         stats.previous = compare_summary(stats, previous)
     else:
@@ -250,6 +261,9 @@ def scan(
             warnings=warnings,
             identity=identity,
             aliases=aliases,
+            rolling=rolling,
+            since_dt=since_dt,
+            until_dt=until_dt,
         )
     return stats, warnings
 

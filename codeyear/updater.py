@@ -18,6 +18,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -32,6 +33,7 @@ GITHUB_LATEST_URL = (
     "https://api.github.com/repos/Qiongkura/codeyear/releases/latest"
 )
 RELEASE_BASE = "https://github.com/Qiongkura/codeyear/releases"
+MAX_DOWNLOAD_BYTES = 150 * 1024 * 1024
 _NO_WINDOW = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
 
 
@@ -186,8 +188,18 @@ def _download_bytes(url: str, timeout: float) -> bytes:
     req = urllib.request.Request(
         url, headers={"User-Agent": f"CodeYear/{__version__}"}
     )
+    chunks: list[bytes] = []
+    total = 0
     with urllib.request.urlopen(req, timeout=timeout) as resp:
-        return resp.read()
+        while True:
+            chunk = resp.read(65536)
+            if not chunk:
+                break
+            total += len(chunk)
+            if total > MAX_DOWNLOAD_BYTES:
+                raise ValueError("download exceeds maximum allowed size")
+            chunks.append(chunk)
+    return b"".join(chunks)
 
 
 def perform_update(
@@ -212,11 +224,15 @@ def perform_update(
         try:
             payload = _download_bytes(info["exe_url"], timeout=timeout)
             tmp_path.write_bytes(payload)
-            sums_text = ""
-            with contextlib.suppress(Exception):
+            try:
                 sums_text = _download_bytes(
                     info["sums_url"], timeout=15.0
                 ).decode("utf-8", errors="replace")
+            except Exception as exc:
+                tmp_path.unlink(missing_ok=True)
+                return False, i18n.tr(
+                    "无法下载校验文件，已取消更新: {exc}", exc=exc
+                )
             if not verify_sha256(
                 tmp_path, "CodeYear.exe", sums_text
             ):
@@ -230,24 +246,53 @@ def perform_update(
             tmp_path.unlink(missing_ok=True)
             return False, i18n.tr("更新失败: {exc}", exc=exc)
 
-    # Python / pip environment: install the release wheel directly.
-    proc = subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "pip",
-            "install",
-            "--upgrade",
-            info["wheel_url"],
-        ],
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        check=False,
-        creationflags=_NO_WINDOW,
-    )
+    # Python / pip environment: download and verify wheel SHA256 before install.
+    wheel_name = f"codeyear-{latest}-py3-none-any.whl"
+    with tempfile.TemporaryDirectory(prefix="codeyear-upd-") as tmp_dir:
+        wheel_path = Path(tmp_dir) / wheel_name
+        try:
+            wheel_bytes = _download_bytes(info["wheel_url"], timeout=timeout)
+            wheel_path.write_bytes(wheel_bytes)
+            sums_url = info.get("sums_url")
+            if sums_url:
+                try:
+                    sums_text = _download_bytes(sums_url, timeout=15.0).decode(
+                        "utf-8", errors="replace"
+                    )
+                except Exception as exc:
+                    return False, i18n.tr(
+                        "无法下载校验文件，已取消更新: {exc}", exc=exc
+                    )
+                if not verify_sha256(wheel_path, wheel_name, sums_text):
+                    return False, i18n.tr("安装包 SHA256 校验未通过，已取消更新。")
+        except Exception as exc:
+            return False, i18n.tr("更新失败: {exc}", exc=exc)
+
+        proc = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "install",
+                "--upgrade",
+                str(wheel_path),
+            ],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=False,
+            creationflags=_NO_WINDOW,
+        )
     if proc.returncode == 0:
         return True, i18n.tr("已更新到 v{version}。", version=latest)
     err = (proc.stderr or proc.stdout or "pip install failed").strip()
+    if "externally-managed-environment" in err:
+        return False, i18n.tr(
+            "当前为系统受管 Python 环境（PEP 668），请使用 pipx upgrade codeyear 或虚拟环境更新。"
+        )
+    if "No module named pip" in err:
+        return False, i18n.tr(
+            "当前 Python 环境未包含 pip，请使用包管理器（如 uv tool upgrade codeyear）更新。"
+        )
     return False, i18n.tr("更新失败: {exc}", exc=err.splitlines()[-1])

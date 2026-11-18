@@ -36,6 +36,7 @@ SCHEMA = {
     "github_user": str,
     "profile_repo": str,
     "push_profile": bool,
+    "lang": str,
 }
 
 
@@ -76,6 +77,8 @@ def load() -> dict:
                 "paper", "mono", "forest", "ocean",
             }:
                 continue
+            if key == "lang" and value not in {"zh", "en"}:
+                continue
             clean[key] = value
     if clean.get("max_commits", 1) <= 0:
         clean.pop("max_commits", None)
@@ -104,6 +107,8 @@ def save(values: dict) -> Path:
                 clean[key] = value
         elif expected is str and isinstance(value, str):
             if key == "theme" and value not in {"paper", "mono", "forest", "ocean"}:
+                continue
+            if key == "lang" and value not in {"zh", "en"}:
                 continue
             clean[key] = value
     target = path()

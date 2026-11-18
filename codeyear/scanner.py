@@ -246,22 +246,6 @@ def _git_remote(repo_path: Path) -> str | None:
     return url or None
 
 
-def _git_root(repo_path: Path) -> str | None:
-    """First root commit — the shared ancestor of copies of the same project."""
-    try:
-        proc = subprocess.run(
-            ["git", "-c", f"safe.directory={repo_path.as_posix()}",
-             "-C", str(repo_path), "rev-list", "--max-parents=0", "HEAD"],
-            capture_output=True, creationflags=_NO_WINDOW,
-            text=True, encoding="utf-8",
-            errors="replace", timeout=10,
-        )
-    except (OSError, subprocess.TimeoutExpired):
-        return None
-    roots = proc.stdout.strip().splitlines()
-    return roots[0].strip() if roots else None
-
-
 def _git_text(repo_path: Path, args: list[str], timeout: int = 30) -> str:
     """Run a small read-only git command; failures degrade to empty output."""
     try:
@@ -275,17 +259,6 @@ def _git_text(repo_path: Path, args: list[str], timeout: int = 30) -> str:
     except (OSError, subprocess.TimeoutExpired):
         return ""
     return (proc.stdout or "").strip() if proc.returncode == 0 else ""
-
-
-def _git_root_date(repo_path: Path, root_hash: str) -> datetime | None:
-    value = _git_text(
-        repo_path,
-        ["show", "-s", "--format=%ad", "--date=format:%Y-%m-%dT%H:%M:%S", root_hash],
-    )
-    try:
-        return datetime.strptime(value, "%Y-%m-%dT%H:%M:%S")
-    except ValueError:
-        return None
 
 
 def _git_total_commits(repo_path: Path) -> int:
@@ -348,10 +321,23 @@ def _has_any_tags(repo_path: Path) -> bool:
     return False
 
 
-def _git_tags_in_year(repo_path: Path, year: int) -> int:
+def _git_tags_in_year(
+    repo_path: Path,
+    year: int,
+    *,
+    since_dt: datetime | None = None,
+    until_dt: datetime | None = None,
+) -> int:
     if not _has_any_tags(repo_path):
         return 0
     value = _git_text(repo_path, ["for-each-ref", "--format=%(creatordate:short)", "refs/tags"])
+    if since_dt is not None and until_dt is not None:
+        start_s = since_dt.strftime("%Y-%m-%d")
+        end_s = until_dt.strftime("%Y-%m-%d")
+        return sum(
+            1 for line in value.splitlines()
+            if len(line.strip()) >= 10 and start_s <= line.strip()[:10] <= end_s
+        )
     prefix = f"{year}-"
     return sum(1 for line in value.splitlines() if line.strip().startswith(prefix))
 
@@ -428,7 +414,9 @@ def scan_repo(
     result.readme_line = _readme_line(repo_path) if proc.stdout.strip() else None
     result.root, result.root_dt = _git_root_info(repo_path)
     result.total_commits = _git_total_commits(repo_path)
-    result.tags_in_year = _git_tags_in_year(repo_path, year)
+    result.tags_in_year = _git_tags_in_year(
+        repo_path, year, since_dt=since_dt, until_dt=until_dt
+    )
 
     if not proc.stdout.strip():
         return result

@@ -108,6 +108,32 @@ def _load_cache(path: Path | None) -> dict:
     return details if isinstance(details, dict) else {}
 
 
+def _slim_detail(detail: dict) -> dict:
+    """Keep only fields needed by CodeYear, dropping multi-KB diff patches."""
+    commit = detail.get("commit") or {}
+    author = commit.get("author") or {}
+    msg_lines = (commit.get("message") or "").splitlines()
+    return {
+        "parents": [{} for _ in (detail.get("parents") or [])],
+        "commit": {
+            "author": {"date": author.get("date")},
+            "message": msg_lines[0][:200] if msg_lines else "",
+        },
+        "stats": {
+            "additions": int((detail.get("stats") or {}).get("additions", 0)),
+            "deletions": int((detail.get("stats") or {}).get("deletions", 0)),
+        },
+        "files": [
+            {
+                "filename": f.get("filename") or "",
+                "additions": int(f.get("additions", 0)),
+                "deletions": int(f.get("deletions", 0)),
+            }
+            for f in (detail.get("files") or [])
+        ],
+    }
+
+
 def _save_cache(path: Path | None, details: dict) -> None:
     if path is None:
         return
@@ -250,6 +276,16 @@ def _commits(
     since = f"{year - 1}-12-31T00:00:00Z"
     until = f"{year + 1}-01-02T00:00:00Z"
     listed = _IncompleteList()
+    def _eligible_list_item(item: dict) -> bool:
+        if len(item.get("parents") or []) > 1:
+            return False
+        raw_date = ((item.get("commit") or {}).get("author") or {}).get("date")
+        if raw_date:
+            d = _dt(raw_date, tz=target_tz)
+            if d is not None and d.year != year:
+                return False
+        return True
+
     # A busy repository can exceed 1,000 commits in one year; keep paging
     # until the caller's budget is reached or GitHub runs out of pages.
     for page in range(1, 101):
@@ -259,7 +295,12 @@ def _commits(
         })
         if not data:
             break
-        listed.extend(data)
+        eligible = [item for item in data if _eligible_list_item(item)]
+        if len(listed) + len(eligible) > limit:
+            listed.extend(eligible[: limit - len(listed)])
+            listed.truncated = True
+            break
+        listed.extend(eligible)
         if len(data) < 100:
             break
         if len(listed) >= limit:
@@ -270,8 +311,9 @@ def _commits(
                 extra = api.get(f"/repos/{full}/commits", {
                     "author": username, "since": since, "until": until,
                     "per_page": 100, "page": page + 1,
-                })
-                listed.truncated = bool(extra)
+                }) or []
+                extra_eligible = [it for it in extra if _eligible_list_item(it)]
+                listed.truncated = bool(extra_eligible or len(extra) == 100)
             else:
                 listed.truncated = True
             break
@@ -299,7 +341,7 @@ def _commits(
             idx, item = entry
             detail = api.get(f"/repos/{full}/commits/{item['sha']}")
             if cache is not None and detail:
-                cache[keys[idx]] = detail
+                cache[keys[idx]] = _slim_detail(detail)
             return detail
 
         # Commit details are independent; a small pool cuts wall time without
@@ -366,7 +408,7 @@ def _commits(
 
 
 def _total_commits(api: GitHubAPI, full: str, username: str) -> int:
-    for _ in range(3):
+    for attempt in range(2):
         data = api.get(f"/repos/{full}/stats/contributors")
         if isinstance(data, list):
             for contributor in data:
@@ -374,7 +416,8 @@ def _total_commits(api: GitHubAPI, full: str, username: str) -> int:
                 if (author.get("login") or "").lower() == username.lower():
                     return sum(int(week.get("c", 0)) for week in contributor.get("weeks", []))
             return 0
-        time.sleep(1)
+        if attempt == 0:
+            time.sleep(0.35)
     return 0
 
 
@@ -448,15 +491,12 @@ def fetch_stats(
         if not commits:
             continue
         total += len(commits)
-        if total >= max_commits:
+        if total >= max_commits and (
+            getattr(commits, "truncated", False) or index < len(repos)
+        ):
             warnings.append(i18n.tr(
                 "已达到 --max-commits 上限（{limit}）", limit=max_commits,
             ))
-        try:
-            repo_total = _total_commits(api, full, login)
-        except RuntimeError as exc:
-            warnings.append(str(exc))
-            repo_total = 0
         results.append(RepoResult(
             path=Path(full),
             name=full,
@@ -465,9 +505,25 @@ def fetch_stats(
             readme_line=repo.get("description") or "",
             root=full,
             root_dt=_dt(repo.get("created_at"), tz=target_tz),
-            total_commits=repo_total or len(commits),
+            total_commits=len(commits),
             tags_in_year=0,
         ))
+
+    if results:
+        def _fetch_repo_total(res: RepoResult) -> tuple[int, str | None]:
+            try:
+                return _total_commits(api, res.name, login), None
+            except RuntimeError as exc:
+                return 0, str(exc)
+
+        with ThreadPoolExecutor(
+            max_workers=min(len(results), DETAIL_WORKERS)
+        ) as pool:
+            totals = list(pool.map(_fetch_repo_total, results))
+        for res, (repo_total, err) in zip(results, totals):
+            if err:
+                warnings.append(err)
+            res.total_commits = repo_total or len(res.commits)
 
     if not results:
         _save_cache(cache_path, cache)

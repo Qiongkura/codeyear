@@ -5,8 +5,10 @@ on:
     branches: [main]
     paths:
       - "docs/**"
-      - "codeyear/__init__.py"
       - ".github/workflows/pages.yml"
+  workflow_run:
+    workflows: ["Release"]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -20,6 +22,7 @@ concurrency:
 
 jobs:
   deploy:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -35,15 +38,35 @@ jobs:
           enablement: true
 
       - name: Sync version.json
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
         run: |
           python3 - <<'PY'
-          import json, re
+          import json, os, urllib.request
           from pathlib import Path
-          init = Path("codeyear/__init__.py").read_text(encoding="utf-8")
-          m = re.search(r'__version__\s*=\s*"([^"]+)"', init)
-          ver = m.group(1) if m else "0.2.13"
-          base = f"https://github.com/Qiongkura/codeyear/releases/download/v{ver}"
-          Path("docs/version.json").write_text(json.dumps({
+          ver_file = Path("docs/version.json")
+          existing = json.loads(ver_file.read_text(encoding="utf-8")) if ver_file.exists() else {}
+          ver = existing.get("version", "0.2.15")
+          repo = os.environ.get("REPO") or "Qiongkura/codeyear"
+          req = urllib.request.Request(
+              f"https://api.github.com/repos/{repo}/releases/latest",
+              headers={
+                  "Accept": "application/vnd.github+json",
+                  "Authorization": f"Bearer {os.environ['GH_TOKEN']}",
+              },
+          )
+          try:
+              with urllib.request.urlopen(req, timeout=10) as resp:
+                  rel = json.loads(resp.read().decode("utf-8"))
+                  assets = {a.get("name") for a in (rel.get("assets") or [])}
+                  tag = (rel.get("tag_name") or "").lstrip("vV")
+                  if tag and "CodeYear.exe" in assets and f"codeyear-{tag}-py3-none-any.whl" in assets:
+                      ver = tag
+          except Exception as exc:
+              print(f"Keeping existing version.json ({ver}): {exc}")
+          base = f"https://github.com/{repo}/releases/download/v{ver}"
+          ver_file.write_text(json.dumps({
               "version": ver,
               "wheel_url": f"{base}/codeyear-{ver}-py3-none-any.whl",
               "exe_url": f"{base}/CodeYear.exe",

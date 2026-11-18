@@ -7,6 +7,8 @@ local ``codeyear scan`` mode.
 
 from __future__ import annotations
 
+import ipaddress
+import os
 import re
 import sys
 import threading
@@ -17,7 +19,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
 from .card import THEMES, build_svg
-from .github_public import fetch_stats
+from .github_public import NoPublicCommitsError, _parse_tz, fetch_stats
 
 USERNAME_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$")
 CACHE: OrderedDict[tuple, tuple[float, object]] = OrderedDict()
@@ -30,6 +32,56 @@ RATE: dict[str, tuple[float, int]] = {}
 RATE_LOCK = threading.Lock()
 RATE_WINDOW = 60
 RATE_LIMIT = 60
+INFLIGHT_SEM = threading.BoundedSemaphore(32)
+
+
+def _normalize_tz(tz: str | None) -> tuple[str | None, bool]:
+    if tz is None:
+        return None, True
+    spec = tz.strip()
+    if not spec:
+        return None, True
+    if len(spec) > 64:
+        return None, False
+    parsed = _parse_tz(spec)
+    if parsed is None:
+        return None, False
+    key = getattr(parsed, "key", None) or parsed.tzname(None) or spec
+    return str(key).strip().lower(), True
+
+
+def _client_ip(handler: BaseHTTPRequestHandler) -> str:
+    peer = handler.client_address[0]
+    trust_proxy = os.environ.get("CODEYEAR_TRUST_PROXY") == "1"
+    if not trust_proxy:
+        try:
+            addr = ipaddress.ip_address(peer)
+            trust_proxy = addr.is_loopback or addr.is_private
+        except ValueError:
+            trust_proxy = False
+    if trust_proxy and handler.headers is not None:
+        for hdr in ("CF-Connecting-IP", "X-Forwarded-For"):
+            raw = (handler.headers.get(hdr) or "").split(",")[0].strip()
+            if raw:
+                try:
+                    return str(ipaddress.ip_address(raw))
+                except ValueError:
+                    continue
+    return peer
+
+
+def _public_error_message(exc: Exception) -> str:
+    if isinstance(exc, NoPublicCommitsError):
+        return "no public commits found for this year"
+    if isinstance(exc, RuntimeError):
+        msg = str(exc)
+        low = msg.lower()
+        if "限流" in msg or "额度" in msg or "rate limit" in low or "quota" in low:
+            return "GitHub API rate limit exceeded"
+        if "找不到 github 用户" in low or "user not found" in low:
+            return "GitHub user not found"
+        return "GitHub API request failed"
+    return "upstream service error"
 
 
 def _allow(ip: str) -> bool:
@@ -55,11 +107,15 @@ def _cached_stats(
     token: str | None,
     max_commits: int,
     tz: str | None = None,
+    tz_key: str | None = None,
 ):
-    tz_norm = (tz or "").strip().lower()
+    if tz_key is None and tz:
+        tz_key, ok = _normalize_tz(tz)
+        if not ok:
+            raise ValueError("invalid timezone")
     key = (
-        (username.lower(), year, max_commits, tz_norm)
-        if tz_norm
+        (username.lower(), year, max_commits, tz_key)
+        if tz_key
         else (username.lower(), year, max_commits)
     )
     now = time.time()
@@ -117,7 +173,12 @@ def _error_svg(message: str) -> str:
 """
 
 
+class _CardHTTPServer(ThreadingHTTPServer):
+    daemon_threads = True
+
+
 class Handler(BaseHTTPRequestHandler):
+    timeout = 15
     token: str | None = None
     max_commits: int = 200
 
@@ -141,13 +202,17 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, "ok", "text/plain; charset=utf-8")
             return
         if parsed.path == "/":
-            self._send(200, LANDING, "text/html; charset=utf-8")
+            self._send(
+                200,
+                LANDING.replace("__YEAR__", str(date.today().year)),
+                "text/html; charset=utf-8",
+            )
             return
         if parsed.path not in {"/card.svg", "/card-dark.svg"}:
             self._send(404, "not found", "text/plain; charset=utf-8")
             return
 
-        if not _allow(self.client_address[0]):
+        if not _allow(_client_ip(self)):
             self._send(429, _error_svg("too many requests"), "image/svg+xml")
             return
 
@@ -169,17 +234,31 @@ class Handler(BaseHTTPRequestHandler):
             theme = "paper"
         lang = "en" if (query.get("lang") or ["zh"])[0] == "en" else "zh"
         tz = (query.get("tz") or [""])[0].strip() or None
+        tz_key, ok_tz = _normalize_tz(tz)
+        if not ok_tz:
+            self._send(400, _error_svg("invalid timezone"), "image/svg+xml")
+            return
+        if not INFLIGHT_SEM.acquire(blocking=False):
+            self._send(503, _error_svg("server busy, try again shortly"), "image/svg+xml")
+            return
         try:
             stats = _cached_stats(
-                username, year, self.token, self.max_commits, tz=tz,
+                username, year, self.token, self.max_commits,
+                tz=tz, tz_key=tz_key,
             )
             svg = build_svg(
                 stats, dark=parsed.path.endswith("-dark.svg"), theme=theme,
                 lang=lang,
             )
         except Exception as exc:
-            self._send(502, _error_svg(str(exc)), "image/svg+xml")
+            if not isinstance(exc, (NoPublicCommitsError, RuntimeError)):
+                print(f"card error ({username}): {exc}", file=sys.stderr)
+            self._send(
+                502, _error_svg(_public_error_message(exc)), "image/svg+xml"
+            )
             return
+        finally:
+            INFLIGHT_SEM.release()
         self._send(200, svg, "image/svg+xml; charset=utf-8")
 
 
@@ -279,9 +358,7 @@ def serve(
 ) -> int:
     Handler.token = token
     Handler.max_commits = max_commits
-    global LANDING
-    LANDING = LANDING.replace("__YEAR__", str(date.today().year))
-    httpd = ThreadingHTTPServer((host, port), Handler)
+    httpd = _CardHTTPServer((host, port), Handler)
     print(f"CodeYear card service: http://{host}:{port}", file=sys.stderr)
     print(f"Endpoint: /card.svg?username=octocat&year={date.today().year}", file=sys.stderr)
     try:

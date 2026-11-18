@@ -290,6 +290,12 @@ EN = {
         "New version v{latest} available (current v{current}): {url}",
     "安装包 SHA256 校验未通过，已取消更新。":
         "Update package failed SHA256 verification; cancelled.",
+    "无法下载校验文件，已取消更新: {exc}":
+        "Could not download checksum file; update cancelled: {exc}",
+    "当前为系统受管 Python 环境（PEP 668），请使用 pipx upgrade codeyear 或虚拟环境更新。":
+        "Externally managed Python environment (PEP 668); update via `pipx upgrade codeyear` or a virtualenv.",
+    "当前 Python 环境未包含 pip，请使用包管理器（如 uv tool upgrade codeyear）更新。":
+        "pip is not available in this Python environment; update via your tool manager (e.g. `uv tool upgrade codeyear`).",
     "已更新到 v{version}，重新打开软件即可生效。":
         "Updated to v{version}. Restart CodeYear to use the new version.",
     "已更新到 v{version}。": "Updated to v{version}.",

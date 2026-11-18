@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 import argparse
-import json
 import os
-import subprocess
 import sys
 import webbrowser
 from datetime import date
@@ -13,17 +11,25 @@ from pathlib import Path
 
 from . import __version__, i18n
 from .card import THEMES
-from .card import render as render_card
 from .config import load as load_config
-from .html_report import render as render_html
-from .html_report import render_en as render_html_en
-from .poster import render as render_poster
-from .poster import render_long
-from .runner import discover, report_path, scan
-from .stats import fmt_int
+from .runner import detect_identity, discover, render, report_path, scan
+from .stats import fmt_int, window_days
 from .updater import check_update, cleanup_old_executable, perform_update
 
-_NO_WINDOW = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
+
+class _CopyAppendAction(argparse.Action):
+    """Append action that never mutates a config-provided default list."""
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        items = list(getattr(namespace, self.dest, None) or [])
+        if getattr(namespace, f"_cy_copied_{self.dest}", False) is False:
+            items = [] if values == "" else list(items)
+            setattr(namespace, f"_cy_copied_{self.dest}", True)
+        if values == "":
+            items = []
+        else:
+            items.append(values)
+        setattr(namespace, self.dest, items)
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -88,7 +94,7 @@ def _build_parser() -> argparse.ArgumentParser:
     scan.add_argument("--rolling", action=argparse.BooleanOptionalAction,
                       default=cfg.get("rolling", False),
                       help="统计过去 365 天（滚动年度），而非自然年")
-    scan.add_argument("--exclude", action="append", default=cfg.get("exclude", []),
+    scan.add_argument("--exclude", action=_CopyAppendAction, default=list(cfg.get("exclude", [])),
                       help="排除指定仓库名或通配符（可重复或逗号分隔）")
     scan.add_argument("--out", default=cfg.get("out", "codeyear-output"),
                       help="输出目录，默认 ./codeyear-output")
@@ -100,7 +106,7 @@ def _build_parser() -> argparse.ArgumentParser:
     scan.add_argument("--fallback-previous", action=argparse.BooleanOptionalAction,
                       default=cfg.get("fallback_previous", False),
                       help="当年没有提交时回退到上一年，适合跨年自动更新")
-    scan.add_argument("--alias", action="append", default=cfg.get("aliases", []),
+    scan.add_argument("--alias", action=_CopyAppendAction, default=list(cfg.get("aliases", [])),
                       help="额外作者邮箱或名字，可重复；用于旧提交")
     scan.add_argument("--no-mailmap", action="store_true",
                       default=cfg.get("no_mailmap", False),
@@ -151,22 +157,7 @@ def _open_path(path: Path) -> None:
 
 def _detect_identity() -> tuple[str, str] | None:
     """The runner's git identity, used to keep only their own commits."""
-
-    def config(key: str) -> str:
-        try:
-            proc = subprocess.run(
-                ["git", "config", "--global", key],
-                capture_output=True, text=True, encoding="utf-8",
-                errors="replace", timeout=10, creationflags=_NO_WINDOW,
-            )
-        except (OSError, subprocess.TimeoutExpired):
-            return ""
-        return (proc.stdout or "").strip()
-
-    email, name = config("user.email"), config("user.name")
-    if email or name:
-        return (email, name)
-    return None
+    return detect_identity()
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -296,6 +287,7 @@ def main(argv: list[str] | None = None) -> int:
             jobs=max(1, args.jobs), progress=progress,
             compare=args.compare, use_mailmap=not args.no_mailmap,
             all_branches=args.all_branches,
+            rolling=args.rolling,
         )
         if previous.commit_count:
             stats, warnings = previous, prev_warnings
@@ -312,56 +304,31 @@ def main(argv: list[str] | None = None) -> int:
         return 3
 
     out_dir = Path(args.out)
-    out_dir.mkdir(parents=True, exist_ok=True)
-    base = out_dir / f"codeyear-{args.year}"
-
-    written: list[tuple[str, Path]] = []
-
-    json_path = base.with_suffix(".json")
-    json_path.write_text(
-        json.dumps(stats.as_dict(), ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
-    written.append(("JSON", json_path))
-
+    formats = {"json"}
     if not args.no_html:
-        html_path = render_html(stats, base.with_suffix(".html"))
-        written.append(("HTML", html_path))
-        en_path = render_html_en(stats, out_dir / f"codeyear-{args.year}-en.html")
-        written.append(("HTML-EN", en_path))
-
+        formats.add("html")
     if not args.no_png:
-        png_path = render_poster(stats, base.with_suffix(".png"))
-        written.append(("PNG", png_path))
-        if i18n.get_lang() == "en":
-            png_en = render_poster(
-                stats, out_dir / f"codeyear-{args.year}-en.png", lang="en")
-            written.append(("PNG-EN", png_en))
+        formats.add("png")
         if not args.no_long:
-            long_path = render_long(stats, out_dir / f"codeyear-{args.year}-long.png")
-            written.append(("LONG", long_path))
-            if i18n.get_lang() == "en":
-                long_en = render_long(
-                    stats, out_dir / f"codeyear-{args.year}-en-long.png",
-                    lang="en")
-                written.append(("LONG-EN", long_en))
-
-    card_paths = []
-    en_cards = []
-    card_theme = getattr(args, "theme", "paper") or "paper"
+            formats.add("long")
     if not args.no_card:
-        card_paths = render_card(
-            stats, out_dir / f"codeyear-{args.year}-card.svg",
-            theme=card_theme,
-        )
-        written.append(("CARD", card_paths[0]))
-        written.append(("CARD-DARK", card_paths[1]))
-        en_cards = render_card(
-            stats, out_dir / f"codeyear-{args.year}-card-en.svg",
-            theme=card_theme, lang="en",
-        )
-        written.append(("CARD-EN", en_cards[0]))
-        written.append(("CARD-DARK-EN", en_cards[1]))
+        formats.add("card")
+    card_theme = getattr(args, "theme", "paper") or "paper"
+    written = render(
+        stats, out_dir, formats=formats,
+        card_theme=card_theme, lang=i18n.get_lang(),
+    )
+    by_label = dict(written)
+    card_paths = (
+        [by_label["CARD"], by_label["CARD-DARK"]]
+        if "CARD" in by_label and "CARD-DARK" in by_label
+        else []
+    )
+    en_cards = (
+        [by_label["CARD-EN"], by_label["CARD-DARK-EN"]]
+        if "CARD-EN" in by_label and "CARD-DARK-EN" in by_label
+        else []
+    )
 
     exit_code = 0
     if args.profile_repo:
@@ -398,7 +365,7 @@ def main(argv: list[str] | None = None) -> int:
                 exit_code = 1
 
     # Console summary
-    active_pct = stats.active_days / (366 if _is_leap(args.year) else 365)
+    active_pct = stats.active_days / window_days(stats)
     print()
     print(i18n.tr(
         "CodeYear {year}  ·  {title}",
@@ -444,10 +411,6 @@ def main(argv: list[str] | None = None) -> int:
         _open_path(target)
 
     return exit_code
-
-
-def _is_leap(year: int) -> bool:
-    return year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
 
 
 if __name__ == "__main__":  # pragma: no cover

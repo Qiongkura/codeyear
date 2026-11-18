@@ -93,6 +93,9 @@ class ReportStats:
     previous: dict | None = None
     top_deleted_files: list[tuple[str, int]] = field(default_factory=list)
     latest_night_commit: dict | None = None
+    rolling: bool = False
+    window_start: str | None = None
+    window_end: str | None = None
 
     def as_dict(self) -> dict:
         data = asdict(self)
@@ -179,13 +182,48 @@ def parse_daily(daily: dict[str, int]) -> dict[date, int]:
 
 def date_window(stats: ReportStats) -> tuple[date, date]:
     """Return the (start, end) date range for heatmaps and lifecycle charts."""
-    if stats.first_dt and stats.first_dt.year < stats.year:
+    w_start = getattr(stats, "window_start", None)
+    w_end = getattr(stats, "window_end", None)
+    if w_start and w_end:
+        try:
+            return date.fromisoformat(w_start), date.fromisoformat(w_end)
+        except ValueError:
+            pass
+    if getattr(stats, "rolling", False) or (
+        stats.first_dt and stats.first_dt.year < stats.year
+    ):
         end = max(
             date.today(),
             stats.last_dt.date() if stats.last_dt else date.today(),
         )
         return end - timedelta(days=364), end
     return date(stats.year, 1, 1), date(stats.year, 12, 31)
+
+
+def window_days(stats: ReportStats) -> int:
+    """Total calendar days in the report window."""
+    start, end = date_window(stats)
+    return max((end - start).days + 1, 1)
+
+
+def window_months(stats: ReportStats) -> list[tuple[date, str]]:
+    """Return 12 chronological (first_day, 'MM') ticks inside date_window."""
+    start, end = date_window(stats)
+    if start == date(stats.year, 1, 1) and end == date(stats.year, 12, 31):
+        return [(date(stats.year, m, 1), f"{m:02d}") for m in range(1, 13)]
+    ticks: list[tuple[date, str]] = []
+    y, m = start.year, start.month
+    if start.day > 1:
+        y, m = (y + 1, 1) if m == 12 else (y, m + 1)
+    while True:
+        cur = date(y, m, 1)
+        if cur > end:
+            break
+        ticks.append((cur, f"{m:02d}"))
+        y, m = (y + 1, 1) if m == 12 else (y, m + 1)
+    if len(ticks) < 12:
+        ticks.insert(0, (start, f"{start.month:02d}"))
+    return ticks[:12]
 
 
 def _commit_type(subject: str) -> str | None:
@@ -216,7 +254,12 @@ def language_breakdown(
     return rows, total
 
 
-def _streaks(active_dates: list[date], year: int) -> tuple[int, int]:
+def _streaks(
+    active_dates: list[date],
+    year: int,
+    *,
+    ref_date: date | None = None,
+) -> tuple[int, int]:
     longest = 0
     run = 0
     prev: date | None = None
@@ -230,11 +273,12 @@ def _streaks(active_dates: list[date], year: int) -> tuple[int, int]:
 
     current = 0
     today = date.today()
-    if year == today.year:
-        cursor = today
-        if cursor not in set(active_dates):
-            cursor -= timedelta(days=1)
+    anchor = ref_date if ref_date is not None else (today if year == today.year else None)
+    if anchor is not None:
+        cursor = anchor
         active = set(active_dates)
+        if cursor not in active:
+            cursor -= timedelta(days=1)
         while cursor in active:
             current += 1
             cursor -= timedelta(days=1)
@@ -264,6 +308,9 @@ def build_stats(
     warnings: list[str] | None = None,
     identity: tuple[str, str] | None = None,
     aliases: list[str] | None = None,
+    rolling: bool = False,
+    since_dt: datetime | None = None,
+    until_dt: datetime | None = None,
 ) -> ReportStats:
     warnings = list(warnings or [])
     aliases = [alias.strip() for alias in (aliases or []) if alias.strip()]
@@ -339,10 +386,22 @@ def build_stats(
     # Year-scoped counts stay on the active repos; lifetime numbers use every
     # local repo after copy/backup dedupe, so an old project that was quiet
     # this year still contributes its history.
-    new_repos = sum(
-        1 for repo, _ in selected
-        if repo.root_dt is not None and repo.root_dt.year == year
+    w_end_d = until_dt.date() if until_dt is not None else (date.today() if rolling else None)
+    w_start_d = (
+        since_dt.date()
+        if since_dt is not None
+        else ((w_end_d - timedelta(days=364)) if w_end_d is not None else None)
     )
+    if w_start_d is not None and w_end_d is not None:
+        new_repos = sum(
+            1 for repo, _ in selected
+            if repo.root_dt is not None and w_start_d <= repo.root_dt.date() <= w_end_d
+        )
+    else:
+        new_repos = sum(
+            1 for repo, _ in selected
+            if repo.root_dt is not None and repo.root_dt.year == year
+        )
     total_commits = sum(repo.total_commits for repo in chosen)
     tags_in_year = sum(repo.tags_in_year for repo in chosen)
     root_dates = [repo.root_dt for repo in chosen if repo.root_dt is not None]
@@ -466,7 +525,9 @@ def build_stats(
             type_counter[t] += 1
 
     active_dates = sorted(date.fromisoformat(k) for k, v in daily.items() if v > 0)
-    longest_streak, current_streak = _streaks(active_dates, year)
+    longest_streak, current_streak = _streaks(
+        active_dates, year, ref_date=w_end_d if rolling else None
+    )
 
     size_order = ["0–10", "10–100", "100–500", "500–2k", "2k+"]
     size_buckets = [(label, size_counter.get(label, 0)) for label in size_order]
@@ -619,8 +680,10 @@ def build_stats(
         language_quarters.append({"q": f"Q{i + 1}", "rows": rows})
 
     today_date = datetime.now().date()
-    # For a past year, measure dormancy from that year's end, not from today.
-    if year < today_date.year:
+    if w_end_d is not None:
+        today_date = w_end_d
+    elif year < today_date.year:
+        # For a past year, measure dormancy from that year's end, not from today.
         today_date = date(year, 12, 31)
     dormant: list[dict] = []
     for repo in repo_details:
@@ -733,4 +796,7 @@ def build_stats(
         warnings=warnings,
         top_deleted_files=top_deleted_files,
         latest_night_commit=latest_night_commit,
+        rolling=rolling,
+        window_start=w_start_d.isoformat() if w_start_d else None,
+        window_end=w_end_d.isoformat() if w_end_d else None,
     )

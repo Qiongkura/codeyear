@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import html
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from .stats import (
@@ -14,6 +14,8 @@ from .stats import (
     fmt_signed_pair,
     language_breakdown,
     parse_daily,
+    window_days,
+    window_months,
 )
 
 W, H = 640, 1254
@@ -247,9 +249,10 @@ MONTHS = [
 
 
 def build_svg(stats: ReportStats, *, dark: bool = False,
-              theme: str = "paper", lang: str = "zh") -> str:
+              theme: str = "paper", lang: str = "zh",
+              palette_override: dict | None = None) -> str:
     light, dark_theme = THEMES.get(theme, THEMES["paper"])
-    c = dark_theme if dark else light
+    c = palette_override if palette_override is not None else (dark_theme if dark else light)
     en = lang == "en"
 
     def t(zh: str, english: str) -> str:
@@ -300,7 +303,7 @@ def build_svg(stats: ReportStats, *, dark: bool = False,
     header.append(_rule(142, c["line"]))
 
     # ---- six summary tiles (3 x 2) ------------------------------------
-    active_pct = stats.active_days / (366 if _is_leap(stats.year) else 365)
+    active_pct = stats.active_days / window_days(stats)
     tiles = [
         (t("COMMITS / 提交", "COMMITS"), fmt_int(stats.commit_count),
          t("年度提交", "commits this year")),
@@ -343,19 +346,18 @@ def build_svg(stats: ReportStats, *, dark: bool = False,
 
     # ---- contribution calendar ---------------------------------------
     cell, gap_h = 9, 2
-    grid_start = date(stats.year, 1, 1)
-    grid_start -= timedelta(days=grid_start.weekday())
-    grid_end = date(stats.year, 12, 31)
-    grid_end += timedelta(days=6 - grid_end.weekday())
+    start_w, end_w = date_window(stats)
+    grid_start = start_w - timedelta(days=start_w.weekday())
+    grid_end = end_w + timedelta(days=6 - end_w.weekday())
     grid_cols = (grid_end - grid_start).days // 7 + 1
     grid_w = grid_cols * (cell + gap_h) - gap_h
     grid_x = (W - grid_w) / 2
 
     month_ticks = []
-    for month in range(1, 13):
-        col = (date(stats.year, month, 1) - grid_start).days // 7
+    for m_date, m_label in window_months(stats):
+        col = (m_date - grid_start).days // 7
         mx = grid_x + col * (cell + gap_h)
-        month_ticks.append(_text(mx, 588, f"{month:02d}", 9.5, c["muted"]))
+        month_ticks.append(_text(mx, 588, m_label, 9.5, c["muted"]))
 
     charts = [
         _text(M, 350, "MONTHLY RHYTHM", 10, c["muted"], spacing=1),
@@ -700,10 +702,6 @@ def build_svg(stats: ReportStats, *, dark: bool = False,
   {''.join(footer)}
 </svg>
 """
-
-
-def _is_leap(year: int) -> bool:
-    return year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
 
 
 def render(stats: ReportStats, out_path: str | Path, *,
