@@ -132,9 +132,13 @@ def test_rolling_window_months_and_english_report():
     assert stats.new_repos == 1
     months = window_months(stats)
     assert len(months) == 12
+    # The window touches 13 calendar months; the two oldest share the first
+    # bar so the remaining bars stay chronological.
     assert [lbl for _, lbl in months] == [
-        "12", "01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11"
+        "11·12", "01", "02", "03", "04", "05", "06", "07", "08", "09", "10",
+        "11"
     ]
+    assert [lbl for _, lbl in months] == stats.monthly_labels
     assert all(start <= d <= end for d, _ in months)
 
     svg = build_svg(stats, lang="en")

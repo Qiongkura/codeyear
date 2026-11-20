@@ -16,7 +16,7 @@ from pathlib import Path
 
 from . import i18n
 from .config import load as load_config
-from .runner import detect_identity, discover, render, report_path, scan
+from .runner import DEFAULT_JOBS, detect_identity, discover, render, report_path, scan
 from .stats import fmt_human, fmt_int
 
 
@@ -160,7 +160,7 @@ def run() -> int:
         out_dir.mkdir(parents=True, exist_ok=True)
         compare = _yes("同时统计去年，生成同比?", bool(cfg.get("compare", False)))
         all_branches = _yes("统计所有分支/tag?", bool(cfg.get("all_branches", False)))
-        default_jobs = int(cfg.get("jobs", 1))
+        default_jobs = int(cfg.get("jobs", DEFAULT_JOBS))
         jobs_raw = _ask("并行扫描数", str(default_jobs))
         try:
             jobs = max(1, int(jobs_raw))

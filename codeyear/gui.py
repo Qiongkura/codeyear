@@ -19,7 +19,14 @@ from . import i18n
 from .card import THEMES
 from .config import load as load_config
 from .config import save as save_config
-from .runner import detect_identity, discover, render, report_path, scan
+from .runner import (
+    DEFAULT_JOBS,
+    detect_identity,
+    discover,
+    render,
+    report_path,
+    scan,
+)
 from .stats import fmt_int
 from .updater import check_update, cleanup_old_executable, perform_update
 
@@ -48,6 +55,8 @@ class App:
         self.html_path: Path | None = None
         self.update_info: dict | None = None
         self.busy = False
+        self.cancel_event: threading.Event | None = None
+        self._count_gen = 0
 
         root.title(i18n.tr("CodeYear · 代码手账"))
         root.geometry("860x960")
@@ -58,9 +67,7 @@ class App:
         for folder in self.roots:
             self.folder_list.insert("end", str(folder))
         if self.roots:
-            self.count_label.configure(
-                text=i18n.tr("已添加，开始生成时会统计仓库数量")
-            )
+            self._auto_count()
         self._poll()
         if not os.environ.get("CODEYEAR_NO_UPDATE_CHECK"):
             threading.Thread(
@@ -284,7 +291,7 @@ class App:
         tk.Label(advanced, text=i18n.tr("并行数"), bg=PAPER, fg=MUTED,
                  font=("Microsoft YaHei", 9)).pack(side="left")
         self.jobs_var = tk.StringVar(
-            value=str(self.cfg.get("jobs", 1))
+            value=str(self.cfg.get("jobs", DEFAULT_JOBS))
         )
         self.jobs_entry = ttk.Entry(
             advanced, width=4, textvariable=self.jobs_var, style="CY.TEntry",
@@ -462,19 +469,43 @@ class App:
             return
         self.roots.append(resolved)
         self.folder_list.insert("end", str(resolved))
-        self.count_label.configure(
-            text=i18n.tr("已添加，开始生成时会统计仓库数量")
-        )
+        self._auto_count()
 
     def _remove_folder(self) -> None:
         selected = list(self.folder_list.curselection())
         for index in reversed(selected):
             self.folder_list.delete(index)
             del self.roots[index]
+        self._auto_count()
 
     def _clear_folders(self) -> None:
         self.folder_list.delete(0, "end")
         self.roots.clear()
+        self._auto_count()
+
+    def _auto_count(self) -> None:
+        """Refresh the repo count in the background after a folder change."""
+        if self.busy:
+            return
+        if not self.roots:
+            self.count_label.configure(text="")
+            return
+        try:
+            depth = int(self.depth_var.get())
+        except ValueError:
+            depth = 6
+        excludes = [
+            item.strip() for item in self.exclude_var.get().split(",")
+            if item.strip()
+        ]
+        self._count_gen += 1
+        generation = self._count_gen
+        self.count_label.configure(text=i18n.tr("正在检查…"))
+        threading.Thread(
+            target=self._count_work,
+            args=(list(self.roots), depth, excludes, generation),
+            daemon=True,
+        ).start()
 
     def _switch_lang(self) -> None:
         if self.busy:
@@ -526,8 +557,7 @@ class App:
         self._rolling_draw()
         self._push_draw()
         if self.roots:
-            self.count_label.configure(
-                text=i18n.tr("已添加，开始生成时会统计仓库数量"))
+            self._auto_count()
         self._set_result(saved["result"])
         self.html_path = report_path(self.written, lang=i18n.get_lang())
         if self.written:
@@ -556,15 +586,18 @@ class App:
             if item.strip()
         ]
         self.count_label.configure(text=i18n.tr("正在检查…"))
+        self._count_gen += 1
         threading.Thread(
-            target=self._count_work, args=(list(self.roots), depth, excludes),
+            target=self._count_work,
+            args=(list(self.roots), depth, excludes, self._count_gen),
             daemon=True,
         ).start()
 
-    def _count_work(self, roots, depth, excludes=None) -> None:
+    def _count_work(self, roots, depth, excludes=None, generation=0) -> None:
         try:
             self.queue.put((
-                "checked", len(discover(roots, depth, exclude=excludes))
+                "checked", len(discover(roots, depth, exclude=excludes)),
+                generation,
             ))
         except Exception as exc:  # pragma: no cover - UI path
             self.queue.put(("error", str(exc)))
@@ -663,6 +696,7 @@ class App:
         push_profile = bool(self.push_profile_var.get())
 
         self._set_busy(True)
+        self.cancel_event = threading.Event()
         self.written = []
         self.html_path = None
         self.progress.configure(value=0, maximum=1)
@@ -714,6 +748,7 @@ class App:
                     use_mailmap=not bool(self.cfg.get("no_mailmap", False)),
                     all_branches=all_branches,
                     rolling=rolling,
+                    cancel_event=self.cancel_event,
                 )
                 if stats.commit_count == 0:
                     raise RuntimeError(i18n.tr(
@@ -759,6 +794,9 @@ class App:
                         "找到 {count} 个仓库，开始扫描…", count=count,
                     ))
                 elif kind == "checked":
+                    if len(event) > 2 and event[2] != self._count_gen:
+                        # A newer folder change already superseded this count.
+                        continue
                     self.count_label.configure(text=i18n.tr(
                         "找到 {count} 个 git 仓库", count=event[1],
                     ))
@@ -806,15 +844,35 @@ class App:
 
     def _fail(self, message: str) -> None:
         self._set_busy(False)
+        if message.strip() == i18n.tr("已取消。"):
+            self.status.configure(text=i18n.tr("已取消扫描。"))
+            self.progress.configure(value=0)
+            return
         self.status.configure(text=i18n.tr(
             "失败：{message}", message=message,
         ))
         messagebox.showerror(i18n.tr("生成失败"), message)
 
+    def _cancel(self) -> None:
+        if self.cancel_event is not None:
+            self.cancel_event.set()
+        self.status.configure(text=i18n.tr("正在取消…"))
+        self.start_btn.configure(state="disabled")
+
     def _set_busy(self, busy: bool) -> None:
         self.busy = busy
         state = "disabled" if busy else "normal"
-        self.start_btn.configure(state=state)
+        if hasattr(self, "start_btn"):
+            if busy:
+                self.start_btn.configure(
+                    state="normal", text=i18n.tr("取消"), command=self._cancel,
+                )
+            else:
+                self.start_btn.configure(
+                    state="normal", text=i18n.tr("开始生成"),
+                    command=self._start,
+                )
+        self.cancel_event = self.cancel_event if busy else None
         if hasattr(self, "lang_btn"):
             self.lang_btn.configure(state=state)
         if hasattr(self, "update_btn"):

@@ -16,7 +16,9 @@ from .stats import (
     fmt_int,
     fmt_signed_pair,
     language_breakdown,
+    month_labels,
     parse_daily,
+    peak_month,
     window_days,
     window_months,
 )
@@ -358,7 +360,8 @@ def _stats(draw: ImageDraw.ImageDraw, stats: ReportStats) -> None:
 def _monthly(draw: ImageDraw.ImageDraw, stats: ReportStats) -> None:
     _label(draw, (M, 612), "MONTHLY RHYTHM")
     max_v = max(stats.monthly) or 1
-    peak = stats.monthly.index(max_v) + 1
+    labels = month_labels(stats)
+    _peak_idx, peak = peak_month(stats)
     _draw_text(draw, (W - M, 612), _t(
         f"峰值 {peak:02d} 月 · {max_v} 次",
         f"Peak {_MONTHS[peak - 1]} · {max_v}",
@@ -374,9 +377,9 @@ def _monthly(draw: ImageDraw.ImageDraw, stats: ReportStats) -> None:
         draw.rectangle((x, baseline - h, x + bar_w, baseline),
                        fill=ACCENT if value == max_v and value > 0 else INK)
     draw.line((M, baseline, W - M, baseline), fill=INK, width=1)
-    for i in range(12):
+    for i, label in enumerate(labels):
         cx = M + i * (bar_w + gap) + bar_w / 2
-        draw.text((cx, baseline + 7), f"{i + 1:02d}", font=_font(9, "mono"),
+        draw.text((cx, baseline + 7), label, font=_font(9, "mono"),
                   fill=MUTED, anchor="ma")
 
 
@@ -696,7 +699,8 @@ def _long_records(draw: ImageDraw.ImageDraw, stats: ReportStats, y: int) -> int:
 def _long_monthly(draw: ImageDraw.ImageDraw, stats: ReportStats, y: int) -> int:
     y0 = _long_title(draw, y, "02", "月度节奏", "MONTHLY RHYTHM")
     max_v = max(stats.monthly) or 1
-    peak = stats.monthly.index(max_v) + 1
+    labels = month_labels(stats)
+    _peak_idx, peak = peak_month(stats)
     _draw_text(draw, (W - M, y0), _t(
         f"峰值 {peak:02d} 月 · {max_v} 次",
         f"Peak {_MONTHS[peak - 1]} · {max_v}",
@@ -711,9 +715,9 @@ def _long_monthly(draw: ImageDraw.ImageDraw, stats: ReportStats, y: int) -> int:
         draw.rectangle((x, baseline - h, x + bar_w, baseline),
                        fill=ACCENT if value == max_v and value > 0 else INK)
     draw.line((M, baseline, W - M, baseline), fill=INK, width=1)
-    for i in range(12):
+    for i, label in enumerate(labels):
         cx = M + i * (bar_w + gap) + bar_w / 2
-        draw.text((cx, baseline + 7), f"{i + 1:02d}", font=_font(9, "mono"),
+        draw.text((cx, baseline + 7), label, font=_font(9, "mono"),
                   fill=MUTED, anchor="ma")
     return baseline + 30
 

@@ -40,6 +40,10 @@ EXT_LANG: dict[str, str] = {
     ".ipynb": "Jupyter", ".glsl": "Shader", ".hlsl": "Shader", ".wgsl": "Shader",
     ".metal": "Shader", ".ino": "Arduino", ".pde": "Processing",
     ".asm": "Assembly", ".s": "Assembly", ".sol": "Solidity",
+    # Schemas / infra / modern typed languages
+    ".prisma": "Prisma", ".typ": "Typst", ".gleam": "Gleam", ".mojo": "Mojo",
+    ".cmake": "CMake", ".tf": "Terraform", ".hcl": "Terraform",
+    ".nix": "Nix", ".qml": "QML", ".gd": "GDScript",
 }
 
 NAME_LANG: dict[str, str] = {
@@ -71,19 +75,32 @@ SKIP_EXTS: set[str] = {
 }
 
 SKIP_NAMES: set[str] = {
-    "package-lock.json", "pnpm-lock.yaml", "yarn.lock", "bun.lockb",
-    "cargo.lock", "poetry.lock", "pipfile.lock", "composer.lock",
-    "go.sum", "gemfile.lock", "flake.lock", "npm-shrinkwrap.json",
+    "package-lock.json", "pnpm-lock.yaml", "yarn.lock", "bun.lockb", "bun.lock",
+    "deno.lock", "cargo.lock", "poetry.lock", "pdm.lock", "uv.lock", "pixi.lock",
+    "pipfile.lock", "composer.lock", "paket.lock", "mix.lock", "pubspec.lock",
+    "podfile.lock", "go.sum", "gemfile.lock", "flake.lock", "npm-shrinkwrap.json",
     ".ds_store", "thumbs.db", "desktop.ini",
 }
 
+# Generated sources: committed by tooling, never written by hand. Counting
+# them would let one protobuf regeneration dominate the "most edited file"
+# and refactoring charts.
+SKIP_SUFFIXES: tuple[str, ...] = (
+    ".min.js", ".min.css", ".map", ".lock", ".sum", ".generated.ts",
+    ".generated.go", ".pb.go", ".pb.cc", ".pb.h", ".pb.swift",
+    "_pb2.py", "_pb2_grpc.py", "_grpc.pb.go",
+    ".g.dart", ".freezed.dart", ".gr.dart", ".designer.cs", ".g.cs",
+    ".d.ts.map",
+)
+
+# Directories whose contents are build output or generated code.
 SKIP_PARTS: set[str] = {
     "node_modules", "bower_components", "dist", "build", "out", "output",
     "target", "vendor", "third_party", "third-party", "coverage", "htmlcov",
     ".next", ".nuxt", ".svelte-kit", ".parcel-cache", ".turbo",
     "__pycache__", ".venv", "venv", "env", "site-packages",
     "pods", "deriveddata", ".gradle", ".m2", "obj", "bin",
-    "codeyear-output",
+    "codeyear-output", "__generated__",
 }
 
 # Languages that are technically text but not interesting for "most edited files".
@@ -108,7 +125,7 @@ def is_skipped(path: str) -> bool:
     name = parts[-1]
     if name in SKIP_NAMES:
         return True
-    if name.endswith((".min.js", ".min.css", ".map", ".lock", ".sum")):
+    if name.endswith(SKIP_SUFFIXES):
         return True
     if any(part in SKIP_PARTS for part in parts[:-1]):
         return True

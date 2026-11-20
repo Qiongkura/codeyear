@@ -573,6 +573,7 @@ EN_PATTERNS = [
     (r"删除 (.*) 行", r"Deleted \1 lines"),
     (r"删除 / 新增 = (\d+)%。最大的一次删除 (.*) 行（(.*)，(.*)）。",
      r"Deletions / additions = \1%. Largest deletion: \2 lines (\3, \4)."),
+    (r"删除 / 新增 = (\d+)%。", r"Deletions / additions = \1%."),
     (r"平均每条 (\d+) 字符。", r"Average \1 characters."),
     (r"最长的一条见「年度之最」。", 'Longest message in "Yearly records".'),
     (r"16 小时 01 分", r"16h 01m"),

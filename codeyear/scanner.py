@@ -261,13 +261,71 @@ def _git_text(repo_path: Path, args: list[str], timeout: int = 30) -> str:
     return (proc.stdout or "").strip() if proc.returncode == 0 else ""
 
 
-def _git_total_commits(repo_path: Path) -> int:
-    """All commits on HEAD — repository scope, not the filtered year scope."""
-    value = _git_text(repo_path, ["rev-list", "--count", "HEAD"])
+def _author_args(authors: list[str] | None) -> list[str]:
+    """``git`` author filters for one or more identity strings.
+
+    Patterns are anchored so ``me@example.com`` does not also match
+    ``notme@example.com`` in the author line.
+    """
+    args: list[str] = []
+    for author in authors or []:
+        author = (author or "").strip()
+        if not author:
+            continue
+        if "@" in author:
+            pattern = f"<{re.escape(author.lower())}$"
+        else:
+            pattern = f"^{re.escape(author.lower())} <"
+        args += ["--regexp-ignore-case", f"--author={pattern}"]
+    return args
+
+
+def _git_total_commits(
+    repo_path: Path, authors: list[str] | None = None
+) -> int:
+    """All commits on HEAD — repository scope, not the filtered year scope.
+
+    With *authors* the count is restricted to those identities, so a fork of a
+    huge upstream project contributes only your own commits instead of all of
+    its history.
+    """
+    value = _git_text(
+        repo_path, [*("rev-list", "--count", "HEAD"), *_author_args(authors)]
+    )
     try:
         return int(value)
     except ValueError:
         return 0
+
+
+def _identity_strings(
+    identity: tuple[str, str] | None, aliases: list[str] | None
+) -> list[str]:
+    """Author strings for a lifetime count, or [] when everyone counts."""
+    if identity is None:
+        return []
+    email, name = identity
+    values = [email, name, *(aliases or [])]
+    return [value.strip() for value in values if (value or "").strip()]
+
+
+def matches_identity(
+    author_email: str,
+    author_name: str,
+    identity: tuple[str, str] | None,
+    aliases: list[str] | None = None,
+) -> bool:
+    """True when a commit belongs to *identity* (or one of *aliases*)."""
+    if identity is None:
+        return True
+    email, name = identity
+    email_l = author_email.strip().lower()
+    name_l = author_name.strip().lower()
+    for value in [email, name, *(aliases or [])]:
+        value = (value or "").strip().lower()
+        if value and (email_l == value or name_l == value):
+            return True
+    return False
 
 
 def _git_root_info(repo_path: Path) -> tuple[str | None, datetime | None]:
@@ -354,6 +412,8 @@ def scan_repo(
     timeout: int = 300,
     use_mailmap: bool = True,
     all_branches: bool = False,
+    identity: tuple[str, str] | None = None,
+    aliases: list[str] | None = None,
 ) -> RepoResult:
     start_year = since_year if since_year is not None else year
     name = _repo_name(repo_path, root)
@@ -410,15 +470,10 @@ def scan_repo(
         result.warning = lines[-1] if lines else f"git exited {proc.returncode}"
         return result
 
-    result.remote = _git_remote(repo_path)
-    result.readme_line = _readme_line(repo_path) if proc.stdout.strip() else None
-    result.root, result.root_dt = _git_root_info(repo_path)
-    result.total_commits = _git_total_commits(repo_path)
-    result.tags_in_year = _git_tags_in_year(
-        repo_path, year, since_dt=since_dt, until_dt=until_dt
-    )
-
     if not proc.stdout.strip():
+        # Nothing in the window: skip the remote/README/root/tag lookups.
+        # Cloned upstream projects would otherwise cost four extra git calls
+        # each for a report they do not contribute to.
         return result
 
     for chunk in proc.stdout.split("\x1e"):
@@ -487,5 +542,23 @@ def scan_repo(
                 changes=changes,
             )
         )
+
+    if identity is not None and not any(
+        matches_identity(c.author_email, c.author_name, identity, aliases)
+        for c in result.commits
+    ):
+        # A third-party clone with none of your commits: do not pay for its
+        # remote/README/tag history, and do not let it into lifetime totals.
+        return result
+
+    result.remote = _git_remote(repo_path)
+    result.readme_line = _readme_line(repo_path)
+    result.root, result.root_dt = _git_root_info(repo_path)
+    result.total_commits = _git_total_commits(
+        repo_path, _identity_strings(identity, aliases)
+    )
+    result.tags_in_year = _git_tags_in_year(
+        repo_path, year, since_dt=since_dt, until_dt=until_dt
+    )
 
     return result

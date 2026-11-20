@@ -12,7 +12,14 @@ from pathlib import Path
 from . import __version__, i18n
 from .card import THEMES
 from .config import load as load_config
-from .runner import detect_identity, discover, render, report_path, scan
+from .runner import (
+    DEFAULT_JOBS,
+    detect_identity,
+    discover,
+    render,
+    report_path,
+    scan,
+)
 from .stats import fmt_int, window_days
 from .updater import check_update, cleanup_old_executable, perform_update
 
@@ -58,6 +65,8 @@ def _build_parser() -> argparse.ArgumentParser:
     github.add_argument("--max-commits", type=int, default=cfg.get("max_commits", 200),
                         help="最多拉取多少条提交（无 token 时自动限制为 30）")
     github.add_argument("--include-forks", action="store_true", help="包含 fork 仓库")
+    github.add_argument("--include-contributed", action="store_true",
+                        help="同时统计你向他人/组织公开仓库贡献的提交（PR 合入的外部仓库）")
     github.add_argument("--open", action=argparse.BooleanOptionalAction,
                         default=cfg.get("open", False), help="生成后打开报告")
     github.add_argument("--quiet", action="store_true", help="不打印扫描进度")
@@ -123,8 +132,8 @@ def _build_parser() -> argparse.ArgumentParser:
                       help="向下查找仓库的最大文件夹层数，默认 6")
     scan.add_argument("--timeout", type=int, default=cfg.get("timeout", 300),
                       help="单个仓库的扫描超时秒数")
-    scan.add_argument("--jobs", type=int, default=cfg.get("jobs", 1),
-                      help="并行扫描的仓库数，默认 1")
+    scan.add_argument("--jobs", type=int, default=cfg.get("jobs", DEFAULT_JOBS),
+                      help=f"并行扫描的仓库数，默认 {DEFAULT_JOBS}（机器核数）")
     scan.add_argument("--theme", choices=sorted(THEMES),
                       default=cfg.get("theme", "paper"),
                       help="卡片主题：paper / mono / forest / ocean")
@@ -220,6 +229,7 @@ def main(argv: list[str] | None = None) -> int:
             no_cache=args.no_cache,
             lang=i18n.get_lang(),
             tz=args.tz, require_complete=args.require_complete,
+            include_contributed=args.include_contributed,
         )
     if args.command == "serve":
         from .server import serve

@@ -377,7 +377,7 @@ codeyear github Qiongkura --year 2026 --card-only \
 | `--all-branches` | 统计所有本地分支/tag 的提交（默认只看当前分支） |
 | `--max-depth 6` | 每个根目录向下查找仓库的最大文件夹层数 |
 | `--timeout 300` | 单个仓库的扫描超时（秒） |
-| `--jobs 4` | 并行扫描的仓库数，项目多时明显加快 |
+| `--jobs N` | 并行扫描的仓库数，默认按 CPU 核数（2–8）自动设置 |
 | `--no-png` / `--no-html` | 跳过 PNG / HTML（可同时使用） |
 | `--no-long` | 不生成完整版长图（默认生成） |
 | `--no-card` | 不生成 GitHub 主页卡片 |

@@ -7,6 +7,7 @@ import fnmatch
 import json
 import os
 import subprocess
+import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import replace
 from datetime import datetime, timedelta
@@ -23,6 +24,8 @@ from .stats import ReportStats, build_stats, compare_summary
 
 Progress = Callable[[int, int, str], None]
 ALL_FORMATS = {"json", "html", "png", "long", "card"}
+DEFAULT_JOBS = min(8, max(2, os.cpu_count() or 4))
+_CANCELLED = "已取消。"
 _NO_WINDOW = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
 
 
@@ -52,6 +55,12 @@ def detect_identity() -> tuple[str, str] | None:
     if email or name:
         return email, name
     return None
+
+
+def _cancelled_error() -> RuntimeError:
+    from .i18n import tr
+
+    return RuntimeError(tr(_CANCELLED))
 
 
 def is_excluded(
@@ -126,12 +135,13 @@ def scan(
     aliases: list[str] | None = None,
     author: str | None = None,
     timeout: int = 300,
-    jobs: int = 1,
+    jobs: int = DEFAULT_JOBS,
     progress: Progress | None = None,
     compare: bool = False,
     use_mailmap: bool = True,
     all_branches: bool = False,
     rolling: bool = False,
+    cancel_event: threading.Event | None = None,
 ) -> tuple[ReportStats, list[str]]:
     labels = _root_labels(roots)
     results: list[RepoResult] = []
@@ -158,6 +168,8 @@ def scan(
             "timeout": timeout,
             "use_mailmap": use_mailmap,
             "all_branches": all_branches,
+            "identity": identity,
+            "aliases": aliases,
         }
         if rolling and scan_since_dt is not None and until_dt is not None:
             kwargs["since_dt"] = scan_since_dt
@@ -174,8 +186,13 @@ def scan(
                 commit.repo = new
         return result
 
+    def cancelled() -> bool:
+        return cancel_event is not None and cancel_event.is_set()
+
     if jobs <= 1:
         for i, (repo, root) in enumerate(repos):
+            if cancelled():
+                raise _cancelled_error()
             if progress:
                 progress(i, total, repo.name)
             result = prepare(repo, root)
@@ -190,18 +207,25 @@ def scan(
                 pool.submit(prepare, repo, root): repo
                 for repo, root in repos
             }
-            for done, future in enumerate(as_completed(futures), 1):
-                repo = futures[future]
-                try:
-                    result = future.result()
-                except Exception as exc:  # pragma: no cover - worker failure
-                    warnings.append(f"{repo}: {exc}")
-                    continue
-                if result.warning:
-                    warnings.append(f"{result.name}: {result.warning}")
-                results.append(result)
-                if progress:
-                    progress(done, total, result.name)
+            try:
+                for done, future in enumerate(as_completed(futures), 1):
+                    if cancelled():
+                        raise _cancelled_error()
+                    repo = futures[future]
+                    try:
+                        result = future.result()
+                    except Exception as exc:  # pragma: no cover - worker failure
+                        warnings.append(f"{repo}: {exc}")
+                        continue
+                    if result.warning:
+                        warnings.append(f"{result.name}: {result.warning}")
+                    results.append(result)
+                    if progress:
+                        progress(done, total, result.name)
+            except RuntimeError:
+                for future in futures:
+                    future.cancel()
+                raise
 
     root_label = " + ".join(str(root) for root in roots)
     if compare:

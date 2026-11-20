@@ -44,6 +44,8 @@ EN = {
     "最多拉取多少条提交（无 token 时自动限制为 30）":
         "Maximum commits to fetch (capped at 30 without a token)",
     "包含 fork 仓库": "Include fork repositories",
+    "同时统计你向他人/组织公开仓库贡献的提交（PR 合入的外部仓库）":
+        "Also count commits you contributed to other people's or org repos",
     "生成后打开报告": "Open the report when done",
     "不打印扫描进度": "Suppress scan progress",
     "卡片主题：paper / mono / forest / ocean":
@@ -227,6 +229,9 @@ EN = {
     "旧邮箱/名字": "Old emails/names",
     "选择…": "Choose…",
     "开始生成": "Generate",
+    "取消": "Cancel",
+    "正在取消…": "Cancelling…",
+    "已取消扫描。": "Scan cancelled.",
     "打开报告": "Open report",
     "打开输出目录": "Open output folder",
     "选择目录后点击「开始生成」。":

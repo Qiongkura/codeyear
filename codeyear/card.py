@@ -13,7 +13,9 @@ from .stats import (
     fmt_int,
     fmt_signed_pair,
     language_breakdown,
+    month_labels,
     parse_daily,
+    peak_month,
     window_days,
     window_months,
 )
@@ -260,7 +262,8 @@ def build_svg(stats: ReportStats, *, dark: bool = False,
 
     monthly = stats.monthly
     peak = max(monthly) or 1
-    peak_month = monthly.index(peak) + 1 if peak else 1
+    labels = month_labels(stats)
+    _peak_idx, peak_month_no = peak_month(stats)
     peak_hour = stats.by_hour.index(max(stats.by_hour)) if any(stats.by_hour) else 0
     owner = (stats.identity_label or "").split(" <")[0].strip()
 
@@ -341,7 +344,7 @@ def build_svg(stats: ReportStats, *, dark: bool = False,
             f'<rect x="{x}" y="{baseline - height}" width="{bar_w}" '
             f'height="{height}" fill="{fill}"/>'
         )
-        bars.append(_text(x + bar_w / 2, baseline + 14, f"{i + 1:02d}", 9.5,
+        bars.append(_text(x + bar_w / 2, baseline + 14, labels[i], 9.5,
                           c["muted"], anchor="middle"))
 
     # ---- contribution calendar ---------------------------------------
@@ -362,8 +365,111 @@ def build_svg(stats: ReportStats, *, dark: bool = False,
     charts = [
         _text(M, 350, "MONTHLY RHYTHM", 10, c["muted"], spacing=1),
         _text(RIGHT, 350, t(
-            f"峰值 {peak_month:02d} 月 · {peak} 次",
-            f"Peak {MONTHS[peak_month - 1]} · {peak}",
+            f"峰值 {peak_month_no:02d} 月 · {peak} 次",
+            f"Peak {MONTHS[peak_month_no - 1]} · {peak}",
+        ), 10, c["accent"], anchor="end"),
+        *bars,
+        _rule(462, c["line"]),
+        _text(M, 480, "CONTRIBUTION", 10, c["muted"], spacing=1),
+        _text(RIGHT, 480, t(
+            f"{stats.active_days} 个活跃日",
+            f"{stats.active_days} active days",
+        ), 10, c["muted"], anchor="end"),
+        _heatmap(stats, c, grid_x, 498, cell, gap_h),
+        *month_ticks,
+        _rule(602, c["line"]),
+    ]
+
+    # ---- derived insights ---------------------------------------------
+    cols2 = [M, M + 306]
+    top_repo = stats.repo_details[0] if stats.repo_details else None
+    if top_repo and stats.commit_count:
+        share = top_repo["commits"] / stats.commit_count
+        focus_num, focus_unit = f"{share * 100:.0f}", "%"
+        focus_sub = t(
+            f"大部分提交在 {_truncate(top_repo['name'], 16)}",
+            f"Most commits in {_truncate(top_repo['name'], 22)}",
+        )
+    else:
+        focus_num, focus_unit, focus_sub = "—", "", t("暂无数据", "No data")
+
+    night, weekend = stats.night_share, stats.weekend_share
+    rhythm_num, rhythm_unit = f"{peak_hour:02d}:00", ""
+    rhythm_sub = t(
+        f"深夜提交占 {night:.0%} · 周末 {weekend:.0%}",
+        f"{night:.0%} late-night · {weekend:.0%} weekend",
+    )
+
+    size_map = dict(stats.size_buckets)
+    size_total = sum(size_map.values()) or 1
+    small_share = (size_map.get("0–10", 0) + size_map.get("10–100", 0)) / size_total
+    large_share = (size_map.get("500–2k", 0) + size_map.get("2k+", 0)) / size_total
+    style_num, style_unit = f"{small_share * 100:.0f}", "%"
+    style_sub = t(
+        f"小改动为主 · 大改仅 {large_share:.0%}",
+        f"Mostly small changes · large {large_share:.0%}",
+    )
+
+    sessions = stats.sessions or {}
+    sess_count = int(sessions.get("count") or 0)
+    avg_min = int(sessions.get("avg_minutes") or 0)
+    long_min = int(sessions.get("longest_minutes") or 0)
+    if avg_min:
+        if avg_min >= 90:
+            pace_num, pace_unit = f"{avg_min / 60:.1f}", t("小时", "h")
+        else:
+            pace_num, pace_unit = str(avg_min), t("分钟", "min")
+        long_label = (
+            f"{long_min / 60:.0f}h" if long_min >= 90 else f"{long_min}min"
+        ) if en else (
+            f"{long_min / 60:.0f} 小时" if long_min >= 90 else f"{long_min} 分钟"
+        )
+        pace_sub = t(
+            f"{sess_count} 次连续写码 · 最长 {long_label}",
+            f"{sess_count} sessions · longest {long_label}",
+        )
+    else:
+        pace_num, pace_unit, pace_sub = "—", "", t("暂无会话", "No sessions")
+
+    churn_total = stats.insertions + stats.deletions
+    deletion_share = stats.deletions / churn_total if churn_total else 0
+    ratio = stats.insertions / stats.deletions if stats.deletions else 0
+    if deletion_share >= 0.5:
+        churn_kind = t("重构型", "Refactoring")
+    elif deletion_share >= 0.3:
+        churn_kind = t("平衡型", "Balanced")
+    else:
+        churn_kind = t("扩张型", "Expanding")
+    if ratio:
+        churn_num, churn_unit = f"{ratio:.1f}", ":1"
+        churn_sub = t(
+            f"每写 {ratio:.1f} 行才删 1 行",
+            f"{ratio:.1f} lines written per line deleted",
+        )
+    else:
+        churn_num, churn_unit = t("只增", "add-only"), ""
+        churn_sub = t(f"{churn_kind} · 没有删除", f"{churn_kind} · no deletions")
+
+    # ---- contribution calendar ---------------------------------------
+    cell, gap_h = 9, 2
+    start_w, end_w = date_window(stats)
+    grid_start = start_w - timedelta(days=start_w.weekday())
+    grid_end = end_w + timedelta(days=6 - end_w.weekday())
+    grid_cols = (grid_end - grid_start).days // 7 + 1
+    grid_w = grid_cols * (cell + gap_h) - gap_h
+    grid_x = (W - grid_w) / 2
+
+    month_ticks = []
+    for m_date, m_label in window_months(stats):
+        col = (m_date - grid_start).days // 7
+        mx = grid_x + col * (cell + gap_h)
+        month_ticks.append(_text(mx, 588, m_label, 9.5, c["muted"]))
+
+    charts = [
+        _text(M, 350, "MONTHLY RHYTHM", 10, c["muted"], spacing=1),
+        _text(RIGHT, 350, t(
+            f"峰值 {peak_month_no:02d} 月 · {peak} 次",
+            f"Peak {MONTHS[peak_month_no - 1]} · {peak}",
         ), 10, c["accent"], anchor="end"),
         *bars,
         _rule(462, c["line"]),
@@ -449,25 +555,25 @@ def build_svg(stats: ReportStats, *, dark: bool = False,
 
     peak_share = peak / max(stats.commit_count, 1)
     burst_num, burst_unit = f"{peak_share * 100:.0f}", "%"
-    peak_label = MONTHS[peak_month - 1]
+    peak_label = MONTHS[peak_month_no - 1]
     if peak_share >= 0.5:
         burst_sub = t(
-            f"{peak_month} 月占了全年 {peak_share:.0%} 的提交",
+            f"{peak_month_no} 月占了全年 {peak_share:.0%} 的提交",
             f"{peak_label} accounted for {peak_share:.0%} of the year",
         )
     elif peak_share >= 0.3:
         burst_sub = t(
-            f"{peak_month} 月最忙，占全年 {peak_share:.0%}",
+            f"{peak_month_no} 月最忙，占全年 {peak_share:.0%}",
             f"{peak_label} was busiest at {peak_share:.0%}",
         )
     elif peak_share >= 0.18:
         burst_sub = t(
-            f"{peak_month} 月提交最多，占 {peak_share:.0%}",
+            f"{peak_month_no} 月提交最多，占 {peak_share:.0%}",
             f"{peak_label} had the most commits ({peak_share:.0%})",
         )
     else:
         burst_sub = t(
-            f"全年分布比较平均，{peak_month} 月最多",
+            f"全年分布比较平均，{peak_month_no} 月最多",
             f"Fairly even across the year; {peak_label} was slightly ahead",
         )
 

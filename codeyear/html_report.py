@@ -24,7 +24,10 @@ from .stats import (
     fmt_human,
     fmt_int,
     language_breakdown,
+    month_labels,
+    month_numbers,
     parse_daily,
+    peak_month,
     window_months,
 )
 
@@ -792,7 +795,9 @@ def build_records(stats: ReportStats) -> str:
 
 def build_monthly(stats: ReportStats) -> str:
     max_v = max(stats.monthly) or 1
-    peak = stats.monthly.index(max_v) + 1
+    labels = month_labels(stats)
+    numbers = month_numbers(stats)
+    _peak_idx, peak = peak_month(stats)
 
     def column(month: int, value: int) -> str:
         pct = max(value / max_v * 100, 1.5)
@@ -807,12 +812,15 @@ def build_monthly(stats: ReportStats) -> str:
             f'<i style="height:{pct:.1f}%"></i>{label}</div>'
         )
 
-    cols = "".join(column(m + 1, v) for m, v in enumerate(stats.monthly))
-    labels = "".join(f"<span>{m:02d}</span>" for m in range(1, 13))
+    cols = "".join(
+        column(numbers[i] if i < len(numbers) else i + 1, v)
+        for i, v in enumerate(stats.monthly)
+    )
+    tick_html = "".join(f"<span>{escape(label)}</span>" for label in labels)
     return _panel(
         f"月度节奏 <b>· 峰值 {peak:02d} 月 · {max_v} 次</b>",
         f'<div class="month-chart" role="img" aria-label="月度提交次数">{cols}</div>'
-        f'<div class="month-labels">{labels}</div>',
+        f'<div class="month-labels">{tick_html}</div>',
         span=True,
     )
 
@@ -1186,9 +1194,12 @@ def build_compare(stats: ReportStats) -> str:
     prev_monthly += [0] * (12 - len(prev_monthly))
     cur_monthly = list(stats.monthly) + [0] * (12 - len(stats.monthly))
     chart_max = max([1, *prev_monthly[:12], *cur_monthly[:12]])
+    labels = month_labels(stats)
+    numbers = month_numbers(stats)
     cols = []
     for i in range(12):
         pv, cv = prev_monthly[i], cur_monthly[i]
+        month_no = numbers[i] if i < len(numbers) else i + 1
         pp = pv / chart_max * 100
         cp = cv / chart_max * 100
         prev_label = (
@@ -1200,24 +1211,26 @@ def build_compare(stats: ReportStats) -> str:
         cols.append(
             f'<div class="cmp-col"><div class="cmp-bars">'
             f'<div class="cmp-bar prev"><i style="height:{pp:.1f}%" '
-            f'data-tip="{prev_year} · {i + 1} 月 · {pv} 次提交"></i>'
+            f'data-tip="{prev_year} · {month_no} 月 · {pv} 次提交"></i>'
             f"{prev_label}</div>"
             f'<div class="cmp-bar cur"><i style="height:{cp:.1f}%" '
-            f'data-tip="{stats.year} · {i + 1} 月 · {cv} 次提交"></i>'
+            f'data-tip="{stats.year} · {month_no} 月 · {cv} 次提交"></i>'
             f"{cur_label}</div>"
-            f'</div><span>{i + 1}</span></div>'
+            f'</div><span>{escape(labels[i]) if i < len(labels) else i + 1}</span></div>'
         )
     notes = []
     cur_peak = max(cur_monthly[:12])
     prev_peak = max(prev_monthly[:12])
     if cur_peak:
+        ci = cur_monthly.index(cur_peak)
         notes.append(
-            f"<span>今年峰值 {cur_monthly.index(cur_peak) + 1} 月 · "
+            f"<span>今年峰值 {numbers[ci] if ci < len(numbers) else ci + 1} 月 · "
             f"{cur_peak:,} 次</span>"
         )
     if prev_peak:
+        pi = prev_monthly.index(prev_peak)
         notes.append(
-            f"<span>去年峰值 {prev_monthly.index(prev_peak) + 1} 月 · "
+            f"<span>去年峰值 {numbers[pi] if pi < len(numbers) else pi + 1} 月 · "
             f"{prev_peak:,} 次</span>"
         )
 

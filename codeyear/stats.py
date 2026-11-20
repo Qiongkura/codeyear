@@ -10,7 +10,7 @@ from datetime import date, datetime, timedelta
 from .keywords import extract_keywords
 from .languages import is_code_language
 from .personas import Persona, build_persona
-from .scanner import Commit, RepoResult
+from .scanner import Commit, RepoResult, matches_identity
 
 WEEKDAY_LABELS = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
 
@@ -96,6 +96,9 @@ class ReportStats:
     rolling: bool = False
     window_start: str | None = None
     window_end: str | None = None
+    monthly_labels: list[str] = field(default_factory=list)
+    monthly_months: list[int] = field(default_factory=list)
+    quarter_labels: list[str] = field(default_factory=list)
 
     def as_dict(self) -> dict:
         data = asdict(self)
@@ -180,24 +183,114 @@ def parse_daily(daily: dict[str, int]) -> dict[date, int]:
     return {date.fromisoformat(k): v for k, v in daily.items()}
 
 
+def window_bounds(
+    *,
+    year: int,
+    rolling: bool = False,
+    window_start: str | date | None = None,
+    window_end: str | date | None = None,
+    first_dt: datetime | None = None,
+    last_dt: datetime | None = None,
+) -> tuple[date, date]:
+    """Single source of truth for the report's date window."""
+
+    def _as_date(value: str | date | None) -> date | None:
+        if isinstance(value, date):
+            return value
+        if value:
+            try:
+                return date.fromisoformat(value)
+            except ValueError:
+                return None
+        return None
+
+    start, end = _as_date(window_start), _as_date(window_end)
+    if start and end:
+        return start, end
+    if rolling or (first_dt and first_dt.year < year):
+        tail = max(date.today(), last_dt.date() if last_dt else date.today())
+        head = tail - timedelta(days=364)
+        if first_dt is not None:
+            # Never clip a commit that is actually in the report: a 365-day
+            # tail measured from today can start after the earliest commit.
+            head = min(head, first_dt.date())
+        return head, tail
+    return date(year, 1, 1), date(year, 12, 31)
+
+
 def date_window(stats: ReportStats) -> tuple[date, date]:
     """Return the (start, end) date range for heatmaps and lifecycle charts."""
-    w_start = getattr(stats, "window_start", None)
-    w_end = getattr(stats, "window_end", None)
-    if w_start and w_end:
-        try:
-            return date.fromisoformat(w_start), date.fromisoformat(w_end)
-        except ValueError:
-            pass
-    if getattr(stats, "rolling", False) or (
-        stats.first_dt and stats.first_dt.year < stats.year
-    ):
-        end = max(
-            date.today(),
-            stats.last_dt.date() if stats.last_dt else date.today(),
-        )
-        return end - timedelta(days=364), end
-    return date(stats.year, 1, 1), date(stats.year, 12, 31)
+    return window_bounds(
+        year=stats.year,
+        rolling=stats.rolling,
+        window_start=getattr(stats, "window_start", None),
+        window_end=getattr(stats, "window_end", None),
+        first_dt=stats.first_dt,
+        last_dt=stats.last_dt,
+    )
+
+
+def month_slots(start: date, end: date) -> list[list[tuple[int, int]]]:
+    """Exactly 12 calendar-month slots covering ``[start, end]``, in order.
+
+    A 365-day window touches 13 calendar months. The oldest two are merged
+    into the first bar so the bars stay chronological, keep 12 columns, and
+    drop no commits. Wider windows distribute months evenly over 12 bars.
+    """
+    months: list[tuple[int, int]] = []
+    y, m = start.year, start.month
+    while (y, m) <= (end.year, end.month):
+        months.append((y, m))
+        y, m = (y + 1, 1) if m == 12 else (y, m + 1)
+    while len(months) < 12:
+        y, m = months[0]
+        months.insert(0, (y - 1, 12) if m == 1 else (y, m - 1))
+    if len(months) == 12:
+        return [[x] for x in months]
+    if len(months) == 13:
+        return [[months[0], months[1]], *[[x] for x in months[2:]]]
+
+    slots: list[list[tuple[int, int]]] = [[] for _ in range(12)]
+    for i, month in enumerate(months):
+        slots[min(i * 12 // len(months), 11)].append(month)
+    return slots
+
+
+def month_label_for(group: list[tuple[int, int]]) -> str:
+    """Two-digit tick label; merged bars read ``11·12``."""
+    if len(group) == 1:
+        return f"{group[0][1]:02d}"
+    return f"{group[0][1]:02d}·{group[-1][1]:02d}"
+
+
+def month_slot_index(slots: list[list[tuple[int, int]]]) -> dict[tuple[int, int], int]:
+    return {ym: i for i, group in enumerate(slots) for ym in group}
+
+
+def month_labels(stats: ReportStats) -> list[str]:
+    """Tick labels for the 12 monthly bars, in window order."""
+    labels = list(getattr(stats, "monthly_labels", None) or [])
+    if len(labels) == 12:
+        return labels
+    return [f"{m:02d}" for m in range(1, 13)]
+
+
+def month_numbers(stats: ReportStats) -> list[int]:
+    """Numeric month for each bar, used in tooltips and peak captions."""
+    nums = list(getattr(stats, "monthly_months", None) or [])
+    if len(nums) == 12:
+        return nums
+    return list(range(1, 13))
+
+
+def peak_month(stats: ReportStats) -> tuple[int, int]:
+    """(bar index, numeric month) of the busiest bar, or (-1, 0) if quiet."""
+    monthly = list(stats.monthly)
+    if not monthly or max(monthly) <= 0:
+        return -1, 0
+    idx = monthly.index(max(monthly))
+    numbers = month_numbers(stats)
+    return idx, numbers[idx] if idx < len(numbers) else idx + 1
 
 
 def window_days(stats: ReportStats) -> int:
@@ -207,23 +300,19 @@ def window_days(stats: ReportStats) -> int:
 
 
 def window_months(stats: ReportStats) -> list[tuple[date, str]]:
-    """Return 12 chronological (first_day, 'MM') ticks inside date_window."""
+    """Return 12 chronological (first_day, 'MM') ticks inside date_window.
+
+    Ticks are clamped into the window so a heatmap label never lands in the
+    column before the first visible day.
+    """
     start, end = date_window(stats)
     if start == date(stats.year, 1, 1) and end == date(stats.year, 12, 31):
         return [(date(stats.year, m, 1), f"{m:02d}") for m in range(1, 13)]
     ticks: list[tuple[date, str]] = []
-    y, m = start.year, start.month
-    if start.day > 1:
-        y, m = (y + 1, 1) if m == 12 else (y, m + 1)
-    while True:
-        cur = date(y, m, 1)
-        if cur > end:
-            break
-        ticks.append((cur, f"{m:02d}"))
-        y, m = (y + 1, 1) if m == 12 else (y, m + 1)
-    if len(ticks) < 12:
-        ticks.insert(0, (start, f"{start.month:02d}"))
-    return ticks[:12]
+    for group in month_slots(start, end):
+        y, m = group[0]
+        ticks.append((max(date(y, m, 1), start), month_label_for(group)))
+    return ticks
 
 
 def _commit_type(subject: str) -> str | None:
@@ -290,14 +379,7 @@ def _is_mine(
     identity: tuple[str, str],
     aliases: list[str] | None = None,
 ) -> bool:
-    email, name = identity
-    email_l = commit.author_email.strip().lower()
-    name_l = commit.author_name.strip().lower()
-    for value in [email, name, *(aliases or [])]:
-        value = (value or "").strip().lower()
-        if value and (email_l == value or name_l == value):
-            return True
-    return False
+    return matches_identity(commit.author_email, commit.author_name, identity, aliases)
 
 
 def build_stats(
@@ -383,9 +465,9 @@ def build_stats(
         if unique:
             selected.append((repo, unique))
 
-    # Year-scoped counts stay on the active repos; lifetime numbers use every
-    # local repo after copy/backup dedupe, so an old project that was quiet
-    # this year still contributes its history.
+    # Year-scoped counts stay on the active repos; lifetime numbers only use
+    # repos you actually committed to this year, so a folder full of cloned
+    # upstream projects does not import their entire history.
     w_end_d = until_dt.date() if until_dt is not None else (date.today() if rolling else None)
     w_start_d = (
         since_dt.date()
@@ -402,9 +484,10 @@ def build_stats(
             1 for repo, _ in selected
             if repo.root_dt is not None and repo.root_dt.year == year
         )
-    total_commits = sum(repo.total_commits for repo in chosen)
-    tags_in_year = sum(repo.tags_in_year for repo in chosen)
-    root_dates = [repo.root_dt for repo in chosen if repo.root_dt is not None]
+    lifetime_repos = [repo for repo, _ in selected] or chosen
+    total_commits = sum(repo.total_commits for repo in lifetime_repos)
+    tags_in_year = sum(repo.tags_in_year for repo in lifetime_repos)
+    root_dates = [repo.root_dt for repo in lifetime_repos if repo.root_dt is not None]
     earliest_dt = min(root_dates) if root_dates else None
 
     multi_repo = len(selected) > 1
@@ -493,10 +576,29 @@ def build_stats(
     early_commits = 0
     weekend_commits = 0
 
+    # A rolling window spans 13 calendar months, so bars are grouped by real
+    # (year, month) slots instead of "month number" — otherwise last year's
+    # November and this year's November collapse into one bar.
+    win_start, win_end = window_bounds(
+        year=year, rolling=rolling,
+        window_start=w_start_d, window_end=w_end_d,
+    )
+    slots = month_slots(win_start, win_end)
+    slot_index = month_slot_index(slots)
+    monthly_labels = [month_label_for(group) for group in slots]
+    monthly_months = [group[-1][1] for group in slots]
+    # Q1..Q4 in window order (3 slots each) rather than calendar quarters.
+    quarter_labels = [
+        f"Q{i + 1}" for i in range(4)
+    ]
+    quarter_of_slot = [min(i // 3, 3) for i in range(len(slots))]
+
     for c in commits:
         by_hour[c.dt.hour] += 1
         by_weekday[c.dt.weekday()] += 1
-        monthly[c.dt.month - 1] += 1
+        slot = slot_index.get((c.dt.year, c.dt.month))
+        if slot is not None:
+            monthly[slot] += 1
         hour_weekday[c.dt.weekday()][c.dt.hour] += 1
         daily[c.dt.date().isoformat()] += 1
         if c.subject:
@@ -669,7 +771,8 @@ def build_stats(
     top_langs = [name for name, _ in languages[:4]]
     quarters: list[Counter[str]] = [Counter() for _ in range(4)]
     for c in commits:
-        q = min((c.dt.month - 1) // 3, 3)
+        slot = slot_index.get((c.dt.year, c.dt.month))
+        q = quarter_of_slot[slot] if slot is not None else min((c.dt.month - 1) // 3, 3)
         for change in c.changes:
             quarters[q][change.lang] += change.lines
     language_quarters = []
@@ -677,7 +780,7 @@ def build_stats(
         rows = [(name, qc.get(name, 0)) for name in top_langs]
         rest = sum(v for k, v in qc.items() if k not in top_langs)
         rows.append(("其他", rest))
-        language_quarters.append({"q": f"Q{i + 1}", "rows": rows})
+        language_quarters.append({"q": quarter_labels[i], "rows": rows})
 
     today_date = datetime.now().date()
     if w_end_d is not None:
@@ -799,4 +902,7 @@ def build_stats(
         rolling=rolling,
         window_start=w_start_d.isoformat() if w_start_d else None,
         window_end=w_end_d.isoformat() if w_end_d else None,
+        monthly_labels=monthly_labels,
+        monthly_months=monthly_months,
+        quarter_labels=quarter_labels,
     )

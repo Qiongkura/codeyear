@@ -7,6 +7,7 @@ repositories through the GitHub REST API.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import re
@@ -137,19 +138,24 @@ def _slim_detail(detail: dict) -> dict:
 def _save_cache(path: Path | None, details: dict) -> None:
     if path is None:
         return
+    tmp: Path | None = None
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
         if len(details) > CACHE_MAX:
             details = dict(list(details.items())[-CACHE_MAX:])
-        path.write_text(
-            json.dumps(
-                {"version": CACHE_VERSION, "details": details},
-                ensure_ascii=False,
-            ),
-            encoding="utf-8",
+        payload = json.dumps(
+            {"version": CACHE_VERSION, "details": details},
+            ensure_ascii=False,
         )
+        # Write-then-rename: an interrupted run must never leave a truncated
+        # JSON file that breaks the next scan.
+        tmp = path.with_name(path.name + ".tmp")
+        tmp.write_text(payload, encoding="utf-8")
+        os.replace(tmp, path)
     except OSError:
-        pass
+        if tmp is not None:
+            with contextlib.suppress(OSError):
+                tmp.unlink()
 
 
 def _dt(
@@ -421,6 +427,47 @@ def _total_commits(api: GitHubAPI, full: str, username: str) -> int:
     return 0
 
 
+def _contributed_repos(
+    api: GitHubAPI,
+    login: str,
+    year: int,
+    include_forks: bool,
+) -> list[dict]:
+    """Public repos the user committed to but does not own.
+
+    One search request (plus pagination) finds commits authored by *login* in
+    a year; the returned ``repository`` objects are merged into the scan set,
+    so PRs merged into an org or another project count too.
+    """
+    found: dict[str, dict] = {}
+    query = f"author:{login} author-date:{year}-01-01..{year}-12-31"
+    for page in range(1, 4):
+        try:
+            data = api.get("/search/commits", {
+                "q": query, "per_page": 100, "page": page,
+            })
+        except Exception:
+            break
+        items = (data or {}).get("items") or []
+        if not items:
+            break
+        for item in items:
+            repo = item.get("repository") or {}
+            full = repo.get("full_name")
+            if not full or full in found or repo.get("private"):
+                continue
+            if repo.get("fork") and not include_forks:
+                continue
+            if (repo.get("owner") or {}).get("login", "").lower() == login.lower():
+                # Already covered by /users/{login}/repos.
+                continue
+            repo["_contributed_only"] = True
+            found[full] = repo
+        if len(items) < 100:
+            break
+    return list(found.values())
+
+
 def fetch_stats(
     username: str,
     year: int,
@@ -431,6 +478,7 @@ def fetch_stats(
     quiet: bool = False,
     cache_path: Path | None = None,
     tz: str | tzinfo | None = None,
+    include_contributed: bool = False,
 ) -> tuple[ReportStats, list[str], str]:
     api = GitHubAPI(token)
     target_tz = _parse_tz(tz)
@@ -457,6 +505,13 @@ def fetch_stats(
         if not quiet:
             print(f"CodeYear · github.com/{login} · {year}", file=sys.stderr)
         repos = _repos(api, login, since, include_forks, tz=target_tz)
+        if include_contributed:
+            known = {r.get("full_name") for r in repos}
+            extra = [
+                r for r in _contributed_repos(api, login, year, include_forks)
+                if r.get("full_name") not in known
+            ]
+            repos.extend(extra)
         if getattr(repos, "truncated", False):
             warnings = [i18n.tr(
                 "公开仓库超过分页上限，统计可能不完整。"
@@ -571,6 +626,7 @@ def run(
     lang: str = "zh",
     tz: str | None = None,
     require_complete: bool = False,
+    include_contributed: bool = False,
 ) -> int:
     cache_path = None
     if not no_cache:
@@ -583,6 +639,7 @@ def run(
                 username, year, token=token, max_commits=max_commits,
                 include_forks=include_forks, quiet=quiet,
                 cache_path=cache_path, tz=tz,
+                include_contributed=include_contributed,
             )
         except NoPublicCommitsError:
             if not fallback_previous or year != datetime.now().year:
@@ -591,6 +648,7 @@ def run(
                 username, year - 1, token=token, max_commits=max_commits,
                 include_forks=include_forks, quiet=quiet,
                 cache_path=cache_path, tz=tz,
+                include_contributed=include_contributed,
             )
         else:
             if (fallback_previous and not stats.commit_count
@@ -599,6 +657,7 @@ def run(
                     username, year - 1, token=token, max_commits=max_commits,
                     include_forks=include_forks, quiet=quiet,
                     cache_path=cache_path, tz=tz,
+                    include_contributed=include_contributed,
                 )
                 if previous.commit_count:
                     stats, warnings = previous, prev_warnings
